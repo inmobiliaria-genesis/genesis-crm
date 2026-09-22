@@ -10,33 +10,84 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedEstructuraRouteImport } from './routes/_authenticated/estructura'
+import { Route as AuthenticatedLotesRouteImport } from './routes/_authenticated/lotes'
+import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedEstructuraRoute = AuthenticatedEstructuraRouteImport.update({
+  id: '/estructura',
+  path: '/estructura',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedLotesRoute = AuthenticatedLotesRouteImport.update({
+  id: '/lotes',
+  path: '/lotes',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedUsuariosRoute = AuthenticatedUsuariosRouteImport.update({
+  id: '/usuarios',
+  path: '/usuarios',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/estructura': typeof AuthenticatedEstructuraRoute
+  '/lotes': typeof AuthenticatedLotesRoute
+  '/usuarios': typeof AuthenticatedUsuariosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/estructura': typeof AuthenticatedEstructuraRoute
+  '/lotes': typeof AuthenticatedLotesRoute
+  '/usuarios': typeof AuthenticatedUsuariosRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/_authenticated/estructura': typeof AuthenticatedEstructuraRoute
+  '/_authenticated/lotes': typeof AuthenticatedLotesRoute
+  '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/auth' | '/estructura' | '/lotes' | '/usuarios'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/auth' | '/estructura' | '/lotes' | '/usuarios'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/estructura'
+    | '/_authenticated/lotes'
+    | '/_authenticated/usuarios'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +99,63 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/estructura': {
+      id: '/_authenticated/estructura'
+      path: '/estructura'
+      fullPath: '/estructura'
+      preLoaderRoute: typeof AuthenticatedEstructuraRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/lotes': {
+      id: '/_authenticated/lotes'
+      path: '/lotes'
+      fullPath: '/lotes'
+      preLoaderRoute: typeof AuthenticatedLotesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/usuarios': {
+      id: '/_authenticated/usuarios'
+      path: '/usuarios'
+      fullPath: '/usuarios'
+      preLoaderRoute: typeof AuthenticatedUsuariosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedEstructuraRoute: typeof AuthenticatedEstructuraRoute
+  AuthenticatedLotesRoute: typeof AuthenticatedLotesRoute
+  AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedEstructuraRoute: AuthenticatedEstructuraRoute,
+  AuthenticatedLotesRoute: AuthenticatedLotesRoute,
+  AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
