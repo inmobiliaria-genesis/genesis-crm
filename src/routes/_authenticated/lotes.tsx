@@ -364,7 +364,7 @@ function AltaPorRango({
     }
     const { error } = await supabase.from("lote").insert(filas);
     setGuardando(false);
-    if (error) return toast.error("No se pudieron crear los lotes", { description: error.message });
+    if (error) { toast.error("No se pudieron crear los lotes", { description: error.message }); return; }
     toast.success(`${filas.length} lote(s) creados`);
     setAbierto(false);
     onListo();
@@ -452,7 +452,7 @@ function EditarLote({ lote, onListo }: { lote: Lote; onListo: () => void }) {
       cambios[campo] = v === "" || v === undefined ? null : Number(v);
     });
     const { error } = await supabase.from("lote").update(cambios).eq("id", lote.id);
-    if (error) return toast.error("No se pudo guardar", { description: error.message });
+    if (error) { toast.error("No se pudo guardar", { description: error.message }); return; }
     toast.success("Lote actualizado");
     setAbierto(false);
     onListo();
@@ -522,7 +522,7 @@ function ImportarExcel({
   }
 
   async function importar() {
-    if (!manzanaId) return toast.error("Elige la manzana de destino");
+    if (!manzanaId) { toast.error("Elige la manzana de destino"); return; }
     const payload = filas
       .map((f) => {
         const obtener = (clave: string) => {
@@ -545,12 +545,12 @@ function ImportarExcel({
       })
       .filter((f) => f.numero !== "");
 
-    if (payload.length === 0) return toast.error("El archivo no tiene una columna 'numero' con datos");
+    if (payload.length === 0) { toast.error("El archivo no tiene una columna 'numero' con datos"); return; }
 
     setProcesando(true);
     const { data, error } = await supabase.rpc("importar_lotes", { p_filas: payload });
     setProcesando(false);
-    if (error) return toast.error("No se pudo importar", { description: error.message });
+    if (error) { toast.error("No se pudo importar", { description: error.message }); return; }
     const resultado = data as { creados?: number; omitidos?: number } | null;
     toast.success(
       `Importación lista: ${resultado?.creados ?? 0} creados, ${resultado?.omitidos ?? 0} omitidos`,

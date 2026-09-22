@@ -156,7 +156,7 @@ function NuevoValor({ claveFija, onListo }: { claveFija?: string; onListo: () =>
     const { error } = await supabase
       .from("config")
       .insert({ clave, valor: Number(valor), vigente_desde: desde });
-    if (error) return toast.error("No se pudo guardar", { description: error.message });
+    if (error) { toast.error("No se pudo guardar", { description: error.message }); return; }
     toast.success("Valor registrado");
     setAbierto(false);
     setValor("");

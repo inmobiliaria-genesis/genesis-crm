@@ -254,7 +254,7 @@ function NuevoProyecto({ onListo }: { onListo: () => void }) {
 
   async function guardar() {
     const { error } = await supabase.from("proyecto").insert({ nombre, ubicacion, notas });
-    if (error) return toast.error("No se pudo crear", { description: error.message });
+    if (error) { toast.error("No se pudo crear", { description: error.message }); return; }
     toast.success("Proyecto creado");
     setAbierto(false);
     setNombre("");
@@ -304,7 +304,7 @@ function NuevaEtapa({ proyectoId, onListo }: { proyectoId: string; onListo: () =
 
   async function guardar() {
     const { error } = await supabase.from("etapa").insert({ proyecto_id: proyectoId, nombre });
-    if (error) return toast.error("No se pudo crear", { description: error.message });
+    if (error) { toast.error("No se pudo crear", { description: error.message }); return; }
     toast.success("Etapa creada");
     setAbierto(false);
     setNombre("");
@@ -344,7 +344,7 @@ function NuevaManzana({ etapaId, onListo }: { etapaId: string; onListo: () => vo
     const { error } = await supabase
       .from("manzana")
       .insert({ etapa_id: etapaId, letra: letra.toUpperCase() });
-    if (error) return toast.error("No se pudo crear", { description: error.message });
+    if (error) { toast.error("No se pudo crear", { description: error.message }); return; }
     toast.success("Manzana creada");
     setAbierto(false);
     setLetra("");
@@ -391,7 +391,7 @@ function EditarSimple({
 
   async function guardar() {
     const { error } = await supabase.from(tabla).update(valores).eq("id", id);
-    if (error) return toast.error("No se pudo guardar", { description: error.message });
+    if (error) { toast.error("No se pudo guardar", { description: error.message }); return; }
     toast.success("Cambios guardados");
     setAbierto(false);
     qc.invalidateQueries();

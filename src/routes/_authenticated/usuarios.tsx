@@ -66,14 +66,14 @@ function UsuariosPage() {
 
   async function cambiarRol(id: string, rol: Rol) {
     const { error } = await supabase.from("perfil").update({ rol }).eq("id", id);
-    if (error) return toast.error("No se pudo cambiar el rol", { description: error.message });
+    if (error) { toast.error("No se pudo cambiar el rol", { description: error.message }); return; }
     toast.success("Rol actualizado");
     qc.invalidateQueries({ queryKey: ["usuarios"] });
   }
 
   async function cambiarEstado(id: string, activo: boolean) {
     const { error } = await supabase.from("perfil").update({ activo }).eq("id", id);
-    if (error) return toast.error("No se pudo actualizar", { description: error.message });
+    if (error) { toast.error("No se pudo actualizar", { description: error.message }); return; }
     toast.success(activo ? "Usuario activado" : "Usuario desactivado");
     qc.invalidateQueries({ queryKey: ["usuarios"] });
   }
