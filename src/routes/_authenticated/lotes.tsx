@@ -451,7 +451,7 @@ function EditarLote({ lote, onListo }: { lote: Lote; onListo: () => void }) {
       const v = valores[campo];
       cambios[campo] = v === "" || v === undefined ? null : Number(v);
     });
-    const { error } = await supabase.from("lote").update(cambios).eq("id", lote.id);
+    const { error } = await supabase.from("lote").update(cambios as never).eq("id", lote.id);
     if (error) { toast.error("No se pudo guardar", { description: error.message }); return; }
     toast.success("Lote actualizado");
     setAbierto(false);

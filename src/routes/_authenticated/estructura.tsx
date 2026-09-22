@@ -390,7 +390,7 @@ function EditarSimple({
   const [valores, setValores] = useState(campos);
 
   async function guardar() {
-    const { error } = await supabase.from(tabla).update(valores).eq("id", id);
+    const { error } = await supabase.from(tabla).update(valores as never).eq("id", id);
     if (error) { toast.error("No se pudo guardar", { description: error.message }); return; }
     toast.success("Cambios guardados");
     setAbierto(false);
