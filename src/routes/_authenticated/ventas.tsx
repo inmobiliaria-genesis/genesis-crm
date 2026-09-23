@@ -44,7 +44,7 @@ import {
 } from "@/lib/ventas";
 import { fecha, hoyLima, soles } from "@/lib/format";
 import { usePerfil, puedeComercial, puedeElegirVendedor, puedeCobrar } from "@/lib/sesion";
-import { DialogoPago } from "@/components/PagoForm";
+import { DialogoPago, DialogoRegularizar } from "@/components/PagoForm";
 import { ETIQUETA_CUOTA, useCuotasDeVenta, usePagosDeVenta } from "@/lib/cobranza";
 
 type Busqueda = {
@@ -598,10 +598,12 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
   const qc = useQueryClient();
   const { data: perfil } = usePerfil();
   const cobra = puedeCobrar(perfil);
+  const regulariza = perfil?.rol === "admin" || perfil?.rol === "cobranza";
   const cronograma = useCuotasDeVenta(ventaId);
   const pagos = usePagosDeVenta(ventaId);
   const [registrando, setRegistrando] = useState(false);
-  const [anulando, setAnulando] = useState<string | null>(null);
+  const [regularizando, setRegularizando] = useState(false);
+  const [anulando, setAnulando] = useState<{ id: string; grupo: boolean } | null>(null);
   const [motivo, setMotivo] = useState("");
 
   const v = venta.data;
@@ -609,21 +611,95 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
   const total = cuotas.reduce((t, c) => t + Number(c.monto_vigente), 0);
   const saldoTotal = cuotas.reduce((t, c) => t + Math.max(Number(c.saldo), 0), 0);
 
+  type FilaPago = {
+    key: string;
+    id: string;
+    regularizacion: boolean;
+    cantidad: number;
+    fechaDesde: string;
+    fechaHasta: string;
+    monto: number;
+    metodo: string;
+    operacion: string | null;
+    aplicado: string;
+    anulado: boolean;
+  };
+  const filasPago: FilaPago[] = [];
+  const grupos = new Map<string, FilaPago>();
+  for (const p of pagos.data ?? []) {
+    const rp = p as typeof p & { regularizacion_id?: string | null };
+    const apl = (p.aplicaciones ?? []).filter((a) => !a.anulado || p.anulado);
+    const textos = apl.map(
+      (a) => `${a.cuota?.numero === 0 ? "Inicial" : `Cuota ${a.cuota?.numero}`}: ${soles(a.monto_aplicado)}`,
+    );
+    const gid = rp.regularizacion_id;
+    if (gid) {
+      const k = `${gid}-${p.anulado}`;
+      const g = grupos.get(k);
+      if (g) {
+        g.cantidad += 1;
+        g.monto += Number(p.monto);
+        if (p.fecha < g.fechaDesde) g.fechaDesde = p.fecha;
+        if (p.fecha > g.fechaHasta) g.fechaHasta = p.fecha;
+        g.aplicado = `${g.cantidad} pagos, ${g.cantidad === 1 ? textos.length : "una cuota c/u"}`;
+        continue;
+      }
+      const fila: FilaPago = {
+        key: k,
+        id: gid,
+        regularizacion: true,
+        cantidad: 1,
+        fechaDesde: p.fecha,
+        fechaHasta: p.fecha,
+        monto: Number(p.monto),
+        metodo: p.metodo,
+        operacion: p.notas,
+        aplicado: apl.length > 3 ? `${apl.length} cuotas` : textos.join(" · "),
+        anulado: p.anulado,
+      };
+      grupos.set(k, fila);
+      filasPago.push(fila);
+    } else {
+      filasPago.push({
+        key: p.id,
+        id: p.id,
+        regularizacion: false,
+        cantidad: 1,
+        fechaDesde: p.fecha,
+        fechaHasta: p.fecha,
+        monto: Number(p.monto),
+        metodo: p.metodo,
+        operacion: p.numero_operacion,
+        aplicado: textos.join(" · "),
+        anulado: p.anulado,
+      });
+    }
+  }
+  for (const g of grupos.values()) if (g.cantidad > 1) g.aplicado = `${g.cantidad} cuotas`;
+
   async function anularPago() {
     if (!anulando) return;
     if (!motivo.trim()) {
       toast.error("Indica el motivo de la anulación");
       return;
     }
-    const { error } = await supabase
-      .from("pago")
-      .update({ anulado: true, motivo_anulacion: motivo.trim() })
-      .eq("id", anulando);
+    const { error } = anulando.grupo
+      ? await (supabase.rpc as unknown as (
+          f: string,
+          a: Record<string, unknown>,
+        ) => Promise<{ error: { message: string } | null }>)("anular_regularizacion", {
+          _regularizacion_id: anulando.id,
+          _motivo: motivo.trim(),
+        })
+      : await supabase
+          .from("pago")
+          .update({ anulado: true, motivo_anulacion: motivo.trim() })
+          .eq("id", anulando.id);
     if (error) {
-      toast.error("No se pudo anular el pago", { description: error.message });
+      toast.error("No se pudo anular", { description: error.message });
       return;
     }
-    toast.success("Pago anulado");
+    toast.success("Anulado");
     setAnulando(null);
     setMotivo("");
     qc.invalidateQueries();
@@ -672,11 +748,18 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
             <div>
               <div className="mb-2 flex items-center justify-between">
                 <p className="font-medium">Cronograma</p>
-                {cobra && !v.anulado ? (
-                  <Button size="sm" onClick={() => setRegistrando(true)}>
-                    Registrar pago
-                  </Button>
-                ) : null}
+                <div className="flex gap-2">
+                  {cobra && !v.anulado ? (
+                    <Button size="sm" onClick={() => setRegistrando(true)}>
+                      Registrar pago
+                    </Button>
+                  ) : null}
+                  {regulariza && !v.anulado && saldoTotal > 0.005 ? (
+                    <Button size="sm" variant="outline" onClick={() => setRegularizando(true)}>
+                      Marcar como pagada
+                    </Button>
+                  ) : null}
+                </div>
               </div>
               <Table>
                 <TableHeader>
@@ -726,38 +809,42 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(pagos.data ?? []).length === 0 ? (
+                  {filasPago.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center text-muted-foreground">
                         Todavía no hay pagos.
                       </TableCell>
                     </TableRow>
                   ) : null}
-                  {(pagos.data ?? []).map((p) => (
-                    <TableRow key={p.id} className={p.anulado ? "opacity-50" : ""}>
-                      <TableCell>{fecha(p.fecha)}</TableCell>
-                      <TableCell className="num text-right">{soles(p.monto)}</TableCell>
-                      <TableCell className="capitalize">
-                        {p.metodo}
-                        {p.numero_operacion ? (
-                          <span className="block text-xs text-muted-foreground">
-                            {p.numero_operacion}
-                          </span>
+                  {filasPago.map((f) => (
+                    <TableRow key={f.key} className={f.anulado ? "opacity-50" : ""}>
+                      <TableCell>
+                        {f.fechaDesde === f.fechaHasta
+                          ? fecha(f.fechaDesde)
+                          : `${fecha(f.fechaDesde)} – ${fecha(f.fechaHasta)}`}
+                        {f.regularizacion ? (
+                          <Badge variant="secondary" className="mt-1 block w-fit">
+                            Regularización{f.cantidad > 1 ? ` · ${f.cantidad} pagos` : ""}
+                          </Badge>
                         ) : null}
                       </TableCell>
-                      <TableCell className="text-xs">
-                        {(p.aplicaciones ?? [])
-                          .filter((a) => !a.anulado)
-                          .map((a) =>
-                            `${a.cuota?.numero === 0 ? "Inicial" : `Cuota ${a.cuota?.numero}`}: ${soles(a.monto_aplicado)}`,
-                          )
-                          .join(" · ") || "—"}
+                      <TableCell className="num text-right">{soles(f.monto)}</TableCell>
+                      <TableCell className="capitalize">
+                        {f.metodo === "no_registrado" ? "No registrada" : f.metodo}
+                        {f.operacion ? (
+                          <span className="block text-xs text-muted-foreground">{f.operacion}</span>
+                        ) : null}
                       </TableCell>
+                      <TableCell className="text-xs">{f.aplicado || "—"}</TableCell>
                       <TableCell className="text-right">
-                        {p.anulado ? (
+                        {f.anulado ? (
                           <Badge variant="destructive">Anulado</Badge>
                         ) : cobra ? (
-                          <Button size="sm" variant="ghost" onClick={() => setAnulando(p.id)}>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setAnulando({ id: f.id, grupo: f.regularizacion })}
+                          >
                             Anular
                           </Button>
                         ) : null}
@@ -773,12 +860,24 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
         {registrando && ventaId ? (
           <DialogoPago ventaId={ventaId} onCerrar={() => setRegistrando(false)} />
         ) : null}
+        {regularizando && ventaId && v ? (
+          <DialogoRegularizar
+            ventaId={ventaId}
+            fechaVenta={v.fecha_venta}
+            onCerrar={() => setRegularizando(false)}
+          />
+        ) : null}
 
         <Dialog open={!!anulando} onOpenChange={(o) => (!o ? setAnulando(null) : null)}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Anular pago</DialogTitle>
+              <DialogTitle>{anulando?.grupo ? "Anular regularización" : "Anular pago"}</DialogTitle>
             </DialogHeader>
+            {anulando?.grupo ? (
+              <p className="text-sm text-muted-foreground">
+                Se anularán juntos todos los pagos de esta regularización.
+              </p>
+            ) : null}
             <div>
               <Label>Motivo de la anulación</Label>
               <Textarea rows={3} value={motivo} onChange={(e) => setMotivo(e.target.value)} />
@@ -788,7 +887,7 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
                 Cancelar
               </Button>
               <Button variant="destructive" onClick={anularPago}>
-                Anular pago
+                Anular
               </Button>
             </DialogFooter>
           </DialogContent>

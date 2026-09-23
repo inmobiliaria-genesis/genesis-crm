@@ -543,6 +543,8 @@ export type Database = {
           motivo_anulacion: string | null
           notas: string | null
           numero_operacion: string | null
+          origen: string
+          regularizacion_id: string | null
           venta_id: string
         }
         Insert: {
@@ -560,6 +562,8 @@ export type Database = {
           motivo_anulacion?: string | null
           notas?: string | null
           numero_operacion?: string | null
+          origen?: string
+          regularizacion_id?: string | null
           venta_id: string
         }
         Update: {
@@ -577,6 +581,8 @@ export type Database = {
           motivo_anulacion?: string | null
           notas?: string | null
           numero_operacion?: string | null
+          origen?: string
+          regularizacion_id?: string | null
           venta_id?: string
         }
         Relationships: [
@@ -1090,11 +1096,25 @@ export type Database = {
       }
     }
     Functions: {
+      anular_regularizacion: {
+        Args: { _motivo: string; _regularizacion_id: string }
+        Returns: number
+      }
       fn_valida_lote_comercializable: {
         Args: { _lote_id: string }
         Returns: undefined
       }
       importar_lotes: { Args: { p_filas: Json }; Returns: Json }
+      regularizar_venta: {
+        Args: {
+          _fecha: string
+          _metodo: string
+          _modo: string
+          _notas: string
+          _venta_id: string
+        }
+        Returns: string
+      }
       simular_cronograma: {
         Args: {
           _condicion: string
