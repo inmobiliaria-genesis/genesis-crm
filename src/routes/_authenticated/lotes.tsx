@@ -169,7 +169,7 @@ function LotesPage() {
   );
 
   const filtrados = useMemo(() => {
-    let lista = lotes.data ?? [];
+    let lista = lotesConEstado;
     if (soloPendientes) lista = lista.filter(estaPendiente);
     if (busqueda.trim()) {
       const b = busqueda.trim().toLowerCase();
@@ -180,7 +180,7 @@ function LotesPage() {
       );
     }
     return lista;
-  }, [lotes.data, soloPendientes, busqueda, mapaManzana]);
+  }, [lotesConEstado, soloPendientes, busqueda, mapaManzana]);
 
   const pendientes = (lotes.data ?? []).filter(estaPendiente).length;
 
