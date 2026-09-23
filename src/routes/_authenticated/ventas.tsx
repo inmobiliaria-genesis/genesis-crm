@@ -45,7 +45,11 @@ import {
 import { fecha, hoyLima, soles } from "@/lib/format";
 import { usePerfil } from "@/lib/sesion";
 
-type Busqueda = { venta?: string; nuevoLote?: string; nuevoCliente?: string };
+type Busqueda = {
+  venta?: string | undefined;
+  nuevoLote?: string | undefined;
+  nuevoCliente?: string | undefined;
+};
 
 export const Route = createFileRoute("/_authenticated/ventas")({
   validateSearch: (s: Record<string, unknown>): Busqueda => ({
