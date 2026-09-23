@@ -336,7 +336,10 @@ function PlanoPage() {
   function onPointerDown(e: React.PointerEvent) {
     punteros.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (punteros.current.size === 2) {
-      const [a, b] = [...punteros.current.values()];
+      const [a, b] = [...punteros.current.values()] as [
+        { x: number; y: number },
+        { x: number; y: number },
+      ];
       pellizco.current = { dist: Math.hypot(a.x - b.x, a.y - b.y), k: vista.k };
       arrastre.current = null;
       return;
