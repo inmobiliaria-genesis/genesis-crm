@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedBitacoraRouteImport } from './routes/_authenticated/bitacora'
+import { Route as AuthenticatedColoresMapaRouteImport } from './routes/_authenticated/colores-mapa'
 import { Route as AuthenticatedConfiguracionRouteImport } from './routes/_authenticated/configuracion'
 import { Route as AuthenticatedEstructuraRouteImport } from './routes/_authenticated/estructura'
 import { Route as AuthenticatedLotesRouteImport } from './routes/_authenticated/lotes'
@@ -37,6 +38,12 @@ const AuthenticatedBitacoraRoute = AuthenticatedBitacoraRouteImport.update({
   path: '/bitacora',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedColoresMapaRoute =
+  AuthenticatedColoresMapaRouteImport.update({
+    id: '/colores-mapa',
+    path: '/colores-mapa',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedConfiguracionRoute =
   AuthenticatedConfiguracionRouteImport.update({
     id: '/configuracion',
@@ -63,6 +70,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/bitacora': typeof AuthenticatedBitacoraRoute
+  '/colores-mapa': typeof AuthenticatedColoresMapaRoute
   '/configuracion': typeof AuthenticatedConfiguracionRoute
   '/estructura': typeof AuthenticatedEstructuraRoute
   '/lotes': typeof AuthenticatedLotesRoute
@@ -72,6 +80,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/bitacora': typeof AuthenticatedBitacoraRoute
+  '/colores-mapa': typeof AuthenticatedColoresMapaRoute
   '/configuracion': typeof AuthenticatedConfiguracionRoute
   '/estructura': typeof AuthenticatedEstructuraRoute
   '/lotes': typeof AuthenticatedLotesRoute
@@ -83,6 +92,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/bitacora': typeof AuthenticatedBitacoraRoute
+  '/_authenticated/colores-mapa': typeof AuthenticatedColoresMapaRoute
   '/_authenticated/configuracion': typeof AuthenticatedConfiguracionRoute
   '/_authenticated/estructura': typeof AuthenticatedEstructuraRoute
   '/_authenticated/lotes': typeof AuthenticatedLotesRoute
@@ -94,6 +104,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/bitacora'
+    | '/colores-mapa'
     | '/configuracion'
     | '/estructura'
     | '/lotes'
@@ -103,6 +114,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/bitacora'
+    | '/colores-mapa'
     | '/configuracion'
     | '/estructura'
     | '/lotes'
@@ -113,6 +125,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/bitacora'
+    | '/_authenticated/colores-mapa'
     | '/_authenticated/configuracion'
     | '/_authenticated/estructura'
     | '/_authenticated/lotes'
@@ -155,6 +168,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedBitacoraRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/colores-mapa': {
+      id: '/_authenticated/colores-mapa'
+      path: '/colores-mapa'
+      fullPath: '/colores-mapa'
+      preLoaderRoute: typeof AuthenticatedColoresMapaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/configuracion': {
       id: '/_authenticated/configuracion'
       path: '/configuracion'
@@ -188,6 +208,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedBitacoraRoute: typeof AuthenticatedBitacoraRoute
+  AuthenticatedColoresMapaRoute: typeof AuthenticatedColoresMapaRoute
   AuthenticatedConfiguracionRoute: typeof AuthenticatedConfiguracionRoute
   AuthenticatedEstructuraRoute: typeof AuthenticatedEstructuraRoute
   AuthenticatedLotesRoute: typeof AuthenticatedLotesRoute
@@ -196,6 +217,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBitacoraRoute: AuthenticatedBitacoraRoute,
+  AuthenticatedColoresMapaRoute: AuthenticatedColoresMapaRoute,
   AuthenticatedConfiguracionRoute: AuthenticatedConfiguracionRoute,
   AuthenticatedEstructuraRoute: AuthenticatedEstructuraRoute,
   AuthenticatedLotesRoute: AuthenticatedLotesRoute,
