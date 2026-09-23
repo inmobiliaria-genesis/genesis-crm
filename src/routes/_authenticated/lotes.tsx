@@ -271,15 +271,15 @@ function LotesPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {lotes.isLoading ? (
+          {lotes.isLoading ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center text-muted-foreground">
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
                   Cargando…
                 </TableCell>
               </TableRow>
             ) : filtrados.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center text-muted-foreground">
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
                   No hay lotes con estos filtros.
                 </TableCell>
               </TableRow>
@@ -290,10 +290,6 @@ function LotesPage() {
                   <TableCell className="num font-medium">{l.numero}</TableCell>
                   <TableCell className="num text-right">{numero(l.area_m2)}</TableCell>
                   <TableCell className="num text-right">{soles(l.precio_lista)}</TableCell>
-                  <TableCell className="num text-right">{numero(l.frente_m)}</TableCell>
-                  <TableCell className="num text-right">{numero(l.fondo_m)}</TableCell>
-                  <TableCell className="num text-right">{numero(l.lado_derecho_m)}</TableCell>
-                  <TableCell className="num text-right">{numero(l.lado_izquierdo_m)}</TableCell>
                   <TableCell>
                     {l.anulado ? (
                       <Badge variant="destructive">Anulado</Badge>
