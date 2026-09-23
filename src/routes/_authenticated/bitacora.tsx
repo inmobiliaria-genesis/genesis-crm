@@ -25,7 +25,7 @@ import {
 import { usePerfil } from "@/lib/sesion";
 import { fechaHora } from "@/lib/format";
 
-const TABLAS = ["proyecto", "etapa", "manzana", "lote", "perfil", "config"];
+const TABLAS = ["proyecto", "etapa", "manzana", "lote", "perfil", "config", "vendedor", "venta", "pago"];
 
 export const Route = createFileRoute("/_authenticated/bitacora")({
   head: () => ({
