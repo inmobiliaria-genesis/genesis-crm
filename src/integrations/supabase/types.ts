@@ -47,6 +47,48 @@ export type Database = {
         }
         Relationships: []
       }
+      color_estado: {
+        Row: {
+          anulado: boolean
+          anulado_en: string | null
+          anulado_por: string | null
+          color: string
+          creado_en: string
+          creado_por: string | null
+          estado: string
+          id: string
+          modificado_en: string
+          modificado_por: string | null
+          motivo_anulacion: string | null
+        }
+        Insert: {
+          anulado?: boolean
+          anulado_en?: string | null
+          anulado_por?: string | null
+          color: string
+          creado_en?: string
+          creado_por?: string | null
+          estado: string
+          id?: string
+          modificado_en?: string
+          modificado_por?: string | null
+          motivo_anulacion?: string | null
+        }
+        Update: {
+          anulado?: boolean
+          anulado_en?: string | null
+          anulado_por?: string | null
+          color?: string
+          creado_en?: string
+          creado_por?: string | null
+          estado?: string
+          id?: string
+          modificado_en?: string
+          modificado_por?: string | null
+          motivo_anulacion?: string | null
+        }
+        Relationships: []
+      }
       config: {
         Row: {
           anulado: boolean
@@ -216,6 +258,76 @@ export type Database = {
           },
         ]
       }
+      lote_ubicacion: {
+        Row: {
+          anulado: boolean
+          anulado_en: string | null
+          anulado_por: string | null
+          creado_en: string
+          creado_por: string | null
+          forma: Json
+          id: string
+          lote_id: string
+          modificado_en: string
+          modificado_por: string | null
+          motivo_anulacion: string | null
+          plano_id: string
+          vigente: boolean
+        }
+        Insert: {
+          anulado?: boolean
+          anulado_en?: string | null
+          anulado_por?: string | null
+          creado_en?: string
+          creado_por?: string | null
+          forma: Json
+          id?: string
+          lote_id: string
+          modificado_en?: string
+          modificado_por?: string | null
+          motivo_anulacion?: string | null
+          plano_id: string
+          vigente?: boolean
+        }
+        Update: {
+          anulado?: boolean
+          anulado_en?: string | null
+          anulado_por?: string | null
+          creado_en?: string
+          creado_por?: string | null
+          forma?: Json
+          id?: string
+          lote_id?: string
+          modificado_en?: string
+          modificado_por?: string | null
+          motivo_anulacion?: string | null
+          plano_id?: string
+          vigente?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lote_ubicacion_lote_id_fkey"
+            columns: ["lote_id"]
+            isOneToOne: false
+            referencedRelation: "lote"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lote_ubicacion_lote_id_fkey"
+            columns: ["lote_id"]
+            isOneToOne: false
+            referencedRelation: "lote_estado"
+            referencedColumns: ["lote_id"]
+          },
+          {
+            foreignKeyName: "lote_ubicacion_plano_id_fkey"
+            columns: ["plano_id"]
+            isOneToOne: false
+            referencedRelation: "plano"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       manzana: {
         Row: {
           anulado: boolean
@@ -319,6 +431,68 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      plano: {
+        Row: {
+          alto_px: number
+          ancho_px: number
+          anulado: boolean
+          anulado_en: string | null
+          anulado_por: string | null
+          creado_en: string
+          creado_por: string | null
+          etapa_id: string
+          id: string
+          imagen_path: string
+          modificado_en: string
+          modificado_por: string | null
+          motivo_anulacion: string | null
+          nombre: string
+          vigente: boolean
+        }
+        Insert: {
+          alto_px: number
+          ancho_px: number
+          anulado?: boolean
+          anulado_en?: string | null
+          anulado_por?: string | null
+          creado_en?: string
+          creado_por?: string | null
+          etapa_id: string
+          id?: string
+          imagen_path: string
+          modificado_en?: string
+          modificado_por?: string | null
+          motivo_anulacion?: string | null
+          nombre: string
+          vigente?: boolean
+        }
+        Update: {
+          alto_px?: number
+          ancho_px?: number
+          anulado?: boolean
+          anulado_en?: string | null
+          anulado_por?: string | null
+          creado_en?: string
+          creado_por?: string | null
+          etapa_id?: string
+          id?: string
+          imagen_path?: string
+          modificado_en?: string
+          modificado_por?: string | null
+          motivo_anulacion?: string | null
+          nombre?: string
+          vigente?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plano_etapa_id_fkey"
+            columns: ["etapa_id"]
+            isOneToOne: false
+            referencedRelation: "etapa"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       proyecto: {
         Row: {
