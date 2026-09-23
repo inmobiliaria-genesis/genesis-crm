@@ -145,16 +145,29 @@ function LotesPage() {
   });
 
   const mapaEstados = useMemo(
-    () => new Map((estados.data ?? []).map((e) => [e.lote_id, e.estado ?? "disponible"])),
+    () =>
+      new Map(
+        (estados.data ?? []).map((e) => [
+          e.lote_id,
+          {
+            estado: e.estado ?? "disponible",
+            saldo: e.saldo_pendiente === null || e.saldo_pendiente === undefined ? null : Number(e.saldo_pendiente),
+          },
+        ]),
+      ),
     [estados.data],
   );
 
   const lotesConEstado = useMemo(
     () =>
-      (lotes.data ?? []).map((l) => ({
-        ...l,
-        estado: mapaEstados.get(l.id) ?? "disponible",
-      })),
+      (lotes.data ?? []).map((l) => {
+        const e = mapaEstados.get(l.id);
+        return {
+          ...l,
+          estado: e?.estado ?? "disponible",
+          saldo_pendiente: e?.saldo ?? null,
+        };
+      }),
     [lotes.data, mapaEstados],
   );
 
@@ -330,7 +343,9 @@ function LotesPage() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{etiquetaEstado(l.estado)}</Badge>
+                    <Badge variant="secondary">
+                      {etiquetaEstadoLote(l.estado, l.saldo_pendiente)}
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-right">
                     {editable && !l.anulado ? (
