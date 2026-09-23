@@ -25,13 +25,13 @@ export type Forma = FormaPunto | FormaRect;
 export function esForma(valor: unknown): valor is Forma {
   if (!valor || typeof valor !== "object") return false;
   const f = valor as Record<string, unknown>;
-  if (f.tipo === "punto") return typeof f.x === "number" && typeof f.y === "number";
-  if (f.tipo === "rect")
+  if (f["tipo"] === "punto") return typeof f["x"] === "number" && typeof f["y"] === "number";
+  if (f["tipo"] === "rect")
     return (
-      typeof f.x1 === "number" &&
-      typeof f.y1 === "number" &&
-      typeof f.x2 === "number" &&
-      typeof f.y2 === "number"
+      typeof f["x1"] === "number" &&
+      typeof f["y1"] === "number" &&
+      typeof f["x2"] === "number" &&
+      typeof f["y2"] === "number"
     );
   return false;
 }
