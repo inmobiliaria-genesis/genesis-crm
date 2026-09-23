@@ -527,6 +527,135 @@ export type Database = {
           },
         ]
       }
+      pago: {
+        Row: {
+          anulado: boolean
+          anulado_en: string | null
+          anulado_por: string | null
+          creado_en: string
+          creado_por: string | null
+          fecha: string
+          id: string
+          metodo: string
+          modificado_en: string
+          modificado_por: string | null
+          monto: number
+          motivo_anulacion: string | null
+          notas: string | null
+          numero_operacion: string | null
+          venta_id: string
+        }
+        Insert: {
+          anulado?: boolean
+          anulado_en?: string | null
+          anulado_por?: string | null
+          creado_en?: string
+          creado_por?: string | null
+          fecha?: string
+          id?: string
+          metodo: string
+          modificado_en?: string
+          modificado_por?: string | null
+          monto: number
+          motivo_anulacion?: string | null
+          notas?: string | null
+          numero_operacion?: string | null
+          venta_id: string
+        }
+        Update: {
+          anulado?: boolean
+          anulado_en?: string | null
+          anulado_por?: string | null
+          creado_en?: string
+          creado_por?: string | null
+          fecha?: string
+          id?: string
+          metodo?: string
+          modificado_en?: string
+          modificado_por?: string | null
+          monto?: number
+          motivo_anulacion?: string | null
+          notas?: string | null
+          numero_operacion?: string | null
+          venta_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pago_venta_id_fkey"
+            columns: ["venta_id"]
+            isOneToOne: false
+            referencedRelation: "venta"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pago_aplicacion: {
+        Row: {
+          anulado: boolean
+          anulado_en: string | null
+          anulado_por: string | null
+          creado_en: string
+          creado_por: string | null
+          cuota_id: string
+          id: string
+          modificado_en: string
+          modificado_por: string | null
+          monto_aplicado: number
+          motivo_anulacion: string | null
+          pago_id: string
+        }
+        Insert: {
+          anulado?: boolean
+          anulado_en?: string | null
+          anulado_por?: string | null
+          creado_en?: string
+          creado_por?: string | null
+          cuota_id: string
+          id?: string
+          modificado_en?: string
+          modificado_por?: string | null
+          monto_aplicado: number
+          motivo_anulacion?: string | null
+          pago_id: string
+        }
+        Update: {
+          anulado?: boolean
+          anulado_en?: string | null
+          anulado_por?: string | null
+          creado_en?: string
+          creado_por?: string | null
+          cuota_id?: string
+          id?: string
+          modificado_en?: string
+          modificado_por?: string | null
+          monto_aplicado?: number
+          motivo_anulacion?: string | null
+          pago_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pago_aplicacion_cuota_id_fkey"
+            columns: ["cuota_id"]
+            isOneToOne: false
+            referencedRelation: "cuota"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pago_aplicacion_cuota_id_fkey"
+            columns: ["cuota_id"]
+            isOneToOne: false
+            referencedRelation: "cuota_estado"
+            referencedColumns: ["cuota_id"]
+          },
+          {
+            foreignKeyName: "pago_aplicacion_pago_id_fkey"
+            columns: ["pago_id"]
+            isOneToOne: false
+            referencedRelation: "pago"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       perfil: {
         Row: {
           activo: boolean
@@ -930,18 +1059,32 @@ export type Database = {
       }
     }
     Views: {
+      cuota_estado: {
+        Row: {
+          cuota_id: string | null
+          estado: string | null
+          monto_pagado: number | null
+          monto_vigente: number | null
+          saldo: number | null
+          vencida: boolean | null
+        }
+        Relationships: []
+      }
       lote_estado: {
         Row: {
           estado: string | null
           lote_id: string | null
+          saldo_pendiente: number | null
         }
         Insert: {
           estado?: never
           lote_id?: string | null
+          saldo_pendiente?: never
         }
         Update: {
           estado?: never
           lote_id?: string | null
+          saldo_pendiente?: never
         }
         Relationships: []
       }
