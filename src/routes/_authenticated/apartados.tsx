@@ -35,6 +35,7 @@ import {
 import { SelectorCliente } from "@/components/SelectorCliente";
 import { nombreCliente, useLotesConEstado, type Cliente } from "@/lib/ventas";
 import { fecha, hoyLima, soles } from "@/lib/format";
+import { usePerfil, puedeComercial } from "@/lib/sesion";
 
 export const Route = createFileRoute("/_authenticated/apartados")({
   head: () => ({
