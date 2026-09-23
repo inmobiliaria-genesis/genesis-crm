@@ -339,6 +339,9 @@ function LotesPage() {
                       <Badge variant="secondary">Completo</Badge>
                     )}
                   </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">{etiquetaEstado(l.estado)}</Badge>
+                  </TableCell>
                   <TableCell className="text-right">
                     {editable && !l.anulado ? (
                       <EditarLote lote={l} onListo={() => qc.invalidateQueries({ queryKey: ["lotes"] })} />
