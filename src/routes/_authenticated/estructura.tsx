@@ -19,6 +19,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { usePerfil, puedeEditarEstructura } from "@/lib/sesion";
 import { fecha } from "@/lib/format";
 
@@ -222,7 +229,10 @@ function EstructuraPage() {
               <div key={m.id} className="rounded-md border border-border p-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-medium">Manzana {m.letra}</span>
-                  {m.anulado ? <Badge variant="destructive">Anulada</Badge> : null}
+                  <span className="flex gap-1">
+                    {m.tipo === "mercado" ? <Badge variant="outline">Mercado</Badge> : null}
+                    {m.anulado ? <Badge variant="destructive">Anulada</Badge> : null}
+                  </span>
                 </div>
                 {m.notas ? <p className="text-xs text-muted-foreground">{m.notas}</p> : null}
                 {editable && !m.anulado ? (
@@ -230,7 +240,7 @@ function EstructuraPage() {
                     <EditarSimple
                       tabla="manzana"
                       id={m.id}
-                      campos={{ letra: m.letra, notas: m.notas ?? "" }}
+                      campos={{ letra: m.letra, tipo: m.tipo, notas: m.notas ?? "" }}
                     />
                     <AnularBoton
                       onAnular={(motivo) => anular.mutate({ tabla: "manzana", id: m.id, motivo })}
@@ -339,15 +349,17 @@ function NuevaEtapa({ proyectoId, onListo }: { proyectoId: string; onListo: () =
 function NuevaManzana({ etapaId, onListo }: { etapaId: string; onListo: () => void }) {
   const [abierto, setAbierto] = useState(false);
   const [letra, setLetra] = useState("");
+  const [tipo, setTipo] = useState<"residencial" | "mercado">("residencial");
 
   async function guardar() {
     const { error } = await supabase
       .from("manzana")
-      .insert({ etapa_id: etapaId, letra: letra.toUpperCase() });
+      .insert({ etapa_id: etapaId, letra: letra.toUpperCase(), tipo });
     if (error) { toast.error("No se pudo crear", { description: error.message }); return; }
     toast.success("Manzana creada");
     setAbierto(false);
     setLetra("");
+    setTipo("residencial");
     onListo();
   }
 
@@ -362,9 +374,23 @@ function NuevaManzana({ etapaId, onListo }: { etapaId: string; onListo: () => vo
         <DialogHeader>
           <DialogTitle>Nueva manzana</DialogTitle>
         </DialogHeader>
-        <div className="space-y-1">
-          <Label>Letra</Label>
-          <Input value={letra} onChange={(e) => setLetra(e.target.value)} maxLength={3} />
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <Label>Letra</Label>
+            <Input value={letra} onChange={(e) => setLetra(e.target.value)} maxLength={3} />
+          </div>
+          <div className="space-y-1">
+            <Label>Tipo</Label>
+            <Select value={tipo} onValueChange={(v) => setTipo(v as "residencial" | "mercado")}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="residencial">Residencial</SelectItem>
+                <SelectItem value="mercado">Mercado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <DialogFooter>
           <Button onClick={guardar} disabled={!letra}>
@@ -419,10 +445,25 @@ function EditarSimple({
           {Object.entries(valores).map(([clave, valor]) => (
             <div key={clave} className="space-y-1">
               <Label className="capitalize">{clave}</Label>
-              <Input
-                value={valor}
-                onChange={(e) => setValores((v) => ({ ...v, [clave]: e.target.value }))}
-              />
+              {clave === "tipo" ? (
+                <Select
+                  value={valor}
+                  onValueChange={(v) => setValores((val) => ({ ...val, [clave]: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="residencial">Residencial</SelectItem>
+                    <SelectItem value="mercado">Mercado</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  value={valor}
+                  onChange={(e) => setValores((v) => ({ ...v, [clave]: e.target.value }))}
+                />
+              )}
             </div>
           ))}
         </div>
