@@ -593,9 +593,40 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
     },
   });
 
+  const qc = useQueryClient();
+  const { data: perfil } = usePerfil();
+  const cobra = puedeCobrar(perfil);
+  const cronograma = useCuotasDeVenta(ventaId);
+  const pagos = usePagosDeVenta(ventaId);
+  const [registrando, setRegistrando] = useState(false);
+  const [anulando, setAnulando] = useState<string | null>(null);
+  const [motivo, setMotivo] = useState("");
+
   const v = venta.data;
-  const cuotas = [...(v?.cuotas ?? [])].filter((c) => !c.anulado).sort((a, b) => a.numero - b.numero);
+  const cuotas = cronograma.data ?? [];
   const total = cuotas.reduce((t, c) => t + Number(c.monto_vigente), 0);
+  const saldoTotal = cuotas.reduce((t, c) => t + Math.max(Number(c.saldo), 0), 0);
+
+  async function anularPago() {
+    if (!anulando) return;
+    if (!motivo.trim()) {
+      toast.error("Indica el motivo de la anulación");
+      return;
+    }
+    const { error } = await supabase
+      .from("pago")
+      .update({ anulado: true, motivo_anulacion: motivo.trim() })
+      .eq("id", anulando);
+    if (error) {
+      toast.error("No se pudo anular el pago", { description: error.message });
+      return;
+    }
+    toast.success("Pago anulado");
+    setAnulando(null);
+    setMotivo("");
+    qc.invalidateQueries();
+  }
+
 
   return (
     <Sheet open={!!ventaId} onOpenChange={(o) => (!o ? onCerrar() : null)}>
