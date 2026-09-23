@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedApartadosRouteImport } from './routes/_authenticated/apartados'
 import { Route as AuthenticatedBitacoraRouteImport } from './routes/_authenticated/bitacora'
 import { Route as AuthenticatedClientesRouteImport } from './routes/_authenticated/clientes'
 import { Route as AuthenticatedColoresMapaRouteImport } from './routes/_authenticated/colores-mapa'
@@ -20,6 +21,7 @@ import { Route as AuthenticatedEstructuraRouteImport } from './routes/_authentic
 import { Route as AuthenticatedLotesRouteImport } from './routes/_authenticated/lotes'
 import { Route as AuthenticatedPlanoRouteImport } from './routes/_authenticated/plano'
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
+import { Route as AuthenticatedVentasRouteImport } from './routes/_authenticated/ventas'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,6 +36,11 @@ const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedApartadosRoute = AuthenticatedApartadosRouteImport.update({
+  id: '/apartados',
+  path: '/apartados',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedBitacoraRoute = AuthenticatedBitacoraRouteImport.update({
   id: '/bitacora',
@@ -77,10 +84,16 @@ const AuthenticatedUsuariosRoute = AuthenticatedUsuariosRouteImport.update({
   path: '/usuarios',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedVentasRoute = AuthenticatedVentasRouteImport.update({
+  id: '/ventas',
+  path: '/ventas',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/apartados': typeof AuthenticatedApartadosRoute
   '/bitacora': typeof AuthenticatedBitacoraRoute
   '/clientes': typeof AuthenticatedClientesRoute
   '/colores-mapa': typeof AuthenticatedColoresMapaRoute
@@ -89,10 +102,12 @@ export interface FileRoutesByFullPath {
   '/lotes': typeof AuthenticatedLotesRoute
   '/plano': typeof AuthenticatedPlanoRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
+  '/ventas': typeof AuthenticatedVentasRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/apartados': typeof AuthenticatedApartadosRoute
   '/bitacora': typeof AuthenticatedBitacoraRoute
   '/clientes': typeof AuthenticatedClientesRoute
   '/colores-mapa': typeof AuthenticatedColoresMapaRoute
@@ -101,12 +116,14 @@ export interface FileRoutesByTo {
   '/lotes': typeof AuthenticatedLotesRoute
   '/plano': typeof AuthenticatedPlanoRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
+  '/ventas': typeof AuthenticatedVentasRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/apartados': typeof AuthenticatedApartadosRoute
   '/_authenticated/bitacora': typeof AuthenticatedBitacoraRoute
   '/_authenticated/clientes': typeof AuthenticatedClientesRoute
   '/_authenticated/colores-mapa': typeof AuthenticatedColoresMapaRoute
@@ -115,12 +132,14 @@ export interface FileRoutesById {
   '/_authenticated/lotes': typeof AuthenticatedLotesRoute
   '/_authenticated/plano': typeof AuthenticatedPlanoRoute
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
+  '/_authenticated/ventas': typeof AuthenticatedVentasRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/auth'
+    | '/apartados'
     | '/bitacora'
     | '/clientes'
     | '/colores-mapa'
@@ -129,10 +148,12 @@ export interface FileRouteTypes {
     | '/lotes'
     | '/plano'
     | '/usuarios'
+    | '/ventas'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
+    | '/apartados'
     | '/bitacora'
     | '/clientes'
     | '/colores-mapa'
@@ -141,11 +162,13 @@ export interface FileRouteTypes {
     | '/lotes'
     | '/plano'
     | '/usuarios'
+    | '/ventas'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/apartados'
     | '/_authenticated/bitacora'
     | '/_authenticated/clientes'
     | '/_authenticated/colores-mapa'
@@ -154,6 +177,7 @@ export interface FileRouteTypes {
     | '/_authenticated/lotes'
     | '/_authenticated/plano'
     | '/_authenticated/usuarios'
+    | '/_authenticated/ventas'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -184,6 +208,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/apartados': {
+      id: '/_authenticated/apartados'
+      path: '/apartados'
+      fullPath: '/apartados'
+      preLoaderRoute: typeof AuthenticatedApartadosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/bitacora': {
       id: '/_authenticated/bitacora'
@@ -241,10 +272,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedUsuariosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/ventas': {
+      id: '/_authenticated/ventas'
+      path: '/ventas'
+      fullPath: '/ventas'
+      preLoaderRoute: typeof AuthenticatedVentasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedApartadosRoute: typeof AuthenticatedApartadosRoute
   AuthenticatedBitacoraRoute: typeof AuthenticatedBitacoraRoute
   AuthenticatedClientesRoute: typeof AuthenticatedClientesRoute
   AuthenticatedColoresMapaRoute: typeof AuthenticatedColoresMapaRoute
@@ -253,9 +292,11 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedLotesRoute: typeof AuthenticatedLotesRoute
   AuthenticatedPlanoRoute: typeof AuthenticatedPlanoRoute
   AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
+  AuthenticatedVentasRoute: typeof AuthenticatedVentasRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedApartadosRoute: AuthenticatedApartadosRoute,
   AuthenticatedBitacoraRoute: AuthenticatedBitacoraRoute,
   AuthenticatedClientesRoute: AuthenticatedClientesRoute,
   AuthenticatedColoresMapaRoute: AuthenticatedColoresMapaRoute,
@@ -264,6 +305,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedLotesRoute: AuthenticatedLotesRoute,
   AuthenticatedPlanoRoute: AuthenticatedPlanoRoute,
   AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
+  AuthenticatedVentasRoute: AuthenticatedVentasRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
