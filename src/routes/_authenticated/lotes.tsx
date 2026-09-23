@@ -45,10 +45,6 @@ type Lote = Database["public"]["Tables"]["lote"]["Row"];
 const CAMPOS_NUMERICOS = [
   ["area_m2", "Área (m²)"],
   ["precio_lista", "Precio de lista (S/)"],
-  ["frente_m", "Frente (m)"],
-  ["fondo_m", "Fondo (m)"],
-  ["lado_derecho_m", "Lado derecho (m)"],
-  ["lado_izquierdo_m", "Lado izquierdo (m)"],
 ] as const;
 
 function estaPendiente(l: Lote) {
