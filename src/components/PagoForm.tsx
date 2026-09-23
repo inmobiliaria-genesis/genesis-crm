@@ -254,3 +254,145 @@ export function DialogoPago({
     </Dialog>
   );
 }
+
+export function DialogoRegularizar({
+  ventaId,
+  fechaVenta,
+  onCerrar,
+}: {
+  ventaId: string;
+  fechaVenta: string;
+  onCerrar: () => void;
+}) {
+  const qc = useQueryClient();
+  const cuotas = useCuotasDeVenta(ventaId);
+  const hoy = hoyLima();
+  const [modo, setModo] = useState<"unico" | "por_cuota">("unico");
+  const [fechaPago, setFechaPago] = useState(hoy);
+  const [metodo, setMetodo] = useState<string>("no_registrado");
+  const [notas, setNotas] = useState("");
+  const [guardando, setGuardando] = useState(false);
+
+  const pendientes = (cuotas.data ?? []).filter((c) => c.saldo > 0.005);
+  const total = redondear(pendientes.reduce((t, c) => t + c.saldo, 0));
+  const vista =
+    modo === "unico"
+      ? [{ fecha: fechaPago, monto: total, detalle: `${pendientes.length} cuotas` }]
+      : pendientes.map((c) => ({
+          fecha: c.fecha_vencimiento > hoy ? hoy : c.fecha_vencimiento,
+          monto: c.saldo,
+          detalle: c.numero === 0 ? "Inicial" : `Cuota ${c.numero}`,
+        }));
+
+  async function confirmar() {
+    setGuardando(true);
+    const { error } = await (supabase.rpc as unknown as (
+      f: string,
+      a: Record<string, unknown>,
+    ) => Promise<{ error: { message: string } | null }>)("regularizar_venta", {
+      _venta_id: ventaId,
+      _modo: modo,
+      _fecha: modo === "unico" ? fechaPago : null,
+      _metodo: metodo,
+      _notas: notas.trim() || null,
+    });
+    setGuardando(false);
+    if (error) {
+      toast.error("No se pudo marcar como pagada", { description: error.message });
+      return;
+    }
+    toast.success("Venta marcada como pagada");
+    qc.invalidateQueries();
+    onCerrar();
+  }
+
+  return (
+    <Dialog open onOpenChange={(v) => (!v ? onCerrar() : null)}>
+      <DialogContent className="max-h-[88vh] max-w-2xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Marcar como pagada</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm">
+          Saldo pendiente: <span className="num font-semibold">{soles(total)}</span> · Se cubrirán{" "}
+          {pendientes.length} cuotas
+          {pendientes.some((c) => c.numero === 0) ? " (incluida la inicial)" : ""}.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <Label>Modo</Label>
+            <Select value={modo} onValueChange={(v) => setModo(v as "unico" | "por_cuota")}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="unico">Un solo pago de regularización</SelectItem>
+                <SelectItem value="por_cuota">Cada cuota en su vencimiento</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {modo === "unico" ? (
+            <div>
+              <Label>Fecha del pago</Label>
+              <Input
+                type="date"
+                min={fechaVenta}
+                max={hoy}
+                value={fechaPago}
+                onChange={(e) => setFechaPago(e.target.value)}
+              />
+            </div>
+          ) : null}
+          <div>
+            <Label>Forma de pago</Label>
+            <Select value={metodo} onValueChange={setMetodo}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="no_registrado">No registrada</SelectItem>
+                {METODOS_PAGO.map((m) => (
+                  <SelectItem key={m} value={m} className="capitalize">
+                    {m}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="sm:col-span-2">
+            <Label>Observación (opcional)</Label>
+            <Textarea rows={2} value={notas} onChange={(e) => setNotas(e.target.value)} />
+          </div>
+        </div>
+        <p className="text-sm font-medium">Pagos que se crearán ({vista.length})</p>
+        <div className="max-h-56 overflow-y-auto rounded-md border border-border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Cubre</TableHead>
+                <TableHead className="text-right">Monto</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {vista.map((p, i) => (
+                <TableRow key={i}>
+                  <TableCell>{fecha(p.fecha)}</TableCell>
+                  <TableCell>{p.detalle}</TableCell>
+                  <TableCell className="num text-right">{soles(p.monto)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onCerrar}>
+            Cancelar
+          </Button>
+          <Button onClick={confirmar} disabled={guardando || pendientes.length === 0}>
+            Confirmar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
