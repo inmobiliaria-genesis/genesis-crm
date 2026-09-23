@@ -173,6 +173,93 @@ export type Database = {
         }
         Relationships: []
       }
+      comision: {
+        Row: {
+          alerta_venta_anulada: boolean
+          anulado: boolean
+          anulado_en: string | null
+          anulado_por: string | null
+          creado_en: string
+          creado_por: string | null
+          encargado_id: string
+          estado: string
+          fecha_generada: string
+          fecha_pago: string | null
+          forma_pago: string | null
+          id: string
+          mes: string | null
+          modificado_en: string
+          modificado_por: string | null
+          monto: number
+          motivo_anulacion: string | null
+          motivo_estado: string | null
+          observacion: string | null
+          tipo: string
+          venta_id: string | null
+        }
+        Insert: {
+          alerta_venta_anulada?: boolean
+          anulado?: boolean
+          anulado_en?: string | null
+          anulado_por?: string | null
+          creado_en?: string
+          creado_por?: string | null
+          encargado_id: string
+          estado?: string
+          fecha_generada?: string
+          fecha_pago?: string | null
+          forma_pago?: string | null
+          id?: string
+          mes?: string | null
+          modificado_en?: string
+          modificado_por?: string | null
+          monto: number
+          motivo_anulacion?: string | null
+          motivo_estado?: string | null
+          observacion?: string | null
+          tipo: string
+          venta_id?: string | null
+        }
+        Update: {
+          alerta_venta_anulada?: boolean
+          anulado?: boolean
+          anulado_en?: string | null
+          anulado_por?: string | null
+          creado_en?: string
+          creado_por?: string | null
+          encargado_id?: string
+          estado?: string
+          fecha_generada?: string
+          fecha_pago?: string | null
+          forma_pago?: string | null
+          id?: string
+          mes?: string | null
+          modificado_en?: string
+          modificado_por?: string | null
+          monto?: number
+          motivo_anulacion?: string | null
+          motivo_estado?: string | null
+          observacion?: string | null
+          tipo?: string
+          venta_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comision_encargado_id_fkey"
+            columns: ["encargado_id"]
+            isOneToOne: false
+            referencedRelation: "vendedor"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comision_venta_id_fkey"
+            columns: ["venta_id"]
+            isOneToOne: false
+            referencedRelation: "venta"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       config: {
         Row: {
           anulado: boolean
@@ -986,6 +1073,7 @@ export type Database = {
           creado_en: string
           creado_por: string | null
           encargado_id: string | null
+          es_historica: boolean
           fecha_firma: string | null
           fecha_primera_cuota: string | null
           fecha_venta: string
@@ -997,6 +1085,7 @@ export type Database = {
           modificado_en: string
           modificado_por: string | null
           motivo_anulacion: string | null
+          motivo_cambio_historica: string | null
           motivo_diferencia_precio: string | null
           notas: string | null
           origen: string
@@ -1013,6 +1102,7 @@ export type Database = {
           creado_en?: string
           creado_por?: string | null
           encargado_id?: string | null
+          es_historica?: boolean
           fecha_firma?: string | null
           fecha_primera_cuota?: string | null
           fecha_venta?: string
@@ -1024,6 +1114,7 @@ export type Database = {
           modificado_en?: string
           modificado_por?: string | null
           motivo_anulacion?: string | null
+          motivo_cambio_historica?: string | null
           motivo_diferencia_precio?: string | null
           notas?: string | null
           origen: string
@@ -1040,6 +1131,7 @@ export type Database = {
           creado_en?: string
           creado_por?: string | null
           encargado_id?: string | null
+          es_historica?: boolean
           fecha_firma?: string | null
           fecha_primera_cuota?: string | null
           fecha_venta?: string
@@ -1051,6 +1143,7 @@ export type Database = {
           modificado_en?: string
           modificado_por?: string | null
           motivo_anulacion?: string | null
+          motivo_cambio_historica?: string | null
           motivo_diferencia_precio?: string | null
           notas?: string | null
           origen?: string
@@ -1152,6 +1245,24 @@ export type Database = {
       }
     }
     Views: {
+      comision_resumen: {
+        Row: {
+          encargado_id: string | null
+          pagado: number | null
+          pendiente: number | null
+          por_pagar: number | null
+          retenido: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comision_encargado_id_fkey"
+            columns: ["encargado_id"]
+            isOneToOne: false
+            referencedRelation: "vendedor"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cuota_estado: {
         Row: {
           cuota_id: string | null
@@ -1187,12 +1298,17 @@ export type Database = {
         Args: { _motivo: string; _regularizacion_id: string }
         Returns: number
       }
+      cambiar_historica: {
+        Args: { _es_historica: boolean; _motivo: string; _venta_id: string }
+        Returns: undefined
+      }
       fn_valida_lote_comercializable: {
         Args: { _lote_id: string }
         Returns: undefined
       }
       importar_lotes: { Args: { p_filas: Json }; Returns: Json }
       importar_vendedores: { Args: { p_filas: Json }; Returns: Json }
+      recalcular_mes: { Args: { _mes: string }; Returns: number }
       regularizar_venta: {
         Args: {
           _fecha: string
