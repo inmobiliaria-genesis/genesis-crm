@@ -5,6 +5,7 @@ import { Minus, Plus, Maximize, Upload, Undo2, SkipForward, Trash2 } from "lucid
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
+import { EnlaceLote } from "@/components/EnlaceLote";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -791,6 +792,7 @@ function PlanoPage() {
                     {pendienteDatos ? (
                       <Badge variant="outline">Datos pendientes</Badge>
                     ) : null}
+                    <EnlaceLote loteId={detalle.id} />
                     {editando && admin && ubicacionSeleccionada ? (
                       <Button
                         variant="destructive"
