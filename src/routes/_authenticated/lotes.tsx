@@ -104,7 +104,10 @@ function LotesPage() {
   const manzanas = useQuery({
     queryKey: ["manzanas-ambito", proyectoId, etapaId],
     queryFn: async () => {
-      let consulta = supabase.from("manzana").select("id, letra, etapa_id, etapa!inner(proyecto_id)");
+      let consulta = supabase
+        .from("manzana")
+        .select("id, letra, etapa_id, tipo, etapa!inner(proyecto_id)")
+        .eq("tipo", "residencial");
       if (etapaId) consulta = consulta.eq("etapa_id", etapaId);
       else if (proyectoId) consulta = consulta.eq("etapa.proyecto_id", proyectoId);
       const { data, error } = await consulta.order("letra");
@@ -125,7 +128,7 @@ function LotesPage() {
     queryFn: async () => {
       let consulta = supabase.from("lote").select("*").order("numero");
       if (manzanaId) consulta = consulta.eq("manzana_id", manzanaId);
-      else if (proyectoId || etapaId) consulta = consulta.in("manzana_id", idsManzana);
+      else consulta = consulta.in("manzana_id", idsManzana.length > 0 ? idsManzana : ["-"]);
       const { data, error } = await consulta.limit(1000);
       if (error) throw error;
       return data;
@@ -328,7 +331,7 @@ function LotesPage() {
   );
 }
 
-type ManzanaOpcion = { id: string; letra: string };
+type ManzanaOpcion = { id: string; letra: string; tipo?: string };
 
 function AltaPorRango({
   manzanas,
@@ -523,6 +526,11 @@ function ImportarExcel({
 
   async function importar() {
     if (!manzanaId) { toast.error("Elige la manzana de destino"); return; }
+    const destino = manzanas.find((m) => m.id === manzanaId);
+    if (!destino || destino.tipo !== "residencial") {
+      toast.error("Solo se pueden importar lotes a manzanas residenciales");
+      return;
+    }
     const payload = filas
       .map((f) => {
         const obtener = (clave: string) => {
