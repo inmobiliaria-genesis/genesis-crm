@@ -353,7 +353,10 @@ function PlanoPage() {
       punteros.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
     if (pellizco.current && punteros.current.size === 2) {
-      const [a, b] = [...punteros.current.values()];
+      const [a, b] = [...punteros.current.values()] as [
+        { x: number; y: number },
+        { x: number; y: number },
+      ];
       const dist = Math.hypot(a.x - b.x, a.y - b.y);
       const rect = contRef.current!.getBoundingClientRect();
       const cx = (a.x + b.x) / 2 - rect.left;
