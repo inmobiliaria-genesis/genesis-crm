@@ -435,18 +435,30 @@ function DialogoVenta({
 
           <div>
             <Label>Vendedor</Label>
-            <Select value={vendedorId} onValueChange={setVendedorId}>
+            <Select
+              value={vendedorId}
+              onValueChange={setVendedorId}
+              disabled={!puedeElegirVendedor(perfil)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Elige el vendedor" />
               </SelectTrigger>
               <SelectContent>
-                {perfiles.data?.map((p) => (
+                {(puedeElegirVendedor(perfil)
+                  ? (perfiles.data ?? [])
+                  : (perfiles.data ?? []).filter((p) => p.id === perfil?.id)
+                ).map((p) => (
                   <SelectItem key={p.id} value={p.id}>
                     {p.nombre}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {!puedeElegirVendedor(perfil) ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Como asesor, la venta se registra a tu nombre.
+              </p>
+            ) : null}
           </div>
           <div>
             <Label>Condición</Label>
