@@ -7,6 +7,7 @@ import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
 import { EnlaceLote } from "@/components/EnlaceLote";
+import { etiquetaEstadoLote } from "@/lib/cobranza";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
