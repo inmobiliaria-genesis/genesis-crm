@@ -55,9 +55,9 @@ export const Route = createFileRoute("/_authenticated/lotes")({
   head: () => ({
     meta: [
       { title: "Lotes — Gestión de lotes" },
-      { name: "description", content: "Listado, alta por rango e importación de lotes." },
+      { name: "description", content: "Listado, alta e importación de lotes." },
       { property: "og:title", content: "Lotes — Gestión de lotes" },
-      { property: "og:description", content: "Listado, alta por rango e importación de lotes." },
+      { property: "og:description", content: "Listado, alta e importación de lotes." },
     ],
   }),
   component: LotesPage,
@@ -163,7 +163,7 @@ function LotesPage() {
       acciones={
         editable ? (
           <>
-            <AltaPorRango
+            <AgregarLotes
               manzanas={manzanas.data ?? []}
               onListo={() => qc.invalidateQueries({ queryKey: ["lotes"] })}
             />
@@ -318,7 +318,7 @@ function LotesPage() {
 
 type ManzanaOpcion = { id: string; letra: string; tipo?: string };
 
-function AltaPorRango({
+function AgregarLotes({
   manzanas,
   onListo,
 }: {
@@ -326,23 +326,38 @@ function AltaPorRango({
   onListo: () => void;
 }) {
   const [abierto, setAbierto] = useState(false);
+  const [modo, setModo] = useState<"grupo" | "individual">("grupo");
   const [manzanaId, setManzanaId] = useState("");
   const [desde, setDesde] = useState("1");
   const [hasta, setHasta] = useState("10");
+  const [numero, setNumero] = useState("1");
   const [area, setArea] = useState("");
   const [precio, setPrecio] = useState("");
   const [guardando, setGuardando] = useState(false);
 
   async function guardar() {
-    const d = Number(desde);
-    const h = Number(hasta);
-    if (!manzanaId || !Number.isInteger(d) || !Number.isInteger(h) || h < d) {
-      toast.error("Revisa la manzana y el rango de numeración");
-      return;
-    }
-    setGuardando(true);
     const filas = [];
-    for (let n = d; n <= h; n++) {
+    if (modo === "grupo") {
+      const d = Number(desde);
+      const h = Number(hasta);
+      if (!manzanaId || !Number.isInteger(d) || !Number.isInteger(h) || h < d) {
+        toast.error("Revisa la manzana y el rango de numeración");
+        return;
+      }
+      for (let n = d; n <= h; n++) {
+        filas.push({
+          manzana_id: manzanaId,
+          numero: n,
+          area_m2: area ? Number(area) : null,
+          precio_lista: precio ? Number(precio) : null,
+        });
+      }
+    } else {
+      const n = Number(numero);
+      if (!manzanaId || !Number.isInteger(n) || n <= 0) {
+        toast.error("Revisa la manzana y el número de lote");
+        return;
+      }
       filas.push({
         manzana_id: manzanaId,
         numero: n,
@@ -350,6 +365,7 @@ function AltaPorRango({
         precio_lista: precio ? Number(precio) : null,
       });
     }
+    setGuardando(true);
     const { error } = await supabase.from("lote").insert(filas);
     setGuardando(false);
     if (error) { toast.error("No se pudieron crear los lotes", { description: error.message }); return; }
@@ -362,18 +378,36 @@ function AltaPorRango({
     <Dialog open={abierto} onOpenChange={setAbierto}>
       <DialogTrigger asChild>
         <Button size="sm">
-          <Plus className="mr-1 h-4 w-4" /> Alta por rango
+          <Plus className="mr-1 h-4 w-4" /> Agregar Lotes
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Alta rápida por rango</DialogTitle>
+          <DialogTitle>Agregar lotes</DialogTitle>
           <DialogDescription>
-            Crea varios lotes correlativos en una manzana. Los datos que dejes vacíos quedarán como
-            pendientes.
+            Crea un lote individual o varios lotes correlativos por grupo. Los datos que dejes
+            vacíos quedarán como pendientes.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant={modo === "grupo" ? "default" : "outline"}
+              onClick={() => setModo("grupo")}
+            >
+              Por grupo
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={modo === "individual" ? "default" : "outline"}
+              onClick={() => setModo("individual")}
+            >
+              Individual
+            </Button>
+          </div>
           <div className="space-y-1">
             <Label>Manzana</Label>
             <Select value={manzanaId} onValueChange={setManzanaId}>
@@ -390,14 +424,23 @@ function AltaPorRango({
             </Select>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label>Desde el N°</Label>
-              <Input type="number" value={desde} onChange={(e) => setDesde(e.target.value)} />
-            </div>
-            <div className="space-y-1">
-              <Label>Hasta el N°</Label>
-              <Input type="number" value={hasta} onChange={(e) => setHasta(e.target.value)} />
-            </div>
+            {modo === "grupo" ? (
+              <>
+                <div className="space-y-1">
+                  <Label>Desde el N°</Label>
+                  <Input type="number" value={desde} onChange={(e) => setDesde(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Hasta el N°</Label>
+                  <Input type="number" value={hasta} onChange={(e) => setHasta(e.target.value)} />
+                </div>
+              </>
+            ) : (
+              <div className="space-y-1 col-span-2">
+                <Label>Número de lote</Label>
+                <Input type="number" value={numero} onChange={(e) => setNumero(e.target.value)} />
+              </div>
+            )}
             <div className="space-y-1">
               <Label>Área m² (opcional)</Label>
               <Input type="number" value={area} onChange={(e) => setArea(e.target.value)} />
@@ -410,7 +453,7 @@ function AltaPorRango({
         </div>
         <DialogFooter>
           <Button onClick={guardar} disabled={guardando}>
-            Crear lotes
+            {modo === "grupo" ? "Crear lotes" : "Crear lote"}
           </Button>
         </DialogFooter>
       </DialogContent>
