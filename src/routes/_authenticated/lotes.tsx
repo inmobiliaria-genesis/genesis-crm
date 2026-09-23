@@ -57,7 +57,7 @@ export const Route = createFileRoute("/_authenticated/lotes")({
       { title: "Lotes — Gestión de lotes" },
       { name: "description", content: "Listado, alta e importación de lotes." },
       { property: "og:title", content: "Lotes — Gestión de lotes" },
-      { property: "og:description", content: "Listado, alta por rango e importación de lotes." },
+      { property: "og:description", content: "Listado, alta e importación de lotes." },
     ],
   }),
   component: LotesPage,
