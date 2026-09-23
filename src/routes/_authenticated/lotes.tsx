@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Plus, Upload, Pencil, AlertTriangle } from "lucide-react";
+import { Plus, Upload, Pencil, AlertTriangle, Download } from "lucide-react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
@@ -172,10 +172,7 @@ function LotesPage() {
               onListo={() => qc.invalidateQueries({ queryKey: ["lotes"] })}
             />
             {esAdmin(perfil) ? (
-              <ImportarExcel
-                manzanas={manzanas.data ?? []}
-                onListo={() => qc.invalidateQueries({ queryKey: ["lotes"] })}
-              />
+              <ImportarExcel onListo={() => qc.invalidateQueries({ queryKey: ["lotes"] })} />
             ) : null}
           </>
         ) : null
@@ -503,60 +500,141 @@ function EditarLote({ lote, onListo }: { lote: Lote; onListo: () => void }) {
   );
 }
 
-function ImportarExcel({
-  manzanas,
-  onListo,
-}: {
-  manzanas: ManzanaOpcion[];
-  onListo: () => void;
-}) {
+const COLUMNAS_PLANTILLA = [
+  "etapa",
+  "manzana",
+  "numero",
+  "area_m2",
+  "precio_lista",
+  "frente_m",
+  "fondo_m",
+  "lado_derecho_m",
+  "lado_izquierdo_m",
+  "notas",
+];
+
+type FilaPrevia = {
+  indice: number;
+  etapa: string;
+  manzana: string;
+  numero: string;
+  manzana_id: string | null;
+  error: string | null;
+  payload: Record<string, string> | null;
+};
+
+function descargarPlantilla() {
+  const hoja = XLSX.utils.aoa_to_sheet([COLUMNAS_PLANTILLA]);
+  const libro = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(libro, hoja, "lotes");
+  XLSX.writeFile(libro, "plantilla-lotes.xlsx");
+}
+
+function ImportarExcel({ onListo }: { onListo: () => void }) {
   const [abierto, setAbierto] = useState(false);
-  const [manzanaId, setManzanaId] = useState("");
-  const [filas, setFilas] = useState<Record<string, unknown>[]>([]);
+  const [filas, setFilas] = useState<FilaPrevia[]>([]);
   const [procesando, setProcesando] = useState(false);
+
+  const catalogo = useQuery({
+    queryKey: ["manzanas-catalogo-importacion"],
+    enabled: abierto,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("manzana")
+        .select("id, letra, tipo, etapa!inner(nombre)");
+      if (error) throw error;
+      return data as unknown as {
+        id: string;
+        letra: string;
+        tipo: string;
+        etapa: { nombre: string };
+      }[];
+    },
+  });
 
   async function leerArchivo(archivo: File) {
     const buffer = await archivo.arrayBuffer();
     const libro = XLSX.read(buffer, { type: "array" });
     const hoja = libro.Sheets[libro.SheetNames[0]!]!;
     const datos = XLSX.utils.sheet_to_json<Record<string, unknown>>(hoja, { defval: "" });
-    setFilas(datos);
-    toast.success(`${datos.length} fila(s) leídas del archivo`);
-  }
+    const lista = catalogo.data ?? [];
 
-  async function importar() {
-    if (!manzanaId) { toast.error("Elige la manzana de destino"); return; }
-    const destino = manzanas.find((m) => m.id === manzanaId);
-    if (!destino || destino.tipo !== "residencial") {
-      toast.error("Solo se pueden importar lotes a manzanas residenciales");
-      return;
-    }
-    const payload = filas
-      .map((f) => {
-        const obtener = (clave: string) => {
+    const previas: FilaPrevia[] = datos.map((f, i) => {
+      const obtener = (...claves: string[]) => {
+        for (const clave of claves) {
           const entrada = Object.entries(f).find(
             ([k]) => k.trim().toLowerCase() === clave.toLowerCase(),
           );
-          return entrada ? String(entrada[1] ?? "") : "";
-        };
-        return {
-          manzana_id: manzanaId,
-          numero: obtener("numero") || obtener("lote"),
-          area_m2: obtener("area_m2") || obtener("area"),
-          precio_lista: obtener("precio_lista") || obtener("precio"),
-          frente_m: obtener("frente_m") || obtener("frente"),
-          fondo_m: obtener("fondo_m") || obtener("fondo"),
-          lado_derecho_m: obtener("lado_derecho_m") || obtener("lado derecho"),
-          lado_izquierdo_m: obtener("lado_izquierdo_m") || obtener("lado izquierdo"),
+          if (entrada && String(entrada[1] ?? "").trim() !== "") return String(entrada[1]).trim();
+        }
+        return "";
+      };
+
+      const etapa = obtener("etapa");
+      const manzana = obtener("manzana", "mz");
+      const numero = obtener("numero", "lote");
+
+      const base: FilaPrevia = {
+        indice: i + 2,
+        etapa,
+        manzana,
+        numero,
+        manzana_id: null,
+        error: null,
+        payload: null,
+      };
+
+      if (!numero) return { ...base, error: "Falta el número de lote" };
+      if (!etapa) return { ...base, error: "Falta la etapa" };
+      if (!manzana) return { ...base, error: "Falta la manzana" };
+
+      const coincidencias = lista.filter(
+        (m) =>
+          m.letra.trim().toLowerCase() === manzana.toLowerCase() &&
+          (m.etapa?.nombre ?? "").trim().toLowerCase() === etapa.toLowerCase(),
+      );
+      if (coincidencias.length === 0) {
+        return { ...base, error: `No existe la manzana ${manzana} en la etapa ${etapa}` };
+      }
+      if (coincidencias.length > 1) {
+        return { ...base, error: "Etapa y manzana ambiguas: hay más de una coincidencia" };
+      }
+      const destino = coincidencias[0]!;
+      if (destino.tipo !== "residencial") {
+        return { ...base, error: "La manzana es de tipo mercado y no recibe lotes" };
+      }
+
+      return {
+        ...base,
+        manzana_id: destino.id,
+        payload: {
+          manzana_id: destino.id,
+          numero,
+          area_m2: obtener("area_m2", "area"),
+          precio_lista: obtener("precio_lista", "precio"),
+          frente_m: obtener("frente_m", "frente"),
+          fondo_m: obtener("fondo_m", "fondo"),
+          lado_derecho_m: obtener("lado_derecho_m", "lado derecho"),
+          lado_izquierdo_m: obtener("lado_izquierdo_m", "lado izquierdo"),
           notas: obtener("notas"),
-        };
-      })
-      .filter((f) => f.numero !== "");
+        },
+      };
+    });
 
-    if (payload.length === 0) { toast.error("El archivo no tiene una columna 'numero' con datos"); return; }
+    setFilas(previas);
+    const validas = previas.filter((f) => !f.error).length;
+    toast.success(`${previas.length} fila(s) leídas · ${validas} válida(s)`);
+  }
 
+  const validas = filas.filter((f) => f.payload);
+  const conError = filas.filter((f) => f.error);
+
+  async function importar() {
+    if (validas.length === 0) { toast.error("No hay filas válidas para importar"); return; }
     setProcesando(true);
-    const { data, error } = await supabase.rpc("importar_lotes", { p_filas: payload });
+    const { data, error } = await supabase.rpc("importar_lotes", {
+      p_filas: validas.map((f) => f.payload),
+    });
     setProcesando(false);
     if (error) { toast.error("No se pudo importar", { description: error.message }); return; }
     const resultado = data as { creados?: number; omitidos?: number } | null;
@@ -569,41 +647,37 @@ function ImportarExcel({
   }
 
   return (
-    <Dialog open={abierto} onOpenChange={setAbierto}>
+    <Dialog
+      open={abierto}
+      onOpenChange={(v) => {
+        setAbierto(v);
+        if (!v) setFilas([]);
+      }}
+    >
       <DialogTrigger asChild>
         <Button size="sm" variant="outline">
           <Upload className="mr-1 h-4 w-4" /> Importar Excel
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Importar lotes desde Excel</DialogTitle>
           <DialogDescription>
-            Columnas reconocidas: numero, area_m2, precio_lista, frente_m, fondo_m, lado_derecho_m,
-            lado_izquierdo_m, notas. Los lotes ya existentes se omiten.
+            Columnas: etapa, manzana, numero, area_m2, precio_lista, frente_m, fondo_m,
+            lado_derecho_m, lado_izquierdo_m, notas. Un archivo puede mezclar varias etapas y
+            manzanas. Los lotes ya existentes se omiten.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          <div className="space-y-1">
-            <Label>Manzana de destino</Label>
-            <Select value={manzanaId} onValueChange={setManzanaId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Elige una manzana" />
-              </SelectTrigger>
-              <SelectContent>
-                {manzanas.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    Mz. {m.letra}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <Button variant="outline" size="sm" onClick={descargarPlantilla}>
+            <Download className="mr-1 h-4 w-4" /> Descargar plantilla
+          </Button>
           <div className="space-y-1">
             <Label>Archivo (.xlsx o .csv)</Label>
             <Input
               type="file"
               accept=".xlsx,.xls,.csv"
+              disabled={!catalogo.isSuccess}
               onChange={(e) => {
                 const archivo = e.target.files?.[0];
                 if (archivo) leerArchivo(archivo);
@@ -611,12 +685,46 @@ function ImportarExcel({
             />
           </div>
           {filas.length > 0 ? (
-            <p className="text-sm text-muted-foreground">{filas.length} fila(s) listas para importar.</p>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">
+                {validas.length} fila(s) se importarán · {conError.length} con error (se omiten)
+              </p>
+              <div className="max-h-72 overflow-auto rounded-md border border-border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Fila</TableHead>
+                      <TableHead>Etapa</TableHead>
+                      <TableHead>Manzana</TableHead>
+                      <TableHead>Lote</TableHead>
+                      <TableHead>Estado</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filas.map((f) => (
+                      <TableRow key={f.indice}>
+                        <TableCell>{f.indice}</TableCell>
+                        <TableCell>{f.etapa || "—"}</TableCell>
+                        <TableCell>{f.manzana || "—"}</TableCell>
+                        <TableCell>{f.numero || "—"}</TableCell>
+                        <TableCell>
+                          {f.error ? (
+                            <Badge variant="destructive">{f.error}</Badge>
+                          ) : (
+                            <Badge variant="secondary">Lista</Badge>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
           ) : null}
         </div>
         <DialogFooter>
-          <Button onClick={importar} disabled={procesando || filas.length === 0}>
-            Importar
+          <Button onClick={importar} disabled={procesando || validas.length === 0}>
+            Importar {validas.length > 0 ? `${validas.length} fila(s)` : ""}
           </Button>
         </DialogFooter>
       </DialogContent>
