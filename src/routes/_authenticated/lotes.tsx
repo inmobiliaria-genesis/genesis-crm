@@ -52,6 +52,18 @@ function estaPendiente(l: Lote) {
   return CAMPOS_NUMERICOS.some(([campo]) => l[campo] === null || l[campo] === undefined);
 }
 
+const ETIQUETAS_ESTADO: Record<string, string> = {
+  disponible: "Libre",
+  apartado: "Separado",
+  vendido: "Vendido",
+};
+
+function etiquetaEstado(estado: string) {
+  return ETIQUETAS_ESTADO[estado] ?? estado;
+}
+
+type LoteConEstado = Lote & { estado: string };
+
 export const Route = createFileRoute("/_authenticated/lotes")({
   head: () => ({
     meta: [
@@ -132,8 +144,32 @@ function LotesPage() {
     },
   });
 
+  const estados = useQuery({
+    queryKey: ["lote-estados"],
+    enabled: lotes.isSuccess,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("lote_estado").select("*");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const mapaEstados = useMemo(
+    () => new Map((estados.data ?? []).map((e) => [e.lote_id, e.estado ?? "disponible"])),
+    [estados.data],
+  );
+
+  const lotesConEstado = useMemo(
+    () =>
+      (lotes.data ?? []).map((l) => ({
+        ...l,
+        estado: mapaEstados.get(l.id) ?? "disponible",
+      })),
+    [lotes.data, mapaEstados],
+  );
+
   const filtrados = useMemo(() => {
-    let lista = lotes.data ?? [];
+    let lista = lotesConEstado;
     if (soloPendientes) lista = lista.filter(estaPendiente);
     if (busqueda.trim()) {
       const b = busqueda.trim().toLowerCase();
@@ -144,7 +180,7 @@ function LotesPage() {
       );
     }
     return lista;
-  }, [lotes.data, soloPendientes, busqueda, mapaManzana]);
+  }, [lotesConEstado, soloPendientes, busqueda, mapaManzana]);
 
   const pendientes = (lotes.data ?? []).filter(estaPendiente).length;
 
@@ -268,19 +304,20 @@ function LotesPage() {
               <TableHead className="text-right">Área m²</TableHead>
               <TableHead className="text-right">Precio de lista</TableHead>
               <TableHead>Estado</TableHead>
+              <TableHead>Estado de venta</TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
           <TableBody>
           {lotes.isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                <TableCell colSpan={7} className="text-center text-muted-foreground">
                   Cargando…
                 </TableCell>
               </TableRow>
             ) : filtrados.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                <TableCell colSpan={7} className="text-center text-muted-foreground">
                   No hay lotes con estos filtros.
                 </TableCell>
               </TableRow>
@@ -301,6 +338,9 @@ function LotesPage() {
                     ) : (
                       <Badge variant="secondary">Completo</Badge>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">{etiquetaEstado(l.estado)}</Badge>
                   </TableCell>
                   <TableCell className="text-right">
                     {editable && !l.anulado ? (
