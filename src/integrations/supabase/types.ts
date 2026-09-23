@@ -230,6 +230,7 @@ export type Database = {
           modificado_por: string | null
           motivo_anulacion: string | null
           notas: string | null
+          tipo: string
         }
         Insert: {
           anulado?: boolean
@@ -244,6 +245,7 @@ export type Database = {
           modificado_por?: string | null
           motivo_anulacion?: string | null
           notas?: string | null
+          tipo?: string
         }
         Update: {
           anulado?: boolean
@@ -258,6 +260,7 @@ export type Database = {
           modificado_por?: string | null
           motivo_anulacion?: string | null
           notas?: string | null
+          tipo?: string
         }
         Relationships: [
           {
