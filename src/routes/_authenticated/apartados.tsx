@@ -54,6 +54,8 @@ export const Route = createFileRoute("/_authenticated/apartados")({
 function ApartadosPage() {
   const navigate = useNavigate();
   const [alta, setAlta] = useState(false);
+  const { data: perfilSesion } = usePerfil();
+  const comercial = puedeComercial(perfilSesion);
 
   const reservas = useQuery({
     queryKey: ["reservas"],
