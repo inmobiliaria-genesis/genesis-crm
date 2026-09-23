@@ -1,0 +1,256 @@
+import { useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { fecha, hoyLima, soles } from "@/lib/format";
+import { METODOS_PAGO, useCuotasDeVenta } from "@/lib/cobranza";
+
+function redondear(n: number) {
+  return Math.round(n * 100) / 100;
+}
+
+export function DialogoPago({
+  ventaId,
+  cuotaInicial,
+  onCerrar,
+}: {
+  ventaId: string;
+  cuotaInicial?: string | null;
+  onCerrar: () => void;
+}) {
+  const qc = useQueryClient();
+  const cuotas = useCuotasDeVenta(ventaId);
+  const [fechaPago, setFechaPago] = useState(hoyLima());
+  const [monto, setMonto] = useState("");
+  const [metodo, setMetodo] = useState<string>("efectivo");
+  const [operacion, setOperacion] = useState("");
+  const [notas, setNotas] = useState("");
+  const [manual, setManual] = useState(false);
+  const [aplicaciones, setAplicaciones] = useState<Record<string, string>>({});
+  const [guardando, setGuardando] = useState(false);
+
+  const pendientes = useMemo(
+    () => (cuotas.data ?? []).filter((c) => c.saldo > 0.005),
+    [cuotas.data],
+  );
+
+  const montoNum = Number(monto || 0);
+
+  // Sugerencia automática: cubre primero la cuota más antigua sin pagar.
+  useEffect(() => {
+    if (manual) return;
+    let restante = redondear(montoNum);
+    const orden = cuotaInicial
+      ? [...pendientes].sort((a, b) =>
+          a.id === cuotaInicial ? -1 : b.id === cuotaInicial ? 1 : a.numero - b.numero,
+        )
+      : pendientes;
+    const nuevo: Record<string, string> = {};
+    for (const c of orden) {
+      if (restante <= 0.005) break;
+      const aplicar = redondear(Math.min(restante, c.saldo));
+      nuevo[c.id] = String(aplicar);
+      restante = redondear(restante - aplicar);
+    }
+    setAplicaciones(nuevo);
+  }, [montoNum, pendientes, manual, cuotaInicial]);
+
+  const totalAplicado = redondear(
+    Object.values(aplicaciones).reduce((t, v) => t + Number(v || 0), 0),
+  );
+  const sinAsignar = redondear(montoNum - totalAplicado);
+
+  async function guardar() {
+    if (montoNum <= 0) {
+      toast.error("Indica un monto mayor a cero");
+      return;
+    }
+    const detalle = Object.entries(aplicaciones)
+      .map(([cuota_id, v]) => ({ cuota_id, monto_aplicado: Number(v || 0) }))
+      .filter((d) => d.monto_aplicado > 0);
+    if (detalle.length === 0) {
+      toast.error("Elige a qué cuota se aplica el pago");
+      return;
+    }
+    if (totalAplicado > montoNum + 0.005) {
+      toast.error("Lo aplicado supera el monto del pago");
+      return;
+    }
+    setGuardando(true);
+    const { data, error } = await supabase
+      .from("pago")
+      .insert({
+        venta_id: ventaId,
+        fecha: fechaPago,
+        monto: montoNum,
+        metodo,
+        numero_operacion: operacion.trim() || null,
+        notas: notas.trim() || null,
+      })
+      .select("id")
+      .single();
+    if (error || !data) {
+      setGuardando(false);
+      toast.error("No se pudo registrar el pago", { description: error?.message });
+      return;
+    }
+    const { error: e2 } = await supabase
+      .from("pago_aplicacion")
+      .insert(detalle.map((d) => ({ ...d, pago_id: data.id })));
+    setGuardando(false);
+    if (e2) {
+      await supabase
+        .from("pago")
+        .update({ anulado: true, motivo_anulacion: "Aplicación a cuotas rechazada" })
+        .eq("id", data.id);
+      toast.error("No se pudo aplicar el pago a las cuotas", { description: e2.message });
+      qc.invalidateQueries();
+      return;
+    }
+    toast.success("Pago registrado");
+    qc.invalidateQueries();
+    onCerrar();
+  }
+
+  return (
+    <Dialog open onOpenChange={(v) => (!v ? onCerrar() : null)}>
+      <DialogContent className="max-h-[88vh] max-w-2xl overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Registrar pago</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <Label>Fecha</Label>
+            <Input type="date" value={fechaPago} onChange={(e) => setFechaPago(e.target.value)} />
+          </div>
+          <div>
+            <Label>Monto</Label>
+            <Input
+              inputMode="decimal"
+              value={monto}
+              onChange={(e) => {
+                setManual(false);
+                setMonto(e.target.value);
+              }}
+            />
+          </div>
+          <div>
+            <Label>Método</Label>
+            <Select value={metodo} onValueChange={setMetodo}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {METODOS_PAGO.map((m) => (
+                  <SelectItem key={m} value={m} className="capitalize">
+                    {m}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>N° de operación (opcional)</Label>
+            <Input value={operacion} onChange={(e) => setOperacion(e.target.value)} />
+          </div>
+          <div className="sm:col-span-2">
+            <Label>Notas (opcional)</Label>
+            <Textarea rows={2} value={notas} onChange={(e) => setNotas(e.target.value)} />
+          </div>
+
+          <div className="sm:col-span-2">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-sm font-medium">Aplicar a cuotas</p>
+              {manual ? (
+                <Button size="sm" variant="ghost" onClick={() => setManual(false)}>
+                  Volver a la sugerencia
+                </Button>
+              ) : null}
+            </div>
+            <div className="max-h-64 overflow-y-auto rounded-md border border-border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>N°</TableHead>
+                    <TableHead>Vencimiento</TableHead>
+                    <TableHead className="text-right">Saldo</TableHead>
+                    <TableHead className="text-right">Aplicar</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pendientes.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center text-sm text-muted-foreground">
+                        Esta venta no tiene cuotas pendientes.
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                  {pendientes.map((c) => (
+                    <TableRow key={c.id}>
+                      <TableCell className="num">
+                        {c.numero === 0 ? "Inicial" : c.numero}{" "}
+                        {c.vencida ? <Badge variant="destructive">Vencida</Badge> : null}
+                      </TableCell>
+                      <TableCell>{fecha(c.fecha_vencimiento)}</TableCell>
+                      <TableCell className="num text-right">{soles(c.saldo)}</TableCell>
+                      <TableCell className="text-right">
+                        <Input
+                          className="ml-auto w-28 text-right"
+                          inputMode="decimal"
+                          value={aplicaciones[c.id] ?? ""}
+                          onChange={(e) => {
+                            setManual(true);
+                            setAplicaciones((a) => ({ ...a, [c.id]: e.target.value }));
+                          }}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Aplicado: <span className="num">{soles(totalAplicado)}</span> · Sin asignar:{" "}
+              <span className="num">{soles(sinAsignar)}</span>
+            </p>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onCerrar}>
+            Cancelar
+          </Button>
+          <Button onClick={guardar} disabled={guardando}>
+            Guardar pago
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
