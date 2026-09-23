@@ -41,6 +41,11 @@ export function puedeComercial(perfil: Perfil | null | undefined) {
   return perfil?.rol === "admin" || perfil?.rol === "gerente_ventas" || perfil?.rol === "asesor";
 }
 
+/** Registrar y anular pagos: admin, gerente de ventas y cobranza. */
+export function puedeCobrar(perfil: Perfil | null | undefined) {
+  return perfil?.rol === "admin" || perfil?.rol === "gerente_ventas" || perfil?.rol === "cobranza";
+}
+
 export function puedeElegirVendedor(perfil: Perfil | null | undefined) {
   return perfil?.rol === "admin" || perfil?.rol === "gerente_ventas";
 }
