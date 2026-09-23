@@ -77,7 +77,9 @@ function ApartadosPage() {
     <AppShell
       titulo="Apartados"
       descripcion="Reservas de lotes con fecha límite"
-      acciones={<Button onClick={() => setAlta(true)}>+ Nuevo apartado</Button>}
+      acciones={
+        comercial ? <Button onClick={() => setAlta(true)}>+ Nuevo apartado</Button> : null
+      }
     >
       <Card>
         <CardHeader>
