@@ -78,6 +78,7 @@ function VentasPage() {
   const [manzana, setManzana] = useState("todas");
   const [estado, setEstado] = useState("activas");
   const perfiles = usePerfilesActivos();
+  const { data: perfilSesion } = usePerfil();
 
   useEffect(() => {
     if (busqueda.nuevoLote) setAlta(true);
