@@ -952,6 +952,21 @@ export type Database = {
         Returns: undefined
       }
       importar_lotes: { Args: { p_filas: Json }; Returns: Json }
+      simular_cronograma: {
+        Args: {
+          _condicion: string
+          _fecha_primera_cuota: string
+          _fecha_venta: string
+          _inicial: number
+          _plazo_meses: number
+          _precio_acordado: number
+        }
+        Returns: {
+          fecha_vencimiento: string
+          monto: number
+          numero: number
+        }[]
+      }
     }
     Enums: {
       app_rol: "admin" | "gerente_ventas" | "cobranza" | "asesor" | "socio"
