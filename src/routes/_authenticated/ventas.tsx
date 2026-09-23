@@ -122,7 +122,11 @@ function VentasPage() {
     <AppShell
       titulo="Ventas"
       descripcion="Contratos de venta y su cronograma de cuotas"
-      acciones={<Button onClick={() => setAlta(true)}>+ Nueva venta</Button>}
+      acciones={
+        puedeComercial(perfilSesion) ? (
+          <Button onClick={() => setAlta(true)}>+ Nueva venta</Button>
+        ) : null
+      }
     >
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-end gap-3">
