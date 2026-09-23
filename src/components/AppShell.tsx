@@ -102,7 +102,7 @@ export function AppShell({
     <div className="flex min-h-screen bg-background">
       <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col overflow-y-auto bg-sidebar text-sidebar-foreground md:flex">
         <div className="border-b border-sidebar-border px-5 py-5">
-          <p className="text-xs uppercase tracking-[0.2em] text-sidebar-primary">Inmobiliaria</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-sidebar-primary">INMOBILIARIA GÉNESIS</p>
           <p className="mt-1 text-lg font-semibold text-sidebar-accent-foreground">Gestión de lotes</p>
         </div>
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
