@@ -52,17 +52,7 @@ function estaPendiente(l: Lote) {
   return CAMPOS_NUMERICOS.some(([campo]) => l[campo] === null || l[campo] === undefined);
 }
 
-const ETIQUETAS_ESTADO: Record<string, string> = {
-  disponible: "Libre",
-  apartado: "Separado",
-  vendido: "Vendido",
-};
-
-function etiquetaEstado(estado: string) {
-  return ETIQUETAS_ESTADO[estado] ?? estado;
-}
-
-type LoteConEstado = Lote & { estado: string };
+type LoteConEstado = Lote & { estado: string; saldo_pendiente: number | null };
 
 export const Route = createFileRoute("/_authenticated/lotes")({
   head: () => ({
