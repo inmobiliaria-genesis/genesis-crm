@@ -1,0 +1,1 @@
+ALTER TABLE public.manzana ADD COLUMN tipo text NOT NULL DEFAULT 'residencial' CHECK (tipo IN ('residencial', 'mercado'));
