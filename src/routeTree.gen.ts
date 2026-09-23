@@ -17,6 +17,7 @@ import { Route as AuthenticatedColoresMapaRouteImport } from './routes/_authenti
 import { Route as AuthenticatedConfiguracionRouteImport } from './routes/_authenticated/configuracion'
 import { Route as AuthenticatedEstructuraRouteImport } from './routes/_authenticated/estructura'
 import { Route as AuthenticatedLotesRouteImport } from './routes/_authenticated/lotes'
+import { Route as AuthenticatedPlanoRouteImport } from './routes/_authenticated/plano'
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 
 const IndexRoute = IndexRouteImport.update({
@@ -60,6 +61,11 @@ const AuthenticatedLotesRoute = AuthenticatedLotesRouteImport.update({
   path: '/lotes',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPlanoRoute = AuthenticatedPlanoRouteImport.update({
+  id: '/plano',
+  path: '/plano',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedUsuariosRoute = AuthenticatedUsuariosRouteImport.update({
   id: '/usuarios',
   path: '/usuarios',
@@ -74,6 +80,7 @@ export interface FileRoutesByFullPath {
   '/configuracion': typeof AuthenticatedConfiguracionRoute
   '/estructura': typeof AuthenticatedEstructuraRoute
   '/lotes': typeof AuthenticatedLotesRoute
+  '/plano': typeof AuthenticatedPlanoRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
 }
 export interface FileRoutesByTo {
@@ -84,6 +91,7 @@ export interface FileRoutesByTo {
   '/configuracion': typeof AuthenticatedConfiguracionRoute
   '/estructura': typeof AuthenticatedEstructuraRoute
   '/lotes': typeof AuthenticatedLotesRoute
+  '/plano': typeof AuthenticatedPlanoRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
 }
 export interface FileRoutesById {
@@ -96,6 +104,7 @@ export interface FileRoutesById {
   '/_authenticated/configuracion': typeof AuthenticatedConfiguracionRoute
   '/_authenticated/estructura': typeof AuthenticatedEstructuraRoute
   '/_authenticated/lotes': typeof AuthenticatedLotesRoute
+  '/_authenticated/plano': typeof AuthenticatedPlanoRoute
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
 }
 export interface FileRouteTypes {
@@ -108,6 +117,7 @@ export interface FileRouteTypes {
     | '/configuracion'
     | '/estructura'
     | '/lotes'
+    | '/plano'
     | '/usuarios'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -118,6 +128,7 @@ export interface FileRouteTypes {
     | '/configuracion'
     | '/estructura'
     | '/lotes'
+    | '/plano'
     | '/usuarios'
   id:
     | '__root__'
@@ -129,6 +140,7 @@ export interface FileRouteTypes {
     | '/_authenticated/configuracion'
     | '/_authenticated/estructura'
     | '/_authenticated/lotes'
+    | '/_authenticated/plano'
     | '/_authenticated/usuarios'
   fileRoutesById: FileRoutesById
 }
@@ -196,6 +208,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLotesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/plano': {
+      id: '/_authenticated/plano'
+      path: '/plano'
+      fullPath: '/plano'
+      preLoaderRoute: typeof AuthenticatedPlanoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/usuarios': {
       id: '/_authenticated/usuarios'
       path: '/usuarios'
@@ -212,6 +231,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedConfiguracionRoute: typeof AuthenticatedConfiguracionRoute
   AuthenticatedEstructuraRoute: typeof AuthenticatedEstructuraRoute
   AuthenticatedLotesRoute: typeof AuthenticatedLotesRoute
+  AuthenticatedPlanoRoute: typeof AuthenticatedPlanoRoute
   AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
 }
 
@@ -221,6 +241,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedConfiguracionRoute: AuthenticatedConfiguracionRoute,
   AuthenticatedEstructuraRoute: AuthenticatedEstructuraRoute,
   AuthenticatedLotesRoute: AuthenticatedLotesRoute,
+  AuthenticatedPlanoRoute: AuthenticatedPlanoRoute,
   AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
 }
 

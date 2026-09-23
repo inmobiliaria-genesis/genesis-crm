@@ -25,11 +25,13 @@ type Item = {
   icono: typeof Map;
   ruta?: string;
   roles?: Rol[];
+  sub?: boolean;
 };
 
 const ITEMS: Item[] = [
   { etiqueta: "Estructura", icono: LayoutGrid, ruta: "/estructura" },
   { etiqueta: "Lotes", icono: Map, ruta: "/lotes" },
+  { etiqueta: "Plano", icono: Map, ruta: "/plano", sub: true },
   { etiqueta: "Ventas", icono: ShoppingCart },
   { etiqueta: "Cobranza", icono: Wallet },
   { etiqueta: "Comisiones", icono: Percent },
@@ -37,6 +39,13 @@ const ITEMS: Item[] = [
   { etiqueta: "Gastos", icono: Receipt },
   { etiqueta: "Reportes", icono: BarChart3 },
   { etiqueta: "Configuración", icono: Settings, ruta: "/configuracion", roles: ["admin"] },
+  {
+    etiqueta: "Colores del mapa",
+    icono: Palette,
+    ruta: "/colores-mapa",
+    roles: ["admin"],
+    sub: true,
+  },
   { etiqueta: "Usuarios", icono: UserCog, ruta: "/usuarios", roles: ["admin"] },
   { etiqueta: "Bitácora", icono: ScrollText, ruta: "/bitacora", roles: ["admin", "socio"] },
 ];
