@@ -144,6 +144,30 @@ function LotesPage() {
     },
   });
 
+  const estados = useQuery({
+    queryKey: ["lote-estados"],
+    enabled: lotes.isSuccess,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("lote_estado").select("*");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const mapaEstados = useMemo(
+    () => new Map((estados.data ?? []).map((e) => [e.lote_id, e.estado ?? "disponible"])),
+    [estados.data],
+  );
+
+  const lotesConEstado = useMemo(
+    () =>
+      (lotes.data ?? []).map((l) => ({
+        ...l,
+        estado: mapaEstados.get(l.id) ?? "disponible",
+      })),
+    [lotes.data, mapaEstados],
+  );
+
   const filtrados = useMemo(() => {
     let lista = lotes.data ?? [];
     if (soloPendientes) lista = lista.filter(estaPendiente);
