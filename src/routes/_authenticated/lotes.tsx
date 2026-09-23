@@ -596,10 +596,6 @@ function ImportarExcel({ onListo }: { onListo: () => void }) {
           numero,
           area_m2: obtener("area_m2", "area"),
           precio_lista: obtener("precio_lista", "precio"),
-          frente_m: obtener("frente_m", "frente"),
-          fondo_m: obtener("fondo_m", "fondo"),
-          lado_derecho_m: obtener("lado_derecho_m", "lado derecho"),
-          lado_izquierdo_m: obtener("lado_izquierdo_m", "lado izquierdo"),
           notas: obtener("notas"),
         },
       };
