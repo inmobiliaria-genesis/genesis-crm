@@ -14,6 +14,7 @@ import {
   ScrollText,
   LogOut,
   Lock,
+  Palette,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,11 +26,13 @@ type Item = {
   icono: typeof Map;
   ruta?: string;
   roles?: Rol[];
+  sub?: boolean;
 };
 
 const ITEMS: Item[] = [
   { etiqueta: "Estructura", icono: LayoutGrid, ruta: "/estructura" },
   { etiqueta: "Lotes", icono: Map, ruta: "/lotes" },
+  { etiqueta: "Plano", icono: Map, ruta: "/plano", sub: true },
   { etiqueta: "Ventas", icono: ShoppingCart },
   { etiqueta: "Cobranza", icono: Wallet },
   { etiqueta: "Comisiones", icono: Percent },
@@ -37,6 +40,13 @@ const ITEMS: Item[] = [
   { etiqueta: "Gastos", icono: Receipt },
   { etiqueta: "Reportes", icono: BarChart3 },
   { etiqueta: "Configuración", icono: Settings, ruta: "/configuracion", roles: ["admin"] },
+  {
+    etiqueta: "Colores del mapa",
+    icono: Palette,
+    ruta: "/colores-mapa",
+    roles: ["admin"],
+    sub: true,
+  },
   { etiqueta: "Usuarios", icono: UserCog, ruta: "/usuarios", roles: ["admin"] },
   { etiqueta: "Bitácora", icono: ScrollText, ruta: "/bitacora", roles: ["admin", "socio"] },
 ];
@@ -114,7 +124,10 @@ export function AppShell({
               <Link
                 key={item.etiqueta}
                 to={item.ruta}
-                className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                className={cn(
+                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  item.sub && "ml-4 border-l border-sidebar-border pl-4 text-xs",
+                )}
                 activeProps={{
                   className: "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
                 }}

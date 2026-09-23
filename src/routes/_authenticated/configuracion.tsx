@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
@@ -82,7 +82,14 @@ function ConfiguracionPage() {
     <AppShell
       titulo="Configuración"
       descripcion="Cada cambio crea un nuevo valor vigente y conserva el historial"
-      acciones={<NuevoValor onListo={() => qc.invalidateQueries({ queryKey: ["config"] })} />}
+      acciones={
+        <>
+          <Button asChild size="sm" variant="outline">
+            <Link to="/colores-mapa">Colores del mapa</Link>
+          </Button>
+          <NuevoValor onListo={() => qc.invalidateQueries({ queryKey: ["config"] })} />
+        </>
+      }
     >
       {grupos.length === 0 ? (
         <p className="text-sm text-muted-foreground">Aún no hay valores configurados.</p>
