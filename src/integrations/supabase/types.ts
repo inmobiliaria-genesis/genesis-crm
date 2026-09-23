@@ -906,6 +906,77 @@ export type Database = {
           },
         ]
       }
+      vendedor: {
+        Row: {
+          anulado: boolean
+          anulado_en: string | null
+          anulado_por: string | null
+          apodo: string | null
+          creado_en: string
+          creado_por: string | null
+          dni: string | null
+          encargado_id: string | null
+          estado: string
+          id: string
+          modificado_en: string
+          modificado_por: string | null
+          motivo_anulacion: string | null
+          nombre: string
+          notas: string | null
+          telefono: string | null
+          tipo: string
+          usuario_id: string | null
+        }
+        Insert: {
+          anulado?: boolean
+          anulado_en?: string | null
+          anulado_por?: string | null
+          apodo?: string | null
+          creado_en?: string
+          creado_por?: string | null
+          dni?: string | null
+          encargado_id?: string | null
+          estado?: string
+          id?: string
+          modificado_en?: string
+          modificado_por?: string | null
+          motivo_anulacion?: string | null
+          nombre: string
+          notas?: string | null
+          telefono?: string | null
+          tipo: string
+          usuario_id?: string | null
+        }
+        Update: {
+          anulado?: boolean
+          anulado_en?: string | null
+          anulado_por?: string | null
+          apodo?: string | null
+          creado_en?: string
+          creado_por?: string | null
+          dni?: string | null
+          encargado_id?: string | null
+          estado?: string
+          id?: string
+          modificado_en?: string
+          modificado_por?: string | null
+          motivo_anulacion?: string | null
+          nombre?: string
+          notas?: string | null
+          telefono?: string | null
+          tipo?: string
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendedor_encargado_id_fkey"
+            columns: ["encargado_id"]
+            isOneToOne: false
+            referencedRelation: "vendedor"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       venta: {
         Row: {
           anulado: boolean
@@ -914,11 +985,13 @@ export type Database = {
           condicion: string
           creado_en: string
           creado_por: string | null
+          encargado_id: string | null
           fecha_firma: string | null
           fecha_primera_cuota: string | null
           fecha_venta: string
           forma_pago_inicial: string
           id: string
+          importada: boolean
           inicial: number
           lote_id: string
           modificado_en: string
@@ -926,10 +999,11 @@ export type Database = {
           motivo_anulacion: string | null
           motivo_diferencia_precio: string | null
           notas: string | null
+          origen: string
           plazo_meses: number
           precio_acordado: number
           precio_lista_momento: number | null
-          vendedor_id: string
+          promotor_id: string | null
         }
         Insert: {
           anulado?: boolean
@@ -938,11 +1012,13 @@ export type Database = {
           condicion: string
           creado_en?: string
           creado_por?: string | null
+          encargado_id?: string | null
           fecha_firma?: string | null
           fecha_primera_cuota?: string | null
           fecha_venta?: string
           forma_pago_inicial: string
           id?: string
+          importada?: boolean
           inicial: number
           lote_id: string
           modificado_en?: string
@@ -950,10 +1026,11 @@ export type Database = {
           motivo_anulacion?: string | null
           motivo_diferencia_precio?: string | null
           notas?: string | null
+          origen: string
           plazo_meses: number
           precio_acordado: number
           precio_lista_momento?: number | null
-          vendedor_id: string
+          promotor_id?: string | null
         }
         Update: {
           anulado?: boolean
@@ -962,11 +1039,13 @@ export type Database = {
           condicion?: string
           creado_en?: string
           creado_por?: string | null
+          encargado_id?: string | null
           fecha_firma?: string | null
           fecha_primera_cuota?: string | null
           fecha_venta?: string
           forma_pago_inicial?: string
           id?: string
+          importada?: boolean
           inicial?: number
           lote_id?: string
           modificado_en?: string
@@ -974,12 +1053,20 @@ export type Database = {
           motivo_anulacion?: string | null
           motivo_diferencia_precio?: string | null
           notas?: string | null
+          origen?: string
           plazo_meses?: number
           precio_acordado?: number
           precio_lista_momento?: number | null
-          vendedor_id?: string
+          promotor_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "venta_encargado_id_fkey"
+            columns: ["encargado_id"]
+            isOneToOne: false
+            referencedRelation: "vendedor"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "venta_lote_id_fkey"
             columns: ["lote_id"]
@@ -995,10 +1082,10 @@ export type Database = {
             referencedColumns: ["lote_id"]
           },
           {
-            foreignKeyName: "venta_vendedor_id_fkey"
-            columns: ["vendedor_id"]
+            foreignKeyName: "venta_promotor_id_fkey"
+            columns: ["promotor_id"]
             isOneToOne: false
-            referencedRelation: "perfil"
+            referencedRelation: "vendedor"
             referencedColumns: ["id"]
           },
         ]
@@ -1105,6 +1192,7 @@ export type Database = {
         Returns: undefined
       }
       importar_lotes: { Args: { p_filas: Json }; Returns: Json }
+      importar_vendedores: { Args: { p_filas: Json }; Returns: Json }
       regularizar_venta: {
         Args: {
           _fecha: string

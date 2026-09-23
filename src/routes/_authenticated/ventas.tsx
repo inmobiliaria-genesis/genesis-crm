@@ -39,11 +39,11 @@ import {
   nombreCliente,
   documentoCliente,
   useLotesConEstado,
-  usePerfilesActivos,
   type Cliente,
 } from "@/lib/ventas";
 import { fecha, hoyLima, soles } from "@/lib/format";
 import { usePerfil, puedeComercial, puedeElegirVendedor, puedeCobrar } from "@/lib/sesion";
+import { ETIQUETA_ORIGEN, nombreVendedor, useVendedores } from "@/lib/vendedores";
 import { DialogoPago, DialogoRegularizar } from "@/components/PagoForm";
 import { ETIQUETA_CUOTA, useCuotasDeVenta, usePagosDeVenta } from "@/lib/cobranza";
 
@@ -79,7 +79,7 @@ function VentasPage() {
   const [vendedor, setVendedor] = useState("todos");
   const [manzana, setManzana] = useState("todas");
   const [estado, setEstado] = useState("activas");
-  const perfiles = usePerfilesActivos();
+  const vendedores = useVendedores();
   const { data: perfilSesion } = usePerfil();
 
   useEffect(() => {
@@ -92,7 +92,7 @@ function VentasPage() {
       const { data, error } = await supabase
         .from("venta")
         .select(
-          "*, lote:lote_id(numero, manzana:manzana_id(id, letra)), vendedor:vendedor_id(nombre), titulares:venta_titular(id, es_principal, anulado, cliente:cliente_id(id, nombres, apellidos, tipo_documento, numero_documento))",
+          "*, lote:lote_id(numero, manzana:manzana_id(id, letra)), encargado:vendedor!venta_encargado_id_fkey(nombre, apodo, estado), promotor:vendedor!venta_promotor_id_fkey(nombre, apodo, estado), titulares:venta_titular(id, es_principal, anulado, cliente:cliente_id(id, nombres, apellidos, tipo_documento, numero_documento))",
         )
         .order("fecha_venta", { ascending: false });
       if (error) throw error;
@@ -102,7 +102,7 @@ function VentasPage() {
 
   const filtradas = useMemo(() => {
     return (ventas.data ?? []).filter((v) => {
-      if (vendedor !== "todos" && v.vendedor_id !== vendedor) return false;
+      if (vendedor !== "todos" && v.encargado_id !== vendedor) return false;
       if (manzana !== "todas" && v.lote?.manzana?.id !== manzana) return false;
       if (estado === "activas" && v.anulado) return false;
       if (estado === "anuladas" && !v.anulado) return false;
@@ -133,7 +133,7 @@ function VentasPage() {
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-end gap-3">
           <CardTitle className="mr-auto text-base">Listado</CardTitle>
-          <Filtro label="Vendedor" value={vendedor} onChange={setVendedor} opciones={[["todos", "Todos"], ...(perfiles.data ?? []).map((p) => [p.id, p.nombre] as [string, string])]} />
+          <Filtro label="Encargado" value={vendedor} onChange={setVendedor} opciones={[["todos", "Todos"], ...(vendedores.data ?? []).filter((x) => x.tipo === "encargado").map((x) => [x.id, nombreVendedor(x)] as [string, string])]} />
           <Filtro label="Manzana" value={manzana} onChange={setManzana} opciones={[["todas", "Todas"], ...manzanas.map(([id, l]) => [id, `Mz ${l}`] as [string, string])]} />
           <Filtro
             label="Estado"
@@ -181,7 +181,13 @@ function VentasPage() {
                       {v.condicion === "financiado" ? ` · ${v.plazo_meses} cuotas` : ""}
                     </TableCell>
                     <TableCell className="num text-right">{soles(v.precio_acordado)}</TableCell>
-                    <TableCell>{v.vendedor?.nombre}</TableCell>
+                    <TableCell>
+                      {nombreVendedor(v.encargado)}
+                      <div className="text-xs text-muted-foreground">
+                        {ETIQUETA_ORIGEN[v.origen]}
+                        {v.promotor ? ` · ${nombreVendedor(v.promotor)}` : ""}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-right">
                       {v.anulado ? <Badge variant="outline">Anulada</Badge> : null}{" "}
                       <Button
@@ -261,12 +267,14 @@ function DialogoVenta({
   const qc = useQueryClient();
   const { data: perfil } = usePerfil();
   const lotes = useLotesConEstado();
-  const perfiles = usePerfilesActivos();
+  const vendedores = useVendedores();
   const [loteId, setLoteId] = useState(loteInicial ?? "");
   const [principal, setPrincipal] = useState<Cliente | null>(null);
   const [adicionales, setAdicionales] = useState<Cliente[]>([]);
   const [agregando, setAgregando] = useState(false);
-  const [vendedorId, setVendedorId] = useState("");
+  const [encargadoId, setEncargadoId] = useState("");
+  const [promotorId, setPromotorId] = useState("ninguno");
+  const [origen, setOrigen] = useState("promotor");
   const [condicion, setCondicion] = useState("financiado");
   const [fechaVenta, setFechaVenta] = useState(hoyLima());
   const [fechaFirma, setFechaFirma] = useState("");
@@ -279,9 +287,25 @@ function DialogoVenta({
   const [notas, setNotas] = useState("");
   const [guardando, setGuardando] = useState(false);
 
+  const activos = (vendedores.data ?? []).filter((x) => x.estado === "activo");
+  const encargadosElegibles = activos.filter(
+    (x) => x.tipo === "encargado" && (puedeElegirVendedor(perfil) || (!!perfil && x.usuario_id === perfil.user_id)),
+  );
+  const promotores = activos.filter((x) => x.tipo === "promotor");
+
   useEffect(() => {
-    if (perfil && !vendedorId) setVendedorId(perfil.id);
-  }, [perfil, vendedorId]);
+    if (!encargadoId && encargadosElegibles.length === 1 && !puedeElegirVendedor(perfil)) {
+      setEncargadoId(encargadosElegibles[0]!.id);
+    }
+  }, [encargadoId, encargadosElegibles, perfil]);
+
+  function elegirPromotor(id: string) {
+    setPromotorId(id);
+    const p = promotores.find((x) => x.id === id);
+    if (p?.encargado_id && encargadosElegibles.some((e) => e.id === p.encargado_id)) {
+      setEncargadoId(p.encargado_id);
+    }
+  }
 
   useEffect(() => {
     if (!clienteInicial) return;
@@ -336,8 +360,8 @@ function DialogoVenta({
   const total = (cronograma.data ?? []).reduce((t, c) => t + Number(c.monto), 0);
 
   async function guardar() {
-    if (!loteId || !principal || !vendedorId) {
-      toast.error("Elige lote, cliente principal y vendedor");
+    if (!loteId || !principal || !encargadoId) {
+      toast.error("Elige lote, cliente principal y encargado");
       return;
     }
     setGuardando(true);
@@ -347,7 +371,9 @@ function DialogoVenta({
         lote_id: loteId,
         fecha_venta: fechaVenta,
         fecha_firma: fechaFirma || null,
-        vendedor_id: vendedorId,
+        encargado_id: encargadoId,
+        origen,
+        promotor_id: origen === "promotor" && promotorId !== "ninguno" ? promotorId : null,
         condicion,
         precio_acordado: precioNum,
         motivo_diferencia_precio: motivo.trim() || null,
@@ -441,29 +467,42 @@ function DialogoVenta({
           </div>
 
           <div>
-            <Label>Vendedor</Label>
-            <Select
-              value={vendedorId}
-              onValueChange={setVendedorId}
-              disabled={!puedeElegirVendedor(perfil)}
-            >
+            <Label>Origen</Label>
+            <Select value={origen} onValueChange={(o) => { setOrigen(o); if (o === "marketing") setPromotorId("ninguno"); }}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="promotor">Promotor</SelectItem>
+                <SelectItem value="marketing">Marketing</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Promotor (opcional)</Label>
+            <Select value={promotorId} onValueChange={elegirPromotor} disabled={origen === "marketing"}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ninguno">Sin promotor</SelectItem>
+                {promotores.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{nombreVendedor(p)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Encargado</Label>
+            <Select value={encargadoId} onValueChange={setEncargadoId}>
               <SelectTrigger>
-                <SelectValue placeholder="Elige el vendedor" />
+                <SelectValue placeholder="Elige el encargado" />
               </SelectTrigger>
               <SelectContent>
-                {(puedeElegirVendedor(perfil)
-                  ? (perfiles.data ?? [])
-                  : (perfiles.data ?? []).filter((p) => p.id === perfil?.id)
-                ).map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.nombre}
-                  </SelectItem>
+                {encargadosElegibles.map((e) => (
+                  <SelectItem key={e.id} value={e.id}>{nombreVendedor(e)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
             {!puedeElegirVendedor(perfil) ? (
               <p className="mt-1 text-xs text-muted-foreground">
-                Como asesor, la venta se registra a tu nombre.
+                Como asesor, solo puedes elegir un encargado vinculado a tu cuenta.
               </p>
             ) : null}
           </div>
@@ -586,7 +625,7 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
       const { data, error } = await supabase
         .from("venta")
         .select(
-          "*, lote:lote_id(numero, area_m2, manzana:manzana_id(letra)), vendedor:vendedor_id(nombre), titulares:venta_titular(id, es_principal, anulado, cliente:cliente_id(nombres, apellidos, tipo_documento, numero_documento)), cuotas:cuota(id, numero, fecha_vencimiento, monto_original, monto_vigente, anulado)",
+          "*, lote:lote_id(numero, area_m2, manzana:manzana_id(letra)), encargado:vendedor!venta_encargado_id_fkey(nombre, apodo, estado), promotor:vendedor!venta_promotor_id_fkey(nombre, apodo, estado), titulares:venta_titular(id, es_principal, anulado, cliente:cliente_id(nombres, apellidos, tipo_documento, numero_documento)), cuotas:cuota(id, numero, fecha_vencimiento, monto_original, monto_vigente, anulado)",
         )
         .eq("id", ventaId!)
         .maybeSingle();
@@ -719,7 +758,9 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
             <div className="grid grid-cols-2 gap-2">
               <D k="Fecha de venta" v={fecha(v.fecha_venta)} />
               <D k="Fecha de firma" v={fecha(v.fecha_firma)} />
-              <D k="Vendedor" v={v.vendedor?.nombre ?? "—"} />
+              <D k="Encargado" v={v.encargado ? nombreVendedor(v.encargado) : v.importada ? "— (venta importada)" : "—"} />
+              <D k="Origen" v={ETIQUETA_ORIGEN[v.origen] ?? v.origen} />
+              <D k="Promotor" v={v.promotor ? nombreVendedor(v.promotor) : "—"} />
               <D k="Condición" v={v.condicion} />
               <D k="Precio de lista al vender" v={soles(v.precio_lista_momento)} />
               <D k="Precio acordado" v={soles(v.precio_acordado)} />

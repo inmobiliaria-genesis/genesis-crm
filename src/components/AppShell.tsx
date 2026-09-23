@@ -34,6 +34,7 @@ const ITEMS: Item[] = [
   { etiqueta: "Lotes", icono: Map, ruta: "/lotes" },
   { etiqueta: "Plano", icono: Map, ruta: "/plano", sub: true },
   { etiqueta: "Clientes", icono: Users2, ruta: "/clientes" },
+  { etiqueta: "Vendedores", icono: UserCog, ruta: "/vendedores" },
   { etiqueta: "Apartados", icono: Receipt, ruta: "/apartados" },
   { etiqueta: "Ventas", icono: ShoppingCart, ruta: "/ventas" },
   { etiqueta: "Cobranza", icono: Wallet, ruta: "/cobranza" },
