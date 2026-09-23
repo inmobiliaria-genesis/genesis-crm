@@ -128,7 +128,7 @@ function LotesPage() {
     queryFn: async () => {
       let consulta = supabase.from("lote").select("*").order("numero");
       if (manzanaId) consulta = consulta.eq("manzana_id", manzanaId);
-      else consulta = consulta.in("manzana_id", idsManzana.length > 0 ? idsManzana : ["-"]);
+      else consulta = consulta.in("manzana_id", idsManzana.length > 0 ? idsManzana : ["00000000-0000-0000-0000-000000000000"]);
       const { data, error } = await consulta.limit(1000);
       if (error) throw error;
       return data;
