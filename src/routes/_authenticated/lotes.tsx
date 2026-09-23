@@ -522,6 +522,9 @@ function EditarLote({ lote, onListo }: { lote: Lote; onListo: () => void }) {
             <Label>Notas</Label>
             <Textarea value={notas} onChange={(e) => setNotas(e.target.value)} />
           </div>
+          <div className="col-span-2">
+            <EnlaceLote loteId={lote.id} />
+          </div>
         </div>
         <DialogFooter>
           <Button onClick={guardar}>Guardar</Button>

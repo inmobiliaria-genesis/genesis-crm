@@ -791,6 +791,7 @@ function PlanoPage() {
                     {pendienteDatos ? (
                       <Badge variant="outline">Datos pendientes</Badge>
                     ) : null}
+                    <EnlaceLote loteId={detalle.id} />
                     {editando && admin && ubicacionSeleccionada ? (
                       <Button
                         variant="destructive"
