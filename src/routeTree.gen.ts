@@ -17,6 +17,7 @@ import { Route as AuthenticatedBitacoraRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedClientesRouteImport } from './routes/_authenticated/clientes'
 import { Route as AuthenticatedCobranzaRouteImport } from './routes/_authenticated/cobranza'
 import { Route as AuthenticatedColoresMapaRouteImport } from './routes/_authenticated/colores-mapa'
+import { Route as AuthenticatedComisionesRouteImport } from './routes/_authenticated/comisiones'
 import { Route as AuthenticatedConfiguracionRouteImport } from './routes/_authenticated/configuracion'
 import { Route as AuthenticatedEstructuraRouteImport } from './routes/_authenticated/estructura'
 import { Route as AuthenticatedLotesRouteImport } from './routes/_authenticated/lotes'
@@ -65,6 +66,11 @@ const AuthenticatedColoresMapaRoute =
     path: '/colores-mapa',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedComisionesRoute = AuthenticatedComisionesRouteImport.update({
+  id: '/comisiones',
+  path: '/comisiones',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedConfiguracionRoute =
   AuthenticatedConfiguracionRouteImport.update({
     id: '/configuracion',
@@ -110,6 +116,7 @@ export interface FileRoutesByFullPath {
   '/clientes': typeof AuthenticatedClientesRoute
   '/cobranza': typeof AuthenticatedCobranzaRoute
   '/colores-mapa': typeof AuthenticatedColoresMapaRoute
+  '/comisiones': typeof AuthenticatedComisionesRoute
   '/configuracion': typeof AuthenticatedConfiguracionRoute
   '/estructura': typeof AuthenticatedEstructuraRoute
   '/lotes': typeof AuthenticatedLotesRoute
@@ -126,6 +133,7 @@ export interface FileRoutesByTo {
   '/clientes': typeof AuthenticatedClientesRoute
   '/cobranza': typeof AuthenticatedCobranzaRoute
   '/colores-mapa': typeof AuthenticatedColoresMapaRoute
+  '/comisiones': typeof AuthenticatedComisionesRoute
   '/configuracion': typeof AuthenticatedConfiguracionRoute
   '/estructura': typeof AuthenticatedEstructuraRoute
   '/lotes': typeof AuthenticatedLotesRoute
@@ -144,6 +152,7 @@ export interface FileRoutesById {
   '/_authenticated/clientes': typeof AuthenticatedClientesRoute
   '/_authenticated/cobranza': typeof AuthenticatedCobranzaRoute
   '/_authenticated/colores-mapa': typeof AuthenticatedColoresMapaRoute
+  '/_authenticated/comisiones': typeof AuthenticatedComisionesRoute
   '/_authenticated/configuracion': typeof AuthenticatedConfiguracionRoute
   '/_authenticated/estructura': typeof AuthenticatedEstructuraRoute
   '/_authenticated/lotes': typeof AuthenticatedLotesRoute
@@ -162,6 +171,7 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/cobranza'
     | '/colores-mapa'
+    | '/comisiones'
     | '/configuracion'
     | '/estructura'
     | '/lotes'
@@ -178,6 +188,7 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/cobranza'
     | '/colores-mapa'
+    | '/comisiones'
     | '/configuracion'
     | '/estructura'
     | '/lotes'
@@ -195,6 +206,7 @@ export interface FileRouteTypes {
     | '/_authenticated/clientes'
     | '/_authenticated/cobranza'
     | '/_authenticated/colores-mapa'
+    | '/_authenticated/comisiones'
     | '/_authenticated/configuracion'
     | '/_authenticated/estructura'
     | '/_authenticated/lotes'
@@ -268,6 +280,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedColoresMapaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/comisiones': {
+      id: '/_authenticated/comisiones'
+      path: '/comisiones'
+      fullPath: '/comisiones'
+      preLoaderRoute: typeof AuthenticatedComisionesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/configuracion': {
       id: '/_authenticated/configuracion'
       path: '/configuracion'
@@ -326,6 +345,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedClientesRoute: typeof AuthenticatedClientesRoute
   AuthenticatedCobranzaRoute: typeof AuthenticatedCobranzaRoute
   AuthenticatedColoresMapaRoute: typeof AuthenticatedColoresMapaRoute
+  AuthenticatedComisionesRoute: typeof AuthenticatedComisionesRoute
   AuthenticatedConfiguracionRoute: typeof AuthenticatedConfiguracionRoute
   AuthenticatedEstructuraRoute: typeof AuthenticatedEstructuraRoute
   AuthenticatedLotesRoute: typeof AuthenticatedLotesRoute
@@ -341,6 +361,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedClientesRoute: AuthenticatedClientesRoute,
   AuthenticatedCobranzaRoute: AuthenticatedCobranzaRoute,
   AuthenticatedColoresMapaRoute: AuthenticatedColoresMapaRoute,
+  AuthenticatedComisionesRoute: AuthenticatedComisionesRoute,
   AuthenticatedConfiguracionRoute: AuthenticatedConfiguracionRoute,
   AuthenticatedEstructuraRoute: AuthenticatedEstructuraRoute,
   AuthenticatedLotesRoute: AuthenticatedLotesRoute,

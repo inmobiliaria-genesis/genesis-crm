@@ -46,6 +46,7 @@ import { usePerfil, puedeComercial, puedeElegirVendedor, puedeCobrar } from "@/l
 import { ETIQUETA_ORIGEN, nombreVendedor, useVendedores } from "@/lib/vendedores";
 import { DialogoPago, DialogoRegularizar } from "@/components/PagoForm";
 import { ETIQUETA_CUOTA, useCuotasDeVenta, usePagosDeVenta } from "@/lib/cobranza";
+import { BotonHistorica } from "@/components/DialogoHistorica";
 
 type Busqueda = {
   venta?: string | undefined;
@@ -768,6 +769,15 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
               <D k="Forma de pago inicial" v={v.forma_pago_inicial} />
               <D k="Plazo" v={`${v.plazo_meses} ${v.plazo_meses === 1 ? "cuota" : "cuotas"}`} />
               <D k="Primera cuota" v={fecha(v.fecha_primera_cuota)} />
+            </div>
+            <div className="flex items-center justify-between rounded-md border border-border p-3">
+              <div>
+                <p className="text-xs text-muted-foreground">Venta histórica</p>
+                <p>{v.es_historica ? "Sí — no genera comisión ni incentivo" : "No — genera comisión"}</p>
+              </div>
+              {perfil?.rol === "admin" && ventaId ? (
+                <BotonHistorica ventaId={ventaId} esHistorica={v.es_historica} />
+              ) : null}
             </div>
             {v.motivo_diferencia_precio ? (
               <D k="Motivo de la diferencia de precio" v={v.motivo_diferencia_precio} />
