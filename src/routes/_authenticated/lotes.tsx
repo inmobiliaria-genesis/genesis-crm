@@ -45,10 +45,6 @@ type Lote = Database["public"]["Tables"]["lote"]["Row"];
 const CAMPOS_NUMERICOS = [
   ["area_m2", "Área (m²)"],
   ["precio_lista", "Precio de lista (S/)"],
-  ["frente_m", "Frente (m)"],
-  ["fondo_m", "Fondo (m)"],
-  ["lado_derecho_m", "Lado derecho (m)"],
-  ["lado_izquierdo_m", "Lado izquierdo (m)"],
 ] as const;
 
 function estaPendiente(l: Lote) {
@@ -270,24 +266,20 @@ function LotesPage() {
               <TableHead>Lote</TableHead>
               <TableHead className="text-right">Área m²</TableHead>
               <TableHead className="text-right">Precio de lista</TableHead>
-              <TableHead className="text-right">Frente</TableHead>
-              <TableHead className="text-right">Fondo</TableHead>
-              <TableHead className="text-right">Lado der.</TableHead>
-              <TableHead className="text-right">Lado izq.</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {lotes.isLoading ? (
+          {lotes.isLoading ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center text-muted-foreground">
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
                   Cargando…
                 </TableCell>
               </TableRow>
             ) : filtrados.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center text-muted-foreground">
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
                   No hay lotes con estos filtros.
                 </TableCell>
               </TableRow>
@@ -298,10 +290,6 @@ function LotesPage() {
                   <TableCell className="num font-medium">{l.numero}</TableCell>
                   <TableCell className="num text-right">{numero(l.area_m2)}</TableCell>
                   <TableCell className="num text-right">{soles(l.precio_lista)}</TableCell>
-                  <TableCell className="num text-right">{numero(l.frente_m)}</TableCell>
-                  <TableCell className="num text-right">{numero(l.fondo_m)}</TableCell>
-                  <TableCell className="num text-right">{numero(l.lado_derecho_m)}</TableCell>
-                  <TableCell className="num text-right">{numero(l.lado_izquierdo_m)}</TableCell>
                   <TableCell>
                     {l.anulado ? (
                       <Badge variant="destructive">Anulado</Badge>
@@ -506,10 +494,6 @@ const COLUMNAS_PLANTILLA = [
   "numero",
   "area_m2",
   "precio_lista",
-  "frente_m",
-  "fondo_m",
-  "lado_derecho_m",
-  "lado_izquierdo_m",
   "notas",
 ];
 
@@ -612,10 +596,6 @@ function ImportarExcel({ onListo }: { onListo: () => void }) {
           numero,
           area_m2: obtener("area_m2", "area"),
           precio_lista: obtener("precio_lista", "precio"),
-          frente_m: obtener("frente_m", "frente"),
-          fondo_m: obtener("fondo_m", "fondo"),
-          lado_derecho_m: obtener("lado_derecho_m", "lado derecho"),
-          lado_izquierdo_m: obtener("lado_izquierdo_m", "lado izquierdo"),
           notas: obtener("notas"),
         },
       };
@@ -663,9 +643,8 @@ function ImportarExcel({ onListo }: { onListo: () => void }) {
         <DialogHeader>
           <DialogTitle>Importar lotes desde Excel</DialogTitle>
           <DialogDescription>
-            Columnas: etapa, manzana, numero, area_m2, precio_lista, frente_m, fondo_m,
-            lado_derecho_m, lado_izquierdo_m, notas. Un archivo puede mezclar varias etapas y
-            manzanas. Los lotes ya existentes se omiten.
+            Columnas: etapa, manzana, numero, area_m2, precio_lista, notas. Un archivo puede mezclar
+            varias etapas y manzanas. Los lotes ya existentes se omiten.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
