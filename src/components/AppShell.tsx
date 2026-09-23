@@ -124,7 +124,10 @@ export function AppShell({
               <Link
                 key={item.etiqueta}
                 to={item.ruta}
-                className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                className={cn(
+                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                  item.sub && "ml-4 border-l border-sidebar-border pl-4 text-xs",
+                )}
                 activeProps={{
                   className: "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
                 }}
