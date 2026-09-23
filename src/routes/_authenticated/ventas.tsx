@@ -43,7 +43,7 @@ import {
   type Cliente,
 } from "@/lib/ventas";
 import { fecha, hoyLima, soles } from "@/lib/format";
-import { usePerfil } from "@/lib/sesion";
+import { usePerfil, puedeComercial, puedeElegirVendedor } from "@/lib/sesion";
 
 type Busqueda = {
   venta?: string | undefined;
