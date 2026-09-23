@@ -22,6 +22,7 @@ import { Route as AuthenticatedEstructuraRouteImport } from './routes/_authentic
 import { Route as AuthenticatedLotesRouteImport } from './routes/_authenticated/lotes'
 import { Route as AuthenticatedPlanoRouteImport } from './routes/_authenticated/plano'
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
+import { Route as AuthenticatedVendedoresRouteImport } from './routes/_authenticated/vendedores'
 import { Route as AuthenticatedVentasRouteImport } from './routes/_authenticated/ventas'
 
 const IndexRoute = IndexRouteImport.update({
@@ -90,6 +91,11 @@ const AuthenticatedUsuariosRoute = AuthenticatedUsuariosRouteImport.update({
   path: '/usuarios',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedVendedoresRoute = AuthenticatedVendedoresRouteImport.update({
+  id: '/vendedores',
+  path: '/vendedores',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedVentasRoute = AuthenticatedVentasRouteImport.update({
   id: '/ventas',
   path: '/ventas',
@@ -109,6 +115,7 @@ export interface FileRoutesByFullPath {
   '/lotes': typeof AuthenticatedLotesRoute
   '/plano': typeof AuthenticatedPlanoRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
+  '/vendedores': typeof AuthenticatedVendedoresRoute
   '/ventas': typeof AuthenticatedVentasRoute
 }
 export interface FileRoutesByTo {
@@ -124,6 +131,7 @@ export interface FileRoutesByTo {
   '/lotes': typeof AuthenticatedLotesRoute
   '/plano': typeof AuthenticatedPlanoRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
+  '/vendedores': typeof AuthenticatedVendedoresRoute
   '/ventas': typeof AuthenticatedVentasRoute
 }
 export interface FileRoutesById {
@@ -141,6 +149,7 @@ export interface FileRoutesById {
   '/_authenticated/lotes': typeof AuthenticatedLotesRoute
   '/_authenticated/plano': typeof AuthenticatedPlanoRoute
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
+  '/_authenticated/vendedores': typeof AuthenticatedVendedoresRoute
   '/_authenticated/ventas': typeof AuthenticatedVentasRoute
 }
 export interface FileRouteTypes {
@@ -158,6 +167,7 @@ export interface FileRouteTypes {
     | '/lotes'
     | '/plano'
     | '/usuarios'
+    | '/vendedores'
     | '/ventas'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -173,6 +183,7 @@ export interface FileRouteTypes {
     | '/lotes'
     | '/plano'
     | '/usuarios'
+    | '/vendedores'
     | '/ventas'
   id:
     | '__root__'
@@ -189,6 +200,7 @@ export interface FileRouteTypes {
     | '/_authenticated/lotes'
     | '/_authenticated/plano'
     | '/_authenticated/usuarios'
+    | '/_authenticated/vendedores'
     | '/_authenticated/ventas'
   fileRoutesById: FileRoutesById
 }
@@ -291,6 +303,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedUsuariosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/vendedores': {
+      id: '/_authenticated/vendedores'
+      path: '/vendedores'
+      fullPath: '/vendedores'
+      preLoaderRoute: typeof AuthenticatedVendedoresRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/ventas': {
       id: '/_authenticated/ventas'
       path: '/ventas'
@@ -312,6 +331,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedLotesRoute: typeof AuthenticatedLotesRoute
   AuthenticatedPlanoRoute: typeof AuthenticatedPlanoRoute
   AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
+  AuthenticatedVendedoresRoute: typeof AuthenticatedVendedoresRoute
   AuthenticatedVentasRoute: typeof AuthenticatedVentasRoute
 }
 
@@ -326,6 +346,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedLotesRoute: AuthenticatedLotesRoute,
   AuthenticatedPlanoRoute: AuthenticatedPlanoRoute,
   AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
+  AuthenticatedVendedoresRoute: AuthenticatedVendedoresRoute,
   AuthenticatedVentasRoute: AuthenticatedVentasRoute,
 }
 
