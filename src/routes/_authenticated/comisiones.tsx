@@ -152,7 +152,7 @@ function ComisionesPage() {
 
   async function recalcular() {
     const { error } = await supabase.rpc("recalcular_mes", { _mes: `${mesRecalc}-01` });
-    if (error) return toast.error("No se pudo recalcular", { description: error.message });
+    if (error) { toast.error("No se pudo recalcular", { description: error.message }); return; }
     toast.success("Mes recalculado");
     qc.invalidateQueries();
   }
@@ -366,7 +366,7 @@ function DialogoPagar({ id, onCerrar }: { id: string; onCerrar: () => void }) {
     const { error } = await supabase.from("comision")
       .update({ estado: "pagada", fecha_pago: f, forma_pago: forma, observacion: obs.trim() || null })
       .eq("id", id);
-    if (error) return toast.error("No se pudo registrar", { description: error.message });
+    if (error) { toast.error("No se pudo registrar", { description: error.message }); return; }
     toast.success("Comisión pagada");
     qc.invalidateQueries();
     onCerrar();
@@ -400,7 +400,7 @@ function DialogoMotivo({ id, estado, onCerrar }: { id: string; estado: "anulada"
       ? { estado, anulado: true, motivo_anulacion: motivo.trim() }
       : { estado, motivo_estado: motivo.trim() };
     const { error } = await supabase.from("comision").update(cambios).eq("id", id);
-    if (error) return toast.error("No se pudo guardar", { description: error.message });
+    if (error) { toast.error("No se pudo guardar", { description: error.message }); return; }
     toast.success(estado === "anulada" ? "Anulada" : "Marcada como perdida");
     qc.invalidateQueries();
     onCerrar();
@@ -441,7 +441,7 @@ function DialogoManual({ encargados, onCerrar }: {
       tipo: "manual", encargado_id: enc, venta_id: venta === TODOS ? null : venta,
       monto: Number(monto), observacion: obs.trim() || null,
     });
-    if (error) return toast.error("No se pudo registrar", { description: error.message });
+    if (error) { toast.error("No se pudo registrar", { description: error.message }); return; }
     toast.success("Comisión manual registrada");
     qc.invalidateQueries();
     onCerrar();
