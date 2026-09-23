@@ -37,6 +37,14 @@ export function esAdmin(perfil: Perfil | null | undefined) {
   return perfil?.rol === "admin";
 }
 
+export function puedeComercial(perfil: Perfil | null | undefined) {
+  return perfil?.rol === "admin" || perfil?.rol === "gerente_ventas" || perfil?.rol === "asesor";
+}
+
+export function puedeElegirVendedor(perfil: Perfil | null | undefined) {
+  return perfil?.rol === "admin" || perfil?.rol === "gerente_ventas";
+}
+
 export function puedeEditarEstructura(perfil: Perfil | null | undefined) {
   return perfil?.rol === "admin" || perfil?.rol === "gerente_ventas";
 }
