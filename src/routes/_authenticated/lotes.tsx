@@ -7,6 +7,7 @@ import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
 import { EnlaceLote } from "@/components/EnlaceLote";
+import { etiquetaEstadoLote } from "@/lib/cobranza";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,17 +53,7 @@ function estaPendiente(l: Lote) {
   return CAMPOS_NUMERICOS.some(([campo]) => l[campo] === null || l[campo] === undefined);
 }
 
-const ETIQUETAS_ESTADO: Record<string, string> = {
-  disponible: "Libre",
-  apartado: "Separado",
-  vendido: "Vendido",
-};
-
-function etiquetaEstado(estado: string) {
-  return ETIQUETAS_ESTADO[estado] ?? estado;
-}
-
-type LoteConEstado = Lote & { estado: string };
+type LoteConEstado = Lote & { estado: string; saldo_pendiente: number | null };
 
 export const Route = createFileRoute("/_authenticated/lotes")({
   head: () => ({
@@ -155,16 +146,29 @@ function LotesPage() {
   });
 
   const mapaEstados = useMemo(
-    () => new Map((estados.data ?? []).map((e) => [e.lote_id, e.estado ?? "disponible"])),
+    () =>
+      new Map(
+        (estados.data ?? []).map((e) => [
+          e.lote_id,
+          {
+            estado: e.estado ?? "disponible",
+            saldo: e.saldo_pendiente === null || e.saldo_pendiente === undefined ? null : Number(e.saldo_pendiente),
+          },
+        ]),
+      ),
     [estados.data],
   );
 
   const lotesConEstado = useMemo(
     () =>
-      (lotes.data ?? []).map((l) => ({
-        ...l,
-        estado: mapaEstados.get(l.id) ?? "disponible",
-      })),
+      (lotes.data ?? []).map((l) => {
+        const e = mapaEstados.get(l.id);
+        return {
+          ...l,
+          estado: e?.estado ?? "disponible",
+          saldo_pendiente: e?.saldo ?? null,
+        };
+      }),
     [lotes.data, mapaEstados],
   );
 
@@ -340,7 +344,9 @@ function LotesPage() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{etiquetaEstado(l.estado)}</Badge>
+                    <Badge variant="secondary">
+                      {etiquetaEstadoLote(l.estado, l.saldo_pendiente)}
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-right">
                     {editable && !l.anulado ? (

@@ -5,6 +5,7 @@ import { Minus, Plus, Maximize, Upload, Undo2, SkipForward, Trash2 } from "lucid
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
+import { etiquetaEstadoLote } from "@/lib/cobranza";
 import { EnlaceLote } from "@/components/EnlaceLote";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -195,7 +196,7 @@ function PlanoPage() {
   const estados = useQuery({
     queryKey: ["lote-estado"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("lote_estado").select("lote_id, estado");
+      const { data, error } = await supabase.from("lote_estado").select("lote_id, estado, saldo_pendiente");
       if (error) throw error;
       return data;
     },
@@ -205,6 +206,20 @@ function PlanoPage() {
     const m = new Map<string, string>();
     (estados.data ?? []).forEach((e) => {
       if (e.lote_id) m.set(e.lote_id, e.estado ?? "");
+    });
+    return m;
+  }, [estados.data]);
+
+  const saldoPorLote = useMemo(() => {
+    const m = new Map<string, number | null>();
+    (estados.data ?? []).forEach((e) => {
+      if (e.lote_id)
+        m.set(
+          e.lote_id,
+          e.saldo_pendiente === null || e.saldo_pendiente === undefined
+            ? null
+            : Number(e.saldo_pendiente),
+        );
     });
     return m;
   }, [estados.data]);
@@ -786,8 +801,11 @@ function PlanoPage() {
                     />
                     <Dato etiqueta="Precio de lista" valor={soles(detalle.precio_lista)} />
                     <Dato
-                      etiqueta="Estado"
-                      valor={estadoPorLote.get(detalle.id) ?? "sin estado"}
+                      etiqueta="Estado de venta"
+                      valor={etiquetaEstadoLote(
+                        estadoPorLote.get(detalle.id),
+                        saldoPorLote.get(detalle.id) ?? null,
+                      )}
                     />
                     {pendienteDatos ? (
                       <Badge variant="outline">Datos pendientes</Badge>

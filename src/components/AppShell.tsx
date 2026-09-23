@@ -36,7 +36,7 @@ const ITEMS: Item[] = [
   { etiqueta: "Clientes", icono: Users2, ruta: "/clientes" },
   { etiqueta: "Apartados", icono: Receipt, ruta: "/apartados" },
   { etiqueta: "Ventas", icono: ShoppingCart, ruta: "/ventas" },
-  { etiqueta: "Cobranza", icono: Wallet },
+  { etiqueta: "Cobranza", icono: Wallet, ruta: "/cobranza" },
   { etiqueta: "Comisiones", icono: Percent },
   { etiqueta: "Personal y planilla", icono: Users2 },
   { etiqueta: "Gastos", icono: Receipt },
