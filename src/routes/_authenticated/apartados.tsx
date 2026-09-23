@@ -129,7 +129,7 @@ function ApartadosPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      {vigente ? (
+                      {vigente && comercial ? (
                         <Button
                           size="sm"
                           onClick={() =>
