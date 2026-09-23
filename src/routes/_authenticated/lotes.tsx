@@ -266,10 +266,6 @@ function LotesPage() {
               <TableHead>Lote</TableHead>
               <TableHead className="text-right">Área m²</TableHead>
               <TableHead className="text-right">Precio de lista</TableHead>
-              <TableHead className="text-right">Frente</TableHead>
-              <TableHead className="text-right">Fondo</TableHead>
-              <TableHead className="text-right">Lado der.</TableHead>
-              <TableHead className="text-right">Lado izq.</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead />
             </TableRow>
