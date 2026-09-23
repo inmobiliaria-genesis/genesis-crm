@@ -668,13 +668,23 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
             </div>
 
             <div>
-              <p className="mb-2 font-medium">Cronograma</p>
+              <div className="mb-2 flex items-center justify-between">
+                <p className="font-medium">Cronograma</p>
+                {cobra && !v.anulado ? (
+                  <Button size="sm" onClick={() => setRegistrando(true)}>
+                    Registrar pago
+                  </Button>
+                ) : null}
+              </div>
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>N°</TableHead>
                     <TableHead>Vencimiento</TableHead>
                     <TableHead className="text-right">Monto</TableHead>
+                    <TableHead className="text-right">Pagado</TableHead>
+                    <TableHead className="text-right">Saldo</TableHead>
+                    <TableHead>Estado</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -683,16 +693,104 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
                       <TableCell className="num">{c.numero === 0 ? "Inicial" : c.numero}</TableCell>
                       <TableCell>{fecha(c.fecha_vencimiento)}</TableCell>
                       <TableCell className="num text-right">{soles(c.monto_vigente)}</TableCell>
+                      <TableCell className="num text-right">{soles(c.monto_pagado)}</TableCell>
+                      <TableCell className="num text-right">{soles(Math.max(c.saldo, 0))}</TableCell>
+                      <TableCell>
+                        <Badge variant={c.estado === "pagada" ? "secondary" : "outline"}>
+                          {ETIQUETA_CUOTA[c.estado] ?? c.estado}
+                        </Badge>{" "}
+                        {c.vencida ? <Badge variant="destructive">Vencida</Badge> : null}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
               <p className="mt-2 text-xs text-muted-foreground">
-                Total del cronograma: <span className="num">{soles(total)}</span>
+                Total del cronograma: <span className="num">{soles(total)}</span> · Saldo por
+                cobrar: <span className="num">{soles(saldoTotal)}</span>
               </p>
+            </div>
+
+            <div>
+              <p className="mb-2 font-medium">Pagos registrados</p>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead className="text-right">Monto</TableHead>
+                    <TableHead>Método</TableHead>
+                    <TableHead>Aplicado a</TableHead>
+                    <TableHead className="text-right"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {(pagos.data ?? []).length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground">
+                        Todavía no hay pagos.
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                  {(pagos.data ?? []).map((p) => (
+                    <TableRow key={p.id} className={p.anulado ? "opacity-50" : ""}>
+                      <TableCell>{fecha(p.fecha)}</TableCell>
+                      <TableCell className="num text-right">{soles(p.monto)}</TableCell>
+                      <TableCell className="capitalize">
+                        {p.metodo}
+                        {p.numero_operacion ? (
+                          <span className="block text-xs text-muted-foreground">
+                            {p.numero_operacion}
+                          </span>
+                        ) : null}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {(p.aplicaciones ?? [])
+                          .filter((a) => !a.anulado)
+                          .map((a) =>
+                            `${a.cuota?.numero === 0 ? "Inicial" : `Cuota ${a.cuota?.numero}`}: ${soles(a.monto_aplicado)}`,
+                          )
+                          .join(" · ") || "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {p.anulado ? (
+                          <Badge variant="destructive">Anulado</Badge>
+                        ) : cobra ? (
+                          <Button size="sm" variant="ghost" onClick={() => setAnulando(p.id)}>
+                            Anular
+                          </Button>
+                        ) : null}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           </div>
         ) : null}
+
+        {registrando && ventaId ? (
+          <DialogoPago ventaId={ventaId} onCerrar={() => setRegistrando(false)} />
+        ) : null}
+
+        <Dialog open={!!anulando} onOpenChange={(o) => (!o ? setAnulando(null) : null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Anular pago</DialogTitle>
+            </DialogHeader>
+            <div>
+              <Label>Motivo de la anulación</Label>
+              <Textarea rows={3} value={motivo} onChange={(e) => setMotivo(e.target.value)} />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setAnulando(null)}>
+                Cancelar
+              </Button>
+              <Button variant="destructive" onClick={anularPago}>
+                Anular pago
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </SheetContent>
     </Sheet>
   );
