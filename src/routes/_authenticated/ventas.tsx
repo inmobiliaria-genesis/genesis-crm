@@ -43,7 +43,7 @@ import {
   type Cliente,
 } from "@/lib/ventas";
 import { fecha, hoyLima, soles } from "@/lib/format";
-import { usePerfil } from "@/lib/sesion";
+import { usePerfil, puedeComercial, puedeElegirVendedor } from "@/lib/sesion";
 
 type Busqueda = {
   venta?: string | undefined;
@@ -78,6 +78,7 @@ function VentasPage() {
   const [manzana, setManzana] = useState("todas");
   const [estado, setEstado] = useState("activas");
   const perfiles = usePerfilesActivos();
+  const { data: perfilSesion } = usePerfil();
 
   useEffect(() => {
     if (busqueda.nuevoLote) setAlta(true);
@@ -121,7 +122,11 @@ function VentasPage() {
     <AppShell
       titulo="Ventas"
       descripcion="Contratos de venta y su cronograma de cuotas"
-      acciones={<Button onClick={() => setAlta(true)}>+ Nueva venta</Button>}
+      acciones={
+        puedeComercial(perfilSesion) ? (
+          <Button onClick={() => setAlta(true)}>+ Nueva venta</Button>
+        ) : null
+      }
     >
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-end gap-3">
@@ -435,18 +440,30 @@ function DialogoVenta({
 
           <div>
             <Label>Vendedor</Label>
-            <Select value={vendedorId} onValueChange={setVendedorId}>
+            <Select
+              value={vendedorId}
+              onValueChange={setVendedorId}
+              disabled={!puedeElegirVendedor(perfil)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Elige el vendedor" />
               </SelectTrigger>
               <SelectContent>
-                {perfiles.data?.map((p) => (
+                {(puedeElegirVendedor(perfil)
+                  ? (perfiles.data ?? [])
+                  : (perfiles.data ?? []).filter((p) => p.id === perfil?.id)
+                ).map((p) => (
                   <SelectItem key={p.id} value={p.id}>
                     {p.nombre}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {!puedeElegirVendedor(perfil) ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Como asesor, la venta se registra a tu nombre.
+              </p>
+            ) : null}
           </div>
           <div>
             <Label>Condición</Label>

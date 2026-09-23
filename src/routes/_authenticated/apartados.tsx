@@ -35,6 +35,7 @@ import {
 import { SelectorCliente } from "@/components/SelectorCliente";
 import { nombreCliente, useLotesConEstado, type Cliente } from "@/lib/ventas";
 import { fecha, hoyLima, soles } from "@/lib/format";
+import { usePerfil, puedeComercial } from "@/lib/sesion";
 
 export const Route = createFileRoute("/_authenticated/apartados")({
   head: () => ({
@@ -53,6 +54,8 @@ export const Route = createFileRoute("/_authenticated/apartados")({
 function ApartadosPage() {
   const navigate = useNavigate();
   const [alta, setAlta] = useState(false);
+  const { data: perfilSesion } = usePerfil();
+  const comercial = puedeComercial(perfilSesion);
 
   const reservas = useQuery({
     queryKey: ["reservas"],
@@ -74,7 +77,9 @@ function ApartadosPage() {
     <AppShell
       titulo="Apartados"
       descripcion="Reservas de lotes con fecha límite"
-      acciones={<Button onClick={() => setAlta(true)}>+ Nuevo apartado</Button>}
+      acciones={
+        comercial ? <Button onClick={() => setAlta(true)}>+ Nuevo apartado</Button> : null
+      }
     >
       <Card>
         <CardHeader>
@@ -124,7 +129,7 @@ function ApartadosPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      {vigente ? (
+                      {vigente && comercial ? (
                         <Button
                           size="sm"
                           onClick={() =>
