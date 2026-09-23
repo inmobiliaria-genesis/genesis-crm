@@ -304,19 +304,20 @@ function LotesPage() {
               <TableHead className="text-right">Área m²</TableHead>
               <TableHead className="text-right">Precio de lista</TableHead>
               <TableHead>Estado</TableHead>
+              <TableHead>Estado de venta</TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
           <TableBody>
           {lotes.isLoading ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                <TableCell colSpan={7} className="text-center text-muted-foreground">
                   Cargando…
                 </TableCell>
               </TableRow>
             ) : filtrados.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground">
+                <TableCell colSpan={7} className="text-center text-muted-foreground">
                   No hay lotes con estos filtros.
                 </TableCell>
               </TableRow>
