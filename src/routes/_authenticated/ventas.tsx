@@ -43,7 +43,9 @@ import {
   type Cliente,
 } from "@/lib/ventas";
 import { fecha, hoyLima, soles } from "@/lib/format";
-import { usePerfil, puedeComercial, puedeElegirVendedor } from "@/lib/sesion";
+import { usePerfil, puedeComercial, puedeElegirVendedor, puedeCobrar } from "@/lib/sesion";
+import { DialogoPago } from "@/components/PagoForm";
+import { ETIQUETA_CUOTA, useCuotasDeVenta, usePagosDeVenta } from "@/lib/cobranza";
 
 type Busqueda = {
   venta?: string | undefined;
