@@ -494,10 +494,6 @@ const COLUMNAS_PLANTILLA = [
   "numero",
   "area_m2",
   "precio_lista",
-  "frente_m",
-  "fondo_m",
-  "lado_derecho_m",
-  "lado_izquierdo_m",
   "notas",
 ];
 
