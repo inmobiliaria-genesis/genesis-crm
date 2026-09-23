@@ -172,10 +172,7 @@ function LotesPage() {
               onListo={() => qc.invalidateQueries({ queryKey: ["lotes"] })}
             />
             {esAdmin(perfil) ? (
-              <ImportarExcel
-                manzanas={manzanas.data ?? []}
-                onListo={() => qc.invalidateQueries({ queryKey: ["lotes"] })}
-              />
+              <ImportarExcel onListo={() => qc.invalidateQueries({ queryKey: ["lotes"] })} />
             ) : null}
           </>
         ) : null
