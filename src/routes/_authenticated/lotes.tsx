@@ -643,9 +643,8 @@ function ImportarExcel({ onListo }: { onListo: () => void }) {
         <DialogHeader>
           <DialogTitle>Importar lotes desde Excel</DialogTitle>
           <DialogDescription>
-            Columnas: etapa, manzana, numero, area_m2, precio_lista, frente_m, fondo_m,
-            lado_derecho_m, lado_izquierdo_m, notas. Un archivo puede mezclar varias etapas y
-            manzanas. Los lotes ya existentes se omiten.
+            Columnas: etapa, manzana, numero, area_m2, precio_lista, notas. Un archivo puede mezclar
+            varias etapas y manzanas. Los lotes ya existentes se omiten.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
