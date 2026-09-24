@@ -37,19 +37,29 @@ export function esAdmin(perfil: Perfil | null | undefined) {
   return perfil?.rol === "admin";
 }
 
+/** Admin, gerente de ventas y socio: el socio edita exactamente lo mismo que el gerente. */
+export function esGestion(perfil: Perfil | null | undefined) {
+  return perfil?.rol === "admin" || perfil?.rol === "gerente_ventas" || perfil?.rol === "socio";
+}
+
+/** Admin y socio pueden ver pantallas administrativas (solo admin edita). */
+export function puedeVerAdmin(perfil: Perfil | null | undefined) {
+  return perfil?.rol === "admin" || perfil?.rol === "socio";
+}
+
 export function puedeComercial(perfil: Perfil | null | undefined) {
-  return perfil?.rol === "admin" || perfil?.rol === "gerente_ventas" || perfil?.rol === "asesor";
+  return esGestion(perfil) || perfil?.rol === "asesor";
 }
 
 /** Registrar y anular pagos: admin, gerente de ventas y cobranza. */
 export function puedeCobrar(perfil: Perfil | null | undefined) {
-  return perfil?.rol === "admin" || perfil?.rol === "gerente_ventas" || perfil?.rol === "cobranza";
+  return esGestion(perfil) || perfil?.rol === "cobranza";
 }
 
 export function puedeElegirVendedor(perfil: Perfil | null | undefined) {
-  return perfil?.rol === "admin" || perfil?.rol === "gerente_ventas";
+  return esGestion(perfil);
 }
 
 export function puedeEditarEstructura(perfil: Perfil | null | undefined) {
-  return perfil?.rol === "admin" || perfil?.rol === "gerente_ventas";
+  return esGestion(perfil);
 }

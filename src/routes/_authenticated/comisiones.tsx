@@ -72,7 +72,7 @@ function mesDe(c: { mes: string | null; fecha_generada: string; venta?: { fecha_
 function ComisionesPage() {
   const { data: perfil, isLoading } = usePerfil();
   const admin = perfil?.rol === "admin";
-  const puedeVer = perfil && perfil.rol !== "cobranza" && perfil.rol !== "socio";
+  const puedeVer = perfil && perfil.rol !== "cobranza";
   const qc = useQueryClient();
   const vendedores = useVendedores();
   const [fEnc, setFEnc] = useState(TODOS);
