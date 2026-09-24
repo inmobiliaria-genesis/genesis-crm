@@ -30,7 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { usePerfil, esAdmin } from "@/lib/sesion";
-import { soles, numero } from "@/lib/format";
+import { soles, numero, cantidad } from "@/lib/format";
 import { useColores, colorDe, esForma, type Forma } from "@/lib/plano";
 
 export const Route = createFileRoute("/_authenticated/plano")({
@@ -599,7 +599,7 @@ function PlanoPage() {
             </span>
           ))}
           <span className="ml-auto text-xs text-muted-foreground">
-            {marcadores.length} lotes en el plano · {sinUbicar.length} sin ubicar
+            {cantidad(marcadores.length, "lotes")} en el plano · {sinUbicar.length} sin ubicar
           </span>
         </div>
 
@@ -663,7 +663,7 @@ function PlanoPage() {
                 <Undo2 className="mr-1 h-4 w-4" /> Deshacer último
               </Button>
               <p className="pb-2 text-sm text-muted-foreground">
-                {manzanaEdicion ? `${totalManzana.ubicados} de ${totalManzana.total} lotes ubicados` : "Elige una manzana"}
+                {manzanaEdicion ? `${totalManzana.ubicados} de ${cantidad(totalManzana.total, "lotes")} ubicados` : "Elige una manzana"}
                 {loteObjetivo ? ` · siguiente: lote ${loteObjetivo.numero}` : " · nada pendiente"}
                 {rectParcial ? " · marca la esquina opuesta" : ""}
               </p>

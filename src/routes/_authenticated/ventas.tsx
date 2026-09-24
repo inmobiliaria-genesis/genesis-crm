@@ -41,7 +41,7 @@ import {
   useLotesConEstado,
   type Cliente,
 } from "@/lib/ventas";
-import { fecha, hoyLima, soles } from "@/lib/format";
+import { fecha, hoyLima, soles, cantidad } from "@/lib/format";
 import { usePerfil, puedeComercial, puedeElegirVendedor, puedeCobrar } from "@/lib/sesion";
 import { ETIQUETA_ORIGEN, nombreVendedor, useVendedores } from "@/lib/vendedores";
 import { DialogoPago, DialogoRegularizar } from "@/components/PagoForm";
@@ -179,7 +179,7 @@ function VentasPage() {
                     <TableCell>{fecha(v.fecha_venta)}</TableCell>
                     <TableCell className="capitalize">
                       {v.condicion}
-                      {v.condicion === "financiado" ? ` · ${v.plazo_meses} cuotas` : ""}
+                      {v.condicion === "financiado" ? ` · ${cantidad(v.plazo_meses, "cuotas")}` : ""}
                     </TableCell>
                     <TableCell className="num text-right">{soles(v.precio_acordado)}</TableCell>
                     <TableCell>
@@ -694,7 +694,7 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
         monto: Number(p.monto),
         metodo: p.metodo,
         operacion: p.notas,
-        aplicado: apl.length > 3 ? `${apl.length} cuotas` : textos.join(" · "),
+        aplicado: apl.length > 3 ? cantidad(apl.length, "cuotas") : textos.join(" · "),
         anulado: p.anulado,
       };
       grupos.set(k, fila);
@@ -715,7 +715,7 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
       });
     }
   }
-  for (const g of grupos.values()) if (g.cantidad > 1) g.aplicado = `${g.cantidad} cuotas`;
+  for (const g of grupos.values()) if (g.cantidad > 1) g.aplicado = cantidad(g.cantidad, "cuotas");
 
   async function anularPago() {
     if (!anulando) return;

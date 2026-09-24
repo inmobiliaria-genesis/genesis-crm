@@ -39,7 +39,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { usePerfil, puedeEditarEstructura, esAdmin } from "@/lib/sesion";
-import { soles, numero } from "@/lib/format";
+import { soles, numero, cantidad } from "@/lib/format";
 import type { Database } from "@/integrations/supabase/types";
 
 type Lote = Database["public"]["Tables"]["lote"]["Row"];
@@ -200,7 +200,7 @@ function LotesPage() {
   return (
     <AppShell
       titulo="Lotes"
-      descripcion={`${filtrados.length} lote(s) · ${pendientes} con datos pendientes`}
+      descripcion={`${cantidad(filtrados.length, "lotes")} · ${pendientes} con datos pendientes`}
       acciones={
         editable ? (
           <>
@@ -416,7 +416,7 @@ function AgregarLotes({
     const { error } = await supabase.from("lote").insert(filas);
     setGuardando(false);
     if (error) { toast.error("No se pudieron crear los lotes", { description: error.message }); return; }
-    toast.success(`${filas.length} lote(s) creados`);
+    toast.success(`${cantidad(filas.length, "lotes")} creados`);
     setAbierto(false);
     onListo();
   }
