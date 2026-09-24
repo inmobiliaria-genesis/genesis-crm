@@ -29,7 +29,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { fecha, hoyLima, soles } from "@/lib/format";
+import { fecha, hoyLima, soles, cantidad } from "@/lib/format";
 import { METODOS_PAGO, useCuotasDeVenta } from "@/lib/cobranza";
 
 function redondear(n: number) {
@@ -277,7 +277,7 @@ export function DialogoRegularizar({
   const total = redondear(pendientes.reduce((t, c) => t + c.saldo, 0));
   const vista =
     modo === "unico"
-      ? [{ fecha: fechaPago, monto: total, detalle: `${pendientes.length} cuotas` }]
+      ? [{ fecha: fechaPago, monto: total, detalle: cantidad(pendientes.length, "cuotas") }]
       : pendientes.map((c) => ({
           fecha: c.fecha_vencimiento > hoy ? hoy : c.fecha_vencimiento,
           monto: c.saldo,
@@ -314,7 +314,7 @@ export function DialogoRegularizar({
         </DialogHeader>
         <p className="text-sm">
           Saldo pendiente: <span className="num font-semibold">{soles(total)}</span> · Se cubrirán{" "}
-          {pendientes.length} cuotas
+          {cantidad(pendientes.length, "cuotas")}
           {pendientes.some((c) => c.numero === 0) ? " (incluida la inicial)" : ""}.
         </p>
         <div className="grid gap-3 sm:grid-cols-2">

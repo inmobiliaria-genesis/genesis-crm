@@ -35,7 +35,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { usePerfil, esAdmin, NOMBRE_ROL, ROLES, type Rol } from "@/lib/sesion";
+import { usePerfil, esAdmin, puedeVerAdmin, NOMBRE_ROL, ROLES, type Rol } from "@/lib/sesion";
 import { fecha } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/usuarios")({
@@ -56,7 +56,7 @@ function UsuariosPage() {
 
   const usuarios = useQuery({
     queryKey: ["usuarios"],
-    enabled: esAdmin(perfil),
+    enabled: puedeVerAdmin(perfil),
     queryFn: async () => {
       const { data, error } = await supabase.from("perfil").select("*").order("creado_en");
       if (error) throw error;
@@ -78,7 +78,7 @@ function UsuariosPage() {
     qc.invalidateQueries({ queryKey: ["usuarios"] });
   }
 
-  if (!isLoading && !esAdmin(perfil)) {
+  if (!isLoading && !puedeVerAdmin(perfil)) {
     return (
       <AppShell titulo="Usuarios">
         <p className="text-sm text-muted-foreground">Solo un administrador puede ver esta pantalla.</p>
@@ -90,7 +90,7 @@ function UsuariosPage() {
     <AppShell
       titulo="Usuarios"
       descripcion="Acceso y roles del equipo"
-      acciones={<NuevoUsuario onListo={() => qc.invalidateQueries({ queryKey: ["usuarios"] })} />}
+      acciones={esAdmin(perfil) && <NuevoUsuario onListo={() => qc.invalidateQueries({ queryKey: ["usuarios"] })} />}
     >
       <div className="rounded-lg border border-border bg-card">
         <Table>
@@ -108,7 +108,7 @@ function UsuariosPage() {
               <TableRow key={u.id}>
                 <TableCell className="font-medium">{u.nombre}</TableCell>
                 <TableCell>
-                  <Select value={u.rol} onValueChange={(v) => cambiarRol(u.id, v as Rol)}>
+                  <Select disabled={!esAdmin(perfil)} value={u.rol} onValueChange={(v) => cambiarRol(u.id, v as Rol)}>
                     <SelectTrigger className="w-48">
                       <SelectValue />
                     </SelectTrigger>
@@ -133,7 +133,7 @@ function UsuariosPage() {
                   <Switch
                     checked={u.activo}
                     onCheckedChange={(v) => cambiarEstado(u.id, v)}
-                    disabled={u.user_id === perfil?.user_id}
+                    disabled={!esAdmin(perfil) || u.user_id === perfil?.user_id}
                   />
                 </TableCell>
               </TableRow>

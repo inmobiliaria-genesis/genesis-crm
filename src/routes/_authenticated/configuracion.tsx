@@ -27,8 +27,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { usePerfil, esAdmin } from "@/lib/sesion";
-import { fecha, numero, hoyLima } from "@/lib/format";
+import { usePerfil, esAdmin, puedeVerAdmin } from "@/lib/sesion";
+import { fecha, conUnidad, hoyLima } from "@/lib/format";
+
+const NOMBRE_UNIDAD: Record<string, string> = { soles: "S/", porcentaje: "%", lotes: "lotes", cuotas: "cuotas", si_no: "1 = Sí, 0 = No" };
 
 export const Route = createFileRoute("/_authenticated/configuracion")({
   head: () => ({
@@ -48,11 +50,12 @@ function ConfiguracionPage() {
 
   const config = useQuery({
     queryKey: ["config"],
-    enabled: esAdmin(perfil),
+    enabled: puedeVerAdmin(perfil),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("config")
         .select("*")
+        .eq("activo", true)
         .order("clave")
         .order("vigente_desde", { ascending: false });
       if (error) throw error;
@@ -70,7 +73,7 @@ function ConfiguracionPage() {
     return [...mapa.entries()];
   }, [config.data]);
 
-  if (!isLoading && !esAdmin(perfil)) {
+  if (!isLoading && !puedeVerAdmin(perfil)) {
     return (
       <AppShell titulo="Configuración">
         <p className="text-sm text-muted-foreground">Solo un administrador puede ver esta pantalla.</p>
@@ -87,7 +90,7 @@ function ConfiguracionPage() {
           <Button asChild size="sm" variant="outline">
             <Link to="/colores-mapa">Colores del mapa</Link>
           </Button>
-          <NuevoValor onListo={() => qc.invalidateQueries({ queryKey: ["config"] })} />
+          {esAdmin(perfil) ? <NuevoValor onListo={() => qc.invalidateQueries({ queryKey: ["config"] })} /> : null}
         </>
       }
     >
@@ -104,16 +107,17 @@ function ConfiguracionPage() {
                 <div>
                   <CardTitle className="text-base">{clave}</CardTitle>
                   <p className="num mt-1 text-2xl font-semibold">
-                    {actual ? numero(actual.valor, 4) : "—"}
+                    {actual ? conUnidad(actual.valor, actual.unidad) : "—"}
                   </p>
                   <p className="text-xs text-muted-foreground">
                     Vigente desde {actual ? fecha(actual.vigente_desde) : "—"}
                   </p>
                 </div>
-                <NuevoValor
+                {esAdmin(perfil) ? <NuevoValor
                   claveFija={clave}
+                  unidad={actual?.unidad ?? filas[0]?.unidad ?? null}
                   onListo={() => qc.invalidateQueries({ queryKey: ["config"] })}
-                />
+                /> : null}
               </CardHeader>
               <CardContent>
                 <Table>
@@ -129,7 +133,7 @@ function ConfiguracionPage() {
                     {filas.map((f) => (
                       <TableRow key={f.id}>
                         <TableCell className="num">{fecha(f.vigente_desde)}</TableCell>
-                        <TableCell className="num text-right">{numero(f.valor, 4)}</TableCell>
+                        <TableCell className="num text-right">{conUnidad(f.valor, f.unidad)}</TableCell>
                         <TableCell>{fecha(f.creado_en)}</TableCell>
                         <TableCell>
                           {f.anulado ? (
@@ -153,7 +157,7 @@ function ConfiguracionPage() {
   );
 }
 
-function NuevoValor({ claveFija, onListo }: { claveFija?: string; onListo: () => void }) {
+function NuevoValor({ claveFija, unidad, onListo }: { claveFija?: string; unidad?: string | null; onListo: () => void }) {
   const [abierto, setAbierto] = useState(false);
   const [clave, setClave] = useState(claveFija ?? "");
   const [valor, setValor] = useState("");
@@ -162,7 +166,7 @@ function NuevoValor({ claveFija, onListo }: { claveFija?: string; onListo: () =>
   async function guardar() {
     const { error } = await supabase
       .from("config")
-      .insert({ clave, valor: Number(valor), vigente_desde: desde });
+      .insert({ clave, valor: Number(valor), vigente_desde: desde, unidad: unidad ?? null });
     if (error) { toast.error("No se pudo guardar", { description: error.message }); return; }
     toast.success("Valor registrado");
     setAbierto(false);
@@ -196,7 +200,11 @@ function NuevoValor({ claveFija, onListo }: { claveFija?: string; onListo: () =>
           </div>
           <div className="space-y-1">
             <Label>Valor</Label>
-            <Input type="number" step="0.0001" value={valor} onChange={(e) => setValor(e.target.value)} />
+            <div className="flex items-center gap-2">
+              {unidad === "soles" ? <span className="text-sm text-muted-foreground">S/</span> : null}
+              <Input type="number" step="any" value={valor} onChange={(e) => setValor(e.target.value)} />
+              {unidad && unidad !== "soles" ? <span className="whitespace-nowrap text-sm text-muted-foreground">{NOMBRE_UNIDAD[unidad]}</span> : null}
+            </div>
           </div>
           <div className="space-y-1">
             <Label>Vigente desde</Label>

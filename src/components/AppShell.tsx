@@ -38,19 +38,19 @@ const ITEMS: Item[] = [
   { etiqueta: "Apartados", icono: Receipt, ruta: "/apartados" },
   { etiqueta: "Ventas", icono: ShoppingCart, ruta: "/ventas" },
   { etiqueta: "Cobranza", icono: Wallet, ruta: "/cobranza" },
-  { etiqueta: "Comisiones", icono: Percent, ruta: "/comisiones", roles: ["admin", "gerente_ventas", "asesor"] },
+  { etiqueta: "Comisiones", icono: Percent, ruta: "/comisiones", roles: ["admin", "gerente_ventas", "socio", "asesor"] },
   { etiqueta: "Personal y planilla", icono: Users2 },
   { etiqueta: "Gastos", icono: Receipt },
   { etiqueta: "Reportes", icono: BarChart3 },
-  { etiqueta: "Configuración", icono: Settings, ruta: "/configuracion", roles: ["admin"] },
+  { etiqueta: "Configuración", icono: Settings, ruta: "/configuracion", roles: ["admin", "socio"] },
   {
     etiqueta: "Colores del mapa",
     icono: Palette,
     ruta: "/colores-mapa",
-    roles: ["admin"],
+    roles: ["admin", "socio"],
     sub: true,
   },
-  { etiqueta: "Usuarios", icono: UserCog, ruta: "/usuarios", roles: ["admin"] },
+  { etiqueta: "Usuarios", icono: UserCog, ruta: "/usuarios", roles: ["admin", "socio"] },
   { etiqueta: "Bitácora", icono: ScrollText, ruta: "/bitacora", roles: ["admin", "socio"] },
 ];
 
