@@ -262,6 +262,7 @@ export type Database = {
       }
       config: {
         Row: {
+          activo: boolean
           anulado: boolean
           anulado_en: string | null
           anulado_por: string | null
@@ -272,10 +273,12 @@ export type Database = {
           modificado_en: string
           modificado_por: string | null
           motivo_anulacion: string | null
+          unidad: string | null
           valor: number
           vigente_desde: string
         }
         Insert: {
+          activo?: boolean
           anulado?: boolean
           anulado_en?: string | null
           anulado_por?: string | null
@@ -286,10 +289,12 @@ export type Database = {
           modificado_en?: string
           modificado_por?: string | null
           motivo_anulacion?: string | null
+          unidad?: string | null
           valor: number
           vigente_desde?: string
         }
         Update: {
+          activo?: boolean
           anulado?: boolean
           anulado_en?: string | null
           anulado_por?: string | null
@@ -300,6 +305,7 @@ export type Database = {
           modificado_en?: string
           modificado_por?: string | null
           motivo_anulacion?: string | null
+          unidad?: string | null
           valor?: number
           vigente_desde?: string
         }
