@@ -370,6 +370,169 @@ export type Database = {
           },
         ]
       }
+      desistimiento: {
+        Row: {
+          aceptacion_disolucion: boolean
+          anulado: boolean
+          anulado_en: string | null
+          anulado_por: string | null
+          base_calculo: number
+          carta_prenotarial: boolean
+          creado_en: string
+          creado_por: string | null
+          descontar_comision: boolean | null
+          estado: string
+          fecha_aceptacion_disolucion: string | null
+          fecha_carta_prenotarial: string | null
+          fecha_inicio: string
+          fecha_limite_devolucion: string | null
+          fecha_solicitud_liberacion: string | null
+          id: string
+          modificado_en: string
+          modificado_por: string | null
+          monto_comision_descontado: number
+          monto_devolver: number
+          monto_retiene_empresa: number
+          motivo_anulacion: string | null
+          motivo_cambio: string | null
+          observacion: string | null
+          porcentaje_devolucion: number | null
+          solicitud_liberacion: boolean
+          total_abonado: number
+          venta_id: string
+        }
+        Insert: {
+          aceptacion_disolucion?: boolean
+          anulado?: boolean
+          anulado_en?: string | null
+          anulado_por?: string | null
+          base_calculo?: number
+          carta_prenotarial?: boolean
+          creado_en?: string
+          creado_por?: string | null
+          descontar_comision?: boolean | null
+          estado?: string
+          fecha_aceptacion_disolucion?: string | null
+          fecha_carta_prenotarial?: string | null
+          fecha_inicio?: string
+          fecha_limite_devolucion?: string | null
+          fecha_solicitud_liberacion?: string | null
+          id?: string
+          modificado_en?: string
+          modificado_por?: string | null
+          monto_comision_descontado?: number
+          monto_devolver?: number
+          monto_retiene_empresa?: number
+          motivo_anulacion?: string | null
+          motivo_cambio?: string | null
+          observacion?: string | null
+          porcentaje_devolucion?: number | null
+          solicitud_liberacion?: boolean
+          total_abonado?: number
+          venta_id: string
+        }
+        Update: {
+          aceptacion_disolucion?: boolean
+          anulado?: boolean
+          anulado_en?: string | null
+          anulado_por?: string | null
+          base_calculo?: number
+          carta_prenotarial?: boolean
+          creado_en?: string
+          creado_por?: string | null
+          descontar_comision?: boolean | null
+          estado?: string
+          fecha_aceptacion_disolucion?: string | null
+          fecha_carta_prenotarial?: string | null
+          fecha_inicio?: string
+          fecha_limite_devolucion?: string | null
+          fecha_solicitud_liberacion?: string | null
+          id?: string
+          modificado_en?: string
+          modificado_por?: string | null
+          monto_comision_descontado?: number
+          monto_devolver?: number
+          monto_retiene_empresa?: number
+          motivo_anulacion?: string | null
+          motivo_cambio?: string | null
+          observacion?: string | null
+          porcentaje_devolucion?: number | null
+          solicitud_liberacion?: boolean
+          total_abonado?: number
+          venta_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "desistimiento_venta_id_fkey"
+            columns: ["venta_id"]
+            isOneToOne: false
+            referencedRelation: "venta"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      desistimiento_devolucion: {
+        Row: {
+          anulado: boolean
+          anulado_en: string | null
+          anulado_por: string | null
+          creado_en: string
+          creado_por: string | null
+          desistimiento_id: string
+          fecha: string
+          forma_pago: string
+          id: string
+          modificado_en: string
+          modificado_por: string | null
+          monto: number
+          motivo_anulacion: string | null
+          numero_operacion: string | null
+          observacion: string | null
+        }
+        Insert: {
+          anulado?: boolean
+          anulado_en?: string | null
+          anulado_por?: string | null
+          creado_en?: string
+          creado_por?: string | null
+          desistimiento_id: string
+          fecha: string
+          forma_pago: string
+          id?: string
+          modificado_en?: string
+          modificado_por?: string | null
+          monto: number
+          motivo_anulacion?: string | null
+          numero_operacion?: string | null
+          observacion?: string | null
+        }
+        Update: {
+          anulado?: boolean
+          anulado_en?: string | null
+          anulado_por?: string | null
+          creado_en?: string
+          creado_por?: string | null
+          desistimiento_id?: string
+          fecha?: string
+          forma_pago?: string
+          id?: string
+          modificado_en?: string
+          modificado_por?: string | null
+          monto?: number
+          motivo_anulacion?: string | null
+          numero_operacion?: string | null
+          observacion?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "desistimiento_devolucion_desistimiento_id_fkey"
+            columns: ["desistimiento_id"]
+            isOneToOne: false
+            referencedRelation: "desistimiento"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       etapa: {
         Row: {
           anulado: boolean
@@ -1078,6 +1241,7 @@ export type Database = {
           condicion: string
           creado_en: string
           creado_por: string | null
+          desistida: boolean
           encargado_id: string | null
           es_historica: boolean
           fecha_firma: string | null
@@ -1107,6 +1271,7 @@ export type Database = {
           condicion: string
           creado_en?: string
           creado_por?: string | null
+          desistida?: boolean
           encargado_id?: string | null
           es_historica?: boolean
           fecha_firma?: string | null
@@ -1136,6 +1301,7 @@ export type Database = {
           condicion?: string
           creado_en?: string
           creado_por?: string | null
+          desistida?: boolean
           encargado_id?: string | null
           es_historica?: boolean
           fecha_firma?: string | null
@@ -1273,6 +1439,7 @@ export type Database = {
         Row: {
           cuota_id: string | null
           estado: string | null
+          exigible: boolean | null
           monto_pagado: number | null
           monto_vigente: number | null
           saldo: number | null
@@ -1282,16 +1449,19 @@ export type Database = {
       }
       lote_estado: {
         Row: {
+          en_desistimiento: boolean | null
           estado: string | null
           lote_id: string | null
           saldo_pendiente: number | null
         }
         Insert: {
+          en_desistimiento?: never
           estado?: never
           lote_id?: string | null
           saldo_pendiente?: never
         }
         Update: {
+          en_desistimiento?: never
           estado?: never
           lote_id?: string | null
           saldo_pendiente?: never
@@ -1338,6 +1508,23 @@ export type Database = {
           fecha_vencimiento: string
           monto: number
           numero: number
+        }[]
+      }
+      simular_desistimiento: {
+        Args: {
+          _descontar: boolean
+          _fecha: string
+          _porcentaje: number
+          _venta_id: string
+        }
+        Returns: {
+          base_calculo: number
+          descontar_comision: boolean
+          monto_comision_descontado: number
+          monto_devolver: number
+          monto_retiene_empresa: number
+          porcentaje_devolucion: number
+          total_abonado: number
         }[]
       }
     }
