@@ -437,6 +437,7 @@ function DialogoVenta({
         fecha_venta: fechaVenta,
         fecha_firma: fechaFirma || null,
         encargado_id: encargadoId,
+        motivo_cambio_encargado: encFijo && encargadoId !== encFijo ? motivoEncargado.trim() || null : null,
         origen,
         promotor_id: origen === "promotor" && promotorId !== "ninguno" ? promotorId : null,
         condicion,
@@ -556,7 +557,11 @@ function DialogoVenta({
           </div>
           <div>
             <Label>Encargado</Label>
-            <Select value={encargadoId} onValueChange={setEncargadoId}>
+            <Select
+              value={encargadoId}
+              onValueChange={setEncargadoId}
+              disabled={!!encFijo && perfil?.rol !== "admin"}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Elige el encargado" />
               </SelectTrigger>
@@ -566,10 +571,17 @@ function DialogoVenta({
                 ))}
               </SelectContent>
             </Select>
-            {!puedeElegirVendedor(perfil) ? (
+            {encFijo ? (
               <p className="mt-1 text-xs text-muted-foreground">
-                Como asesor, solo puedes elegir un encargado vinculado a tu cuenta.
+                Este lote viene de un apartado registrado por un asesor: el encargado es su vendedor vinculado.
+                {perfil?.rol === "admin" ? " Solo puedes cambiarlo indicando un motivo." : ""}
               </p>
+            ) : null}
+            {encFijo && encargadoId !== encFijo ? (
+              <div className="mt-2">
+                <Label>Motivo del cambio de encargado</Label>
+                <Input value={motivoEncargado} onChange={(e) => setMotivoEncargado(e.target.value)} />
+              </div>
             ) : null}
           </div>
           <div>
