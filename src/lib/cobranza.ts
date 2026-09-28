@@ -4,7 +4,24 @@ import type { Database } from "@/integrations/supabase/types";
 
 export type Pago = Database["public"]["Tables"]["pago"]["Row"];
 
-export const METODOS_PAGO = ["efectivo", "transferencia", "cheque", "tarjeta"] as const;
+export const METODOS_PAGO = ["transferencia", "efectivo", "yape", "plin"] as const;
+
+export const ETIQUETA_METODO: Record<string, string> = {
+  transferencia: "Transferencia",
+  efectivo: "Efectivo",
+  yape: "Yape",
+  plin: "Plin",
+};
+
+/** Etiqueta del método; "Sin dato" si el registro no lo tiene. */
+export function etiquetaMetodo(m: string | null | undefined): string {
+  return m ? (ETIQUETA_METODO[m] ?? m) : "Sin dato";
+}
+
+/** Solo transferencia, Yape y Plin llevan código de operación. */
+export function llevaOperacion(m: string | null | undefined): boolean {
+  return m === "transferencia" || m === "yape" || m === "plin";
+}
 
 export const ETIQUETA_CUOTA: Record<string, string> = {
   pagada: "Pagada",
