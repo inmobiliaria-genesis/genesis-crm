@@ -96,7 +96,7 @@ export function DialogoCliente({
   onCerrar: () => void;
   cliente?: Cliente | null;
   onGuardado?: (c: Cliente) => void;
-  inicial?: { nombres?: string; telefono1?: string; origen?: OrigenLead };
+  inicial?: { nombres?: string; telefono1?: string; origen?: OrigenLead } | undefined;
 }) {
   const qc = useQueryClient();
   const [f, setF] = useState<Borrador>(
