@@ -21,13 +21,13 @@ export function inicioMes(mes: string): string {
 }
 
 export function finMes(mes: string): string {
-  const [a, m] = mes.split("-").map(Number);
+  const [a = 2000, m = 1] = mes.split("-").map(Number);
   const d = new Date(Date.UTC(a, m, 1));
   return d.toISOString().slice(0, 10);
 }
 
 export function nombreMes(mes: string): string {
-  const [a, m] = mes.split("-").map(Number);
+  const [a = 2000, m = 1] = mes.split("-").map(Number);
   const t = new Intl.DateTimeFormat("es-PE", { month: "long", year: "numeric", timeZone: "UTC" }).format(
     new Date(Date.UTC(a, m - 1, 15)),
   );

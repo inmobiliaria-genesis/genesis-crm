@@ -197,7 +197,7 @@ function GastosPage() {
             <Filtro etiqueta="Categoría" valor={fCat} onValor={(v) => { setFCat(v); setFSub(TODOS); }}
               opciones={(cats.data?.categorias ?? []).map((c) => [c.id, c.nombre])} />
             <Filtro etiqueta="Subcategoría" valor={fSub} onValor={setFSub} opciones={subsFiltro.map((s) => [s.id, s.nombre])} />
-            <Filtro etiqueta="Método" valor={fMet} onValor={setFMet} opciones={METODOS_PAGO.map((m) => [m, ETIQUETA_METODO[m]])} />
+            <Filtro etiqueta="Método" valor={fMet} onValor={setFMet} opciones={METODOS_PAGO.map((m) => [m, ETIQUETA_METODO[m] ?? m])} />
           </CardHeader>
           <CardContent>
             <Table>
