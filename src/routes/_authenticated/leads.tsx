@@ -19,7 +19,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { fecha, fechaHora, hoyLima } from "@/lib/format";
 import { usePerfil, esAsesor, esAdmin } from "@/lib/sesion";
 import { useVendedores, nombreVendedor } from "@/lib/vendedores";
-import { usePerfilesActivos } from "@/lib/ventas";
 import {
   CampoOrigenLead,
   ETAPAS_LEAD,
@@ -505,7 +504,6 @@ function DetalleLead({
   const [editar, setEditar] = useState(false);
   const [eliminar, setEliminar] = useState(false);
   const [motivo, setMotivo] = useState("");
-  const perfiles = usePerfilesActivos();
 
   const lead = useQuery({
     queryKey: ["lead", id],
@@ -547,8 +545,16 @@ function DetalleLead({
     },
   });
 
-  const nombrePerfil = (uid: string | null) =>
-    (perfiles.data ?? []).find((p) => (p as { user_id?: string }).user_id === uid)?.nombre ?? "Usuario";
+  const usuarios = useQuery({
+    queryKey: ["lead", id, "usuarios", historial.data?.length],
+    enabled: !!historial.data?.length,
+    queryFn: async () => {
+      const ids = [...new Set((historial.data ?? []).map((h) => h.usuario_id).filter(Boolean))] as string[];
+      const { data } = await supabase.from("perfil").select("user_id, nombre").in("user_id", ids);
+      return new Map((data ?? []).map((p) => [p.user_id, p.nombre]));
+    },
+  });
+  const nombrePerfil = (uid: string | null) => (uid && usuarios.data?.get(uid)) || "Usuario";
 
   async function confirmarEliminar() {
     if (!motivo.trim()) {

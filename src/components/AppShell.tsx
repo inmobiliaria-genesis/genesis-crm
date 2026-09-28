@@ -17,6 +17,7 @@ import {
   Palette,
   Undo2,
   CheckCircle2,
+  Contact,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,6 +38,7 @@ const ITEMS: Item[] = [
   { etiqueta: "Estructura", icono: LayoutGrid, ruta: "/estructura" },
   { etiqueta: "Lotes", icono: Map, ruta: "/lotes", asesor: "Lotes" },
   { etiqueta: "Plano", icono: Map, ruta: "/plano", sub: true, asesor: "Plano" },
+  { etiqueta: "Leads", icono: Contact, ruta: "/leads", asesor: "Mis leads" },
   { etiqueta: "Clientes", icono: Users2, ruta: "/clientes", asesor: "Mis clientes" },
   { etiqueta: "Vendedores", icono: UserCog, ruta: "/vendedores" },
   { etiqueta: "Apartados", icono: Receipt, ruta: "/apartados", asesor: "Mis apartados" },
