@@ -22,6 +22,7 @@ import { Route as AuthenticatedComisionesRouteImport } from './routes/_authentic
 import { Route as AuthenticatedConfiguracionRouteImport } from './routes/_authenticated/configuracion'
 import { Route as AuthenticatedDesistimientosRouteImport } from './routes/_authenticated/desistimientos'
 import { Route as AuthenticatedEstructuraRouteImport } from './routes/_authenticated/estructura'
+import { Route as AuthenticatedGastosRouteImport } from './routes/_authenticated/gastos'
 import { Route as AuthenticatedLeadsRouteImport } from './routes/_authenticated/leads'
 import { Route as AuthenticatedLotesRouteImport } from './routes/_authenticated/lotes'
 import { Route as AuthenticatedPlanoRouteImport } from './routes/_authenticated/plano'
@@ -97,6 +98,11 @@ const AuthenticatedEstructuraRoute = AuthenticatedEstructuraRouteImport.update({
   path: '/estructura',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedGastosRoute = AuthenticatedGastosRouteImport.update({
+  id: '/gastos',
+  path: '/gastos',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedLeadsRoute = AuthenticatedLeadsRouteImport.update({
   id: '/leads',
   path: '/leads',
@@ -141,6 +147,7 @@ export interface FileRoutesByFullPath {
   '/configuracion': typeof AuthenticatedConfiguracionRoute
   '/desistimientos': typeof AuthenticatedDesistimientosRoute
   '/estructura': typeof AuthenticatedEstructuraRoute
+  '/gastos': typeof AuthenticatedGastosRoute
   '/leads': typeof AuthenticatedLeadsRoute
   '/lotes': typeof AuthenticatedLotesRoute
   '/plano': typeof AuthenticatedPlanoRoute
@@ -161,6 +168,7 @@ export interface FileRoutesByTo {
   '/configuracion': typeof AuthenticatedConfiguracionRoute
   '/desistimientos': typeof AuthenticatedDesistimientosRoute
   '/estructura': typeof AuthenticatedEstructuraRoute
+  '/gastos': typeof AuthenticatedGastosRoute
   '/leads': typeof AuthenticatedLeadsRoute
   '/lotes': typeof AuthenticatedLotesRoute
   '/plano': typeof AuthenticatedPlanoRoute
@@ -183,6 +191,7 @@ export interface FileRoutesById {
   '/_authenticated/configuracion': typeof AuthenticatedConfiguracionRoute
   '/_authenticated/desistimientos': typeof AuthenticatedDesistimientosRoute
   '/_authenticated/estructura': typeof AuthenticatedEstructuraRoute
+  '/_authenticated/gastos': typeof AuthenticatedGastosRoute
   '/_authenticated/leads': typeof AuthenticatedLeadsRoute
   '/_authenticated/lotes': typeof AuthenticatedLotesRoute
   '/_authenticated/plano': typeof AuthenticatedPlanoRoute
@@ -205,6 +214,7 @@ export interface FileRouteTypes {
     | '/configuracion'
     | '/desistimientos'
     | '/estructura'
+    | '/gastos'
     | '/leads'
     | '/lotes'
     | '/plano'
@@ -225,6 +235,7 @@ export interface FileRouteTypes {
     | '/configuracion'
     | '/desistimientos'
     | '/estructura'
+    | '/gastos'
     | '/leads'
     | '/lotes'
     | '/plano'
@@ -246,6 +257,7 @@ export interface FileRouteTypes {
     | '/_authenticated/configuracion'
     | '/_authenticated/desistimientos'
     | '/_authenticated/estructura'
+    | '/_authenticated/gastos'
     | '/_authenticated/leads'
     | '/_authenticated/lotes'
     | '/_authenticated/plano'
@@ -353,6 +365,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEstructuraRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/gastos': {
+      id: '/_authenticated/gastos'
+      path: '/gastos'
+      fullPath: '/gastos'
+      preLoaderRoute: typeof AuthenticatedGastosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/leads': {
       id: '/_authenticated/leads'
       path: '/leads'
@@ -409,6 +428,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedConfiguracionRoute: typeof AuthenticatedConfiguracionRoute
   AuthenticatedDesistimientosRoute: typeof AuthenticatedDesistimientosRoute
   AuthenticatedEstructuraRoute: typeof AuthenticatedEstructuraRoute
+  AuthenticatedGastosRoute: typeof AuthenticatedGastosRoute
   AuthenticatedLeadsRoute: typeof AuthenticatedLeadsRoute
   AuthenticatedLotesRoute: typeof AuthenticatedLotesRoute
   AuthenticatedPlanoRoute: typeof AuthenticatedPlanoRoute
@@ -428,6 +448,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedConfiguracionRoute: AuthenticatedConfiguracionRoute,
   AuthenticatedDesistimientosRoute: AuthenticatedDesistimientosRoute,
   AuthenticatedEstructuraRoute: AuthenticatedEstructuraRoute,
+  AuthenticatedGastosRoute: AuthenticatedGastosRoute,
   AuthenticatedLeadsRoute: AuthenticatedLeadsRoute,
   AuthenticatedLotesRoute: AuthenticatedLotesRoute,
   AuthenticatedPlanoRoute: AuthenticatedPlanoRoute,
