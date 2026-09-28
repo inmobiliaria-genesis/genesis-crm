@@ -33,7 +33,7 @@ export function inicioMes(mes: string) {
 }
 
 export function finMes(mes: string) {
-  const [a, m] = mes.split("-").map(Number);
+  const [a, m] = mes.split("-").map(Number) as [number, number];
   const d = new Date(Date.UTC(a, m, 1));
   return d.toISOString().slice(0, 10);
 }

@@ -19,7 +19,7 @@ export function CategoriasGasto({ editable }: { editable: boolean }) {
     const tope = valor.trim() === "" ? null : Number(valor);
     if (tope === actual || (tope !== null && !(tope >= 0))) return;
     const { error } = await supabase.from(tabla).update({ tope }).eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Tope actualizado");
     refrescar();
   }
@@ -31,7 +31,7 @@ export function CategoriasGasto({ editable }: { editable: boolean }) {
     const { error } = await supabase
       .from("gasto_subcategoria")
       .insert({ categoria_id: categoriaId, nombre, orden, exige_nota: nombre.toLowerCase() === "otros" });
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     setNuevaSub((p) => ({ ...p, [categoriaId]: "" }));
     refrescar();
   }

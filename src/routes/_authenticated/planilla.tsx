@@ -71,7 +71,7 @@ function PlanillaPage() {
 
   async function generar() {
     const { data, error } = await supabase.rpc("generar_planilla", { _mes: inicioMes(mes) });
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success(`Planilla generada: ${data} líneas`);
     refrescar();
   }
@@ -80,13 +80,13 @@ function PlanillaPage() {
     const n = Number(valor);
     if (!(n >= 0) || n === Number(l.monto)) return;
     const { error } = await supabase.from("planilla_linea").update({ monto: n }).eq("id", l.id);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     refrescar();
   }
 
   async function desmarcar(l: Linea) {
     const { error } = await supabase.from("planilla_linea").update({ pagado: false }).eq("id", l.id);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     refrescar();
   }
 
@@ -212,13 +212,13 @@ function DialogoPersona({ persona, onCerrar }: { persona: Personal | null; onCer
     activo: persona?.activo ?? true,
   });
   async function guardar() {
-    if (!f.nombre.trim()) return toast.error("Indica el nombre");
-    if (!(Number(f.monto) >= 0) || f.monto === "") return toast.error("Indica el monto mensual");
+    if (!f.nombre.trim()) { toast.error("Indica el nombre"); return; }
+    if (!(Number(f.monto) >= 0) || f.monto === "") { toast.error("Indica el monto mensual"); return; }
     const fila = { nombre: f.nombre.trim(), dni: f.dni || null, cargo: f.cargo || null, monto_mensual: Number(f.monto), activo: f.activo };
     const { error } = persona
       ? await supabase.from("personal").update(fila).eq("id", persona.id)
       : await supabase.from("personal").insert(fila);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     qc.invalidateQueries({ queryKey: ["personal"] });
     onCerrar();
   }

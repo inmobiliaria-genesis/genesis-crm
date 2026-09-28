@@ -334,7 +334,7 @@ function DialogoGasto({ gasto, onCerrar }: { gasto: Gasto | null; onCerrar: () =
   const notaObligatoria = cat?.tipo === "otros" || !!sub?.exige_nota;
 
   useEffect(() => {
-    if (!f.categoria_id || (subs.length && !f.subcategoria_id)) return setTope(null);
+    if (!f.categoria_id || (subs.length && !f.subcategoria_id)) { setTope(null); return; }
     supabase
       .rpc("tope_gasto", {
         _categoria_id: f.categoria_id,
@@ -352,8 +352,8 @@ function DialogoGasto({ gasto, onCerrar }: { gasto: Gasto | null; onCerrar: () =
   const exceso = tope?.tope != null ? tope.llevas + Number(f.monto || 0) - tope.tope : 0;
 
   async function guardar() {
-    if (!f.categoria_id) return toast.error("Elige la categoría");
-    if (!(Number(f.monto) > 0)) return toast.error("Indica el monto");
+    if (!f.categoria_id) { toast.error("Elige la categoría"); return; }
+    if (!(Number(f.monto) > 0)) { toast.error("Indica el monto"); return; }
     setGuardando(true);
     try {
       const comprobante_path = archivo ? await subirComprobante(archivo) : gasto?.comprobante_path ?? null;
@@ -485,7 +485,7 @@ function DialogoReembolso({ gasto, onCerrar }: { gasto: Gasto; onCerrar: () => v
         reembolso_operacion: llevaOperacion(f.metodo) ? f.op || null : null,
       })
       .eq("id", gasto.id);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Reembolso registrado");
     refrescar();
     onCerrar();
@@ -517,9 +517,9 @@ function DialogoAnular({ gasto, onCerrar }: { gasto: Gasto; onCerrar: () => void
   const refrescar = useRefrescar();
   const [motivo, setMotivo] = useState("");
   async function guardar() {
-    if (!motivo.trim()) return toast.error("Indica el motivo");
+    if (!motivo.trim()) { toast.error("Indica el motivo"); return; }
     const { error } = await supabase.from("gasto").update({ anulado: true, motivo_anulacion: motivo.trim() }).eq("id", gasto.id);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Gasto anulado");
     refrescar();
     onCerrar();
