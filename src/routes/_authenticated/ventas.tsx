@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/table";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { SelectorCliente } from "@/components/SelectorCliente";
-import { CampoOrigenLead, ORIGEN_VACIO, ETIQUETA_ORIGEN_LEAD, type OrigenLead } from "@/lib/leads";
+import { CampoOrigen, ORIGEN_VACIO, origenAColumnas, origenDeFila, textoOrigen, validarOrigen, type Origen } from "@/lib/leads";
 import {
   nombreCliente,
   documentoCliente,
@@ -43,7 +43,7 @@ import {
 } from "@/lib/ventas";
 import { fecha, hoyLima, soles, cantidad } from "@/lib/format";
 import { usePerfil, puedeComercial, puedeElegirVendedor, puedeCobrar } from "@/lib/sesion";
-import { ETIQUETA_ORIGEN, nombreVendedor, useVendedores } from "@/lib/vendedores";
+import { nombreVendedor, useVendedores } from "@/lib/vendedores";
 import { DialogoPago, DialogoRegularizar } from "@/components/PagoForm";
 import { ETIQUETA_CUOTA, useCuotasDeVenta, usePagosDeVenta, llevaOperacion } from "@/lib/cobranza";
 import { MostrarMetodo, DialogoEditarMetodo, CamposMetodo } from "@/components/MetodoPago";
@@ -248,7 +248,7 @@ function VentasPage() {
                     <TableCell>
                       {nombreVendedor(v.encargado)}
                       <div className="text-xs text-muted-foreground">
-                        {ETIQUETA_ORIGEN[v.origen]}
+                        {textoOrigen(v)}
                         {v.promotor ? ` · ${nombreVendedor(v.promotor)}` : ""}
                       </div>
                     </TableCell>
@@ -344,8 +344,6 @@ function DialogoVenta({
   const [adicionales, setAdicionales] = useState<Cliente[]>([]);
   const [agregando, setAgregando] = useState(false);
   const [encargadoId, setEncargadoId] = useState("");
-  const [promotorId, setPromotorId] = useState("ninguno");
-  const [origen, setOrigen] = useState("promotor");
   const [condicion, setCondicion] = useState("financiado");
   const [fechaVenta, setFechaVenta] = useState(hoyLima());
   const [fechaFirma, setFechaFirma] = useState("");
@@ -384,8 +382,7 @@ function DialogoVenta({
     }
   }, [encargadoId, encargadosElegibles, perfil]);
 
-  function elegirPromotor(id: string) {
-    setPromotorId(id);
+  function elegirPromotor(id: string | null) {
     const p = promotores.find((x) => x.id === id);
     if (p?.encargado_id && encargadosElegibles.some((e) => e.id === p.encargado_id)) {
       setEncargadoId(p.encargado_id);
@@ -396,7 +393,7 @@ function DialogoVenta({
   const origenApartado = useQuery({
     queryKey: ["reserva-origen", reservaOrigen],
     enabled: !!reservaOrigen,
-    queryFn: async (): Promise<{ clienteId: string; encargado: string | null; lead: { origen_lead: string | null; promotor_id: string | null } | null }> => {
+    queryFn: async (): Promise<{ clienteId: string; encargado: string | null; lead: Origen | null }> => {
       const { data: r, error } = await supabase
         .from("reserva")
         .select("creado_por, cliente_id, lead_id")
@@ -417,10 +414,10 @@ function DialogoVenta({
           encargado = v?.id ?? null;
         }
       }
-      let lead: { origen_lead: string | null; promotor_id: string | null } | null = null;
+      let lead: Origen | null = null;
       if (r.lead_id) {
-        const { data: l } = await supabase.from("lead").select("origen_lead, promotor_id").eq("id", r.lead_id).maybeSingle();
-        lead = l ?? { origen_lead: null, promotor_id: null };
+        const { data: l } = await supabase.from("lead").select("origen, fuente, promotor_id, referido_por_id").eq("id", r.lead_id).maybeSingle();
+        if (l?.origen) lead = origenDeFila(l);
       }
       return { clienteId: r.cliente_id, encargado, lead };
     },
@@ -428,11 +425,8 @@ function DialogoVenta({
   const encargadoApartado = { data: origenApartado.data?.encargado ?? null };
   const encFijo = encargadoApartado.data ?? null;
   const [motivoEncargado, setMotivoEncargado] = useState("");
-  const [origenLead, setOrigenLead] = useState<OrigenLead>(ORIGEN_VACIO);
+  const [origenVenta, setOrigenVenta] = useState<Origen>(ORIGEN_VACIO);
   const leadOrigen = origenApartado.data?.lead ?? null;
-  useEffect(() => {
-    if (leadOrigen?.promotor_id) { setOrigen("promotor"); setPromotorId(leadOrigen.promotor_id); }
-  }, [leadOrigen?.promotor_id]);
   useEffect(() => {
     if (encFijo) setEncargadoId(encFijo);
   }, [encFijo]);
@@ -498,6 +492,11 @@ function DialogoVenta({
       toast.error(`La cuota inicial mínima es ${soles(inicialMinima.data)}.`);
       return;
     }
+    const errOrigen = leadOrigen ? null : validarOrigen(origenVenta, true);
+    if (errOrigen) {
+      toast.error(errOrigen);
+      return;
+    }
     if (!formaPago) {
       toast.error("Elige la forma de pago de la inicial");
       return;
@@ -519,10 +518,8 @@ function DialogoVenta({
         fecha_firma: fechaFirma || null,
         encargado_id: encargadoId,
         motivo_cambio_encargado: encFijo && encargadoId !== encFijo ? motivoEncargado.trim() || null : null,
-        origen,
-        promotor_id: origen === "promotor" && promotorId !== "ninguno" ? promotorId : null,
-        origen_lead: leadOrigen ? null : origenLead.origen || null,
-        referido_por_id: leadOrigen || origenLead.origen !== "referido" ? null : origenLead.referidoId,
+        ...origenAColumnas(leadOrigen ?? origenVenta),
+        origen: (leadOrigen ?? origenVenta).origen,
         condicion,
         precio_acordado: precioNum,
         motivo_diferencia_precio: motivo.trim() || null,
@@ -621,34 +618,18 @@ function DialogoVenta({
 
           {leadOrigen ? (
             <div className="sm:col-span-2 rounded-md border border-border px-3 py-2 text-sm">
-              Origen del lead: {leadOrigen.origen_lead ? ETIQUETA_ORIGEN_LEAD[leadOrigen.origen_lead] : "Sin indicar"}{" "}
-              <span className="text-xs text-muted-foreground">(se hereda del lead del apartado)</span>
+              Origen: {textoOrigen({ origen: leadOrigen.origen, fuente: leadOrigen.fuente })}
+              {leadOrigen.promotorId ? ` · ${nombreVendedor(promotores.find((p) => p.id === leadOrigen.promotorId) ?? (vendedores.data ?? []).find((p) => p.id === leadOrigen.promotorId) ?? null)}` : ""}{" "}
+              <span className="text-xs text-muted-foreground">(se copia del lead del apartado)</span>
             </div>
           ) : (
-            <CampoOrigenLead valor={origenLead} onCambio={setOrigenLead} />
+            <CampoOrigen
+              valor={origenVenta}
+              onCambio={setOrigenVenta}
+              promotores={promotores.map((p) => ({ id: p.id, nombre: nombreVendedor(p) }))}
+              onPromotor={elegirPromotor}
+            />
           )}
-          <div>
-            <Label>Origen</Label>
-            <Select value={origen} onValueChange={(o) => { setOrigen(o); if (o === "marketing") setPromotorId("ninguno"); }}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="promotor">Promotor</SelectItem>
-                <SelectItem value="marketing">Marketing</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>Promotor (opcional)</Label>
-            <Select value={promotorId} onValueChange={elegirPromotor} disabled={origen === "marketing"}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ninguno">Sin promotor</SelectItem>
-                {promotores.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{nombreVendedor(p)}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
           <div>
             <Label>Encargado</Label>
             <Select
@@ -940,8 +921,7 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
               <D k="Fecha de venta" v={fecha(v.fecha_venta)} />
               <D k="Fecha de firma" v={fecha(v.fecha_firma)} />
               <D k="Encargado" v={v.encargado ? nombreVendedor(v.encargado) : v.importada ? "— (venta importada)" : "—"} />
-              <D k="Origen" v={ETIQUETA_ORIGEN[v.origen] ?? v.origen} />
-              <D k="Origen del lead" v={v.origen_lead ? ETIQUETA_ORIGEN_LEAD[v.origen_lead] ?? v.origen_lead : "—"} />
+              <D k="Origen" v={textoOrigen(v)} />
               <D k="Promotor" v={v.promotor ? nombreVendedor(v.promotor) : "—"} />
               <D k="Condición" v={v.condicion} />
               <D k="Precio de lista al vender" v={soles(v.precio_lista_momento)} />

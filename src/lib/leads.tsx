@@ -11,16 +11,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export const ORIGENES_LEAD = ["facebook", "instagram", "tiktok", "google", "referido", "oficina", "otro"] as const;
-export const ETIQUETA_ORIGEN_LEAD: Record<string, string> = {
+export const FUENTES = ["facebook", "instagram", "tiktok", "google", "oficina", "referido", "otros"] as const;
+export const ETIQUETA_FUENTE: Record<string, string> = {
   facebook: "Facebook",
   instagram: "Instagram",
   tiktok: "TikTok",
   google: "Google",
-  referido: "Referido",
   oficina: "Oficina",
-  otro: "Otro",
+  referido: "Referido",
+  otros: "Otros",
 };
+export const ETIQUETA_ORIGEN: Record<string, string> = { promotor: "Promotor", marketing: "Marketing", sin_dato: "Sin dato" };
 
 export const ETAPAS_LEAD = ["nuevo", "visita_agendada", "visito", "separo", "no_interesado"] as const;
 export const ETIQUETA_ETAPA: Record<string, string> = {
@@ -31,8 +32,43 @@ export const ETIQUETA_ETAPA: Record<string, string> = {
   no_interesado: "No interesado",
 };
 
-export type OrigenLead = { origen: string; referidoId: string | null; referidoNombre: string | null };
-export const ORIGEN_VACIO: OrigenLead = { origen: "", referidoId: null, referidoNombre: null };
+export type Origen = {
+  origen: string; // "" | promotor | marketing | sin_dato
+  fuente: string;
+  promotorId: string | null;
+  referidoId: string | null;
+  referidoNombre: string | null;
+};
+export const ORIGEN_VACIO: Origen = { origen: "", fuente: "", promotorId: null, referidoId: null, referidoNombre: null };
+
+/** Convierte a columnas de la base (origen, fuente, promotor_id, referido_por_id). */
+export function origenAColumnas(o: Origen) {
+  const origen = o.origen || null;
+  return {
+    origen,
+    fuente: origen === "marketing" ? o.fuente || null : null,
+    promotor_id: origen === "promotor" ? o.promotorId : null,
+    referido_por_id: origen === "marketing" && o.fuente === "referido" ? o.referidoId : null,
+  };
+}
+
+export function origenDeFila(f: { origen?: string | null; fuente?: string | null; promotor_id?: string | null; referido_por_id?: string | null }): Origen {
+  return { origen: f.origen ?? "", fuente: f.fuente ?? "", promotorId: f.promotor_id ?? null, referidoId: f.referido_por_id ?? null, referidoNombre: null };
+}
+
+/** Devuelve un mensaje de error si el origen está incompleto, o null. */
+export function validarOrigen(o: Origen, obligatorio: boolean): string | null {
+  if (!o.origen) return obligatorio ? "Elige el origen" : null;
+  if (o.origen === "marketing" && !o.fuente) return "Elige la fuente";
+  if (o.origen === "marketing" && o.fuente === "referido" && !o.referidoId) return "Busca al cliente que refirió por su DNI";
+  return null;
+}
+
+export function textoOrigen(f: { origen?: string | null; fuente?: string | null }) {
+  if (!f.origen) return "—";
+  const o = ETIQUETA_ORIGEN[f.origen] ?? f.origen;
+  return f.origen === "marketing" && f.fuente ? `${o} · ${ETIQUETA_FUENTE[f.fuente] ?? f.fuente}` : o;
+}
 
 export async function nombreClientePorId(id: string | null): Promise<string | null> {
   if (!id) return null;
@@ -40,15 +76,39 @@ export async function nombreClientePorId(id: string | null): Promise<string | nu
   return data ? `${data.nombres} ${data.apellidos}`.trim() : "Cliente vinculado";
 }
 
-/** Selector de origen del lead + "Referido por" (búsqueda de cliente aprobado por DNI). */
-export function CampoOrigenLead({ valor, onCambio }: { valor: OrigenLead; onCambio: (v: OrigenLead) => void }) {
+/**
+ * Origen unificado: Promotor (promotor opcional) o Marketing (fuente obligatoria;
+ * si es Referido, "Referido por" con búsqueda por DNI).
+ */
+export function CampoOrigen({
+  valor,
+  onCambio,
+  promotores,
+  opcional = false,
+  sinDato = false,
+  onPromotor,
+}: {
+  valor: Origen;
+  onCambio: (v: Origen) => void;
+  promotores: { id: string; nombre: string }[];
+  opcional?: boolean;
+  sinDato?: boolean;
+  onPromotor?: (id: string | null) => void;
+}) {
   const [dni, setDni] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [buscando, setBuscando] = useState(false);
 
   useEffect(() => {
-    if (valor.origen !== "referido") setError(null);
-  }, [valor.origen]);
+    if (valor.fuente !== "referido") setError(null);
+  }, [valor.fuente]);
+
+  useEffect(() => {
+    if (valor.referidoId && !valor.referidoNombre) {
+      nombreClientePorId(valor.referidoId).then((n) => onCambio({ ...valor, referidoNombre: n }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [valor.referidoId]);
 
   async function buscar() {
     const t = dni.trim();
@@ -69,32 +129,77 @@ export function CampoOrigenLead({ valor, onCambio }: { valor: OrigenLead; onCamb
   return (
     <>
       <div>
-        <Label>Origen del lead</Label>
+        <Label>Origen{opcional ? " (opcional)" : ""}</Label>
         <Select
           value={valor.origen || "ninguno"}
-          onValueChange={(o) =>
-            onCambio(o === "referido" ? { ...valor, origen: o } : { origen: o === "ninguno" ? "" : o, referidoId: null, referidoNombre: null })
-          }
+          onValueChange={(o) => {
+            const origen = o === "ninguno" ? "" : o;
+            onCambio({ origen, fuente: "", promotorId: null, referidoId: null, referidoNombre: null });
+            if (valor.promotorId) onPromotor?.(null);
+          }}
         >
           <SelectTrigger>
-            <SelectValue />
+            <SelectValue placeholder="Elige el origen" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="ninguno">Sin indicar</SelectItem>
-            {ORIGENES_LEAD.map((o) => (
-              <SelectItem key={o} value={o}>
-                {ETIQUETA_ORIGEN_LEAD[o]}
-              </SelectItem>
-            ))}
+            {opcional ? <SelectItem value="ninguno">Sin indicar</SelectItem> : null}
+            <SelectItem value="promotor">Promotor</SelectItem>
+            <SelectItem value="marketing">Marketing</SelectItem>
+            {sinDato ? <SelectItem value="sin_dato">Sin dato</SelectItem> : null}
           </SelectContent>
         </Select>
       </div>
-      {valor.origen === "referido" ? (
+      {valor.origen === "promotor" ? (
+        <div>
+          <Label>Promotor (opcional)</Label>
+          <Select
+            value={valor.promotorId ?? "ninguno"}
+            onValueChange={(p) => {
+              const id = p === "ninguno" ? null : p;
+              onCambio({ ...valor, promotorId: id });
+              onPromotor?.(id);
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ninguno">Sin promotor (lo consiguió el encargado)</SelectItem>
+              {promotores.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.nombre}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
+      {valor.origen === "marketing" ? (
+        <div>
+          <Label>Fuente</Label>
+          <Select
+            value={valor.fuente}
+            onValueChange={(f) => onCambio({ ...valor, fuente: f, referidoId: null, referidoNombre: null })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Elige la fuente" />
+            </SelectTrigger>
+            <SelectContent>
+              {FUENTES.map((f) => (
+                <SelectItem key={f} value={f}>
+                  {ETIQUETA_FUENTE[f]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
+      {valor.origen === "marketing" && valor.fuente === "referido" ? (
         <div>
           <Label>Referido por</Label>
           {valor.referidoId ? (
             <div className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm">
-              <span className="flex-1">{valor.referidoNombre}</span>
+              <span className="flex-1">{valor.referidoNombre ?? "…"}</span>
               <Button
                 type="button"
                 size="sm"
