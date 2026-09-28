@@ -6,7 +6,7 @@ const esquema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
   nombre: z.string().min(1),
-  rol: z.enum(["admin", "gerente_ventas", "cobranza", "asesor", "socio"]),
+  rol: z.enum(["admin", "gerente_ventas", "contabilidad", "asesor", "socio"]),
   vendedorId: z.string().uuid().nullable().optional(),
 });
 

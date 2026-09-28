@@ -41,7 +41,7 @@ export const Route = createFileRoute("/_authenticated/bitacora")({
 
 function BitacoraPage() {
   const { data: perfil, isLoading } = usePerfil();
-  const permitido = perfil?.rol === "admin" || perfil?.rol === "socio";
+  const permitido = perfil?.rol === "admin" || perfil?.rol === "socio" || perfil?.rol === "contabilidad";
 
   const [usuarioId, setUsuarioId] = useState("");
   const [tabla, setTabla] = useState("");

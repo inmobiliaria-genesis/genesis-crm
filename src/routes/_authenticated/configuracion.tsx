@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/table";
 import { usePerfil, esAdmin, puedeVerAdmin } from "@/lib/sesion";
 import { fecha, conUnidad, hoyLima } from "@/lib/format";
+import { CategoriasGasto } from "@/components/CategoriasGasto";
 
 const NOMBRE_UNIDAD: Record<string, string> = { soles: "S/", porcentaje: "%", lotes: "lotes", cuotas: "cuotas", dias: "días", si_no: "1 = Sí, 0 = No" };
 
@@ -152,6 +153,9 @@ function ConfiguracionPage() {
             </Card>
           );
         })}
+      </div>
+      <div className="mt-6">
+        <CategoriasGasto editable={esAdmin(perfil)} />
       </div>
     </AppShell>
   );
