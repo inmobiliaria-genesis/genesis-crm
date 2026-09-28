@@ -11,12 +11,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export const FUENTES = ["facebook", "instagram", "tiktok", "google", "oficina", "referido", "otros"] as const;
+export const FUENTES = ["facebook", "instagram", "tiktok", "google", "radio", "influencer", "impresos", "oficina", "referido", "otros"] as const;
 export const ETIQUETA_FUENTE: Record<string, string> = {
   facebook: "Facebook",
   instagram: "Instagram",
   tiktok: "TikTok",
   google: "Google",
+  radio: "Radio",
+  influencer: "Influencer",
+  impresos: "Impresos",
   oficina: "Oficina",
   referido: "Referido",
   otros: "Otros",
