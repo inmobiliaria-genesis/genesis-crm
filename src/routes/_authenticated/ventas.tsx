@@ -748,7 +748,7 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
       return;
     }
     const { error } = anulando.grupo
-      ? await (supabase.rpc as unknown as (
+      ? await (supabase.rpc.bind(supabase) as unknown as (
           f: string,
           a: Record<string, unknown>,
         ) => Promise<{ error: { message: string } | null }>)("anular_regularizacion", {
