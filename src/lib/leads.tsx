@@ -178,7 +178,7 @@ export function CampoOrigen({
         <div>
           <Label>Fuente</Label>
           <Select
-            value={valor.fuente || undefined}
+            value={valor.fuente}
             onValueChange={(f) => onCambio({ ...valor, fuente: f, referidoId: null, referidoNombre: null })}
           >
             <SelectTrigger>

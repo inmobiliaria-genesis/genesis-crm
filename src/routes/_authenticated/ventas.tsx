@@ -519,6 +519,7 @@ function DialogoVenta({
         encargado_id: encargadoId,
         motivo_cambio_encargado: encFijo && encargadoId !== encFijo ? motivoEncargado.trim() || null : null,
         ...origenAColumnas(leadOrigen ?? origenVenta),
+        origen: (leadOrigen ?? origenVenta).origen,
         condicion,
         precio_acordado: precioNum,
         motivo_diferencia_precio: motivo.trim() || null,
