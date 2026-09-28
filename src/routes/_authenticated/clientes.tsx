@@ -174,6 +174,7 @@ function FichaCliente({ cliente, onCerrar }: { cliente: Cliente | null; onCerrar
 
             <div>
               <p className="mb-2 font-medium">Ventas</p>
+              <EliminarCliente id={cliente.id} onListo={onCerrar} />
               {historial.data?.titulares.length ? (
                 historial.data.titulares.map((t) => (
                   <div key={t.id} className="flex items-center justify-between border-b border-border py-1.5">
