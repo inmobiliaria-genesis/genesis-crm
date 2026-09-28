@@ -328,6 +328,42 @@ function DialogoVenta({
     }
   }
 
+  // Encargado fijado por un apartado de asesor (solo admin puede cambiarlo, con motivo)
+  const encargadoApartado = useQuery({
+    queryKey: ["encargado-apartado", loteId],
+    enabled: !!loteId,
+    queryFn: async (): Promise<string | null> => {
+      const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Lima" }).format(new Date());
+      const { data: rs } = await supabase
+        .from("reserva")
+        .select("creado_por, creado_en")
+        .eq("lote_id", loteId)
+        .eq("anulado", false)
+        .eq("estado_aprobacion", "aprobado")
+        .is("convertida_a_venta_id", null)
+        .gte("fecha_limite", hoy)
+        .order("creado_en", { ascending: false })
+        .limit(1);
+      const autor = rs?.[0]?.creado_por;
+      if (!autor) return null;
+      const { data: p } = await supabase.from("perfil").select("rol").eq("user_id", autor).maybeSingle();
+      if (p?.rol !== "asesor") return null;
+      const { data: v } = await supabase
+        .from("vendedor")
+        .select("id")
+        .eq("usuario_id", autor)
+        .eq("tipo", "encargado")
+        .eq("anulado", false)
+        .maybeSingle();
+      return v?.id ?? null;
+    },
+  });
+  const encFijo = encargadoApartado.data ?? null;
+  const [motivoEncargado, setMotivoEncargado] = useState("");
+  useEffect(() => {
+    if (encFijo) setEncargadoId(encFijo);
+  }, [encFijo]);
+
   useEffect(() => {
     if (!clienteInicial) return;
     supabase
