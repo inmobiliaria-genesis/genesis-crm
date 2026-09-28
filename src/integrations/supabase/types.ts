@@ -739,13 +739,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "lote_ubicacion_lote_id_fkey"
-            columns: ["lote_id"]
-            isOneToOne: false
-            referencedRelation: "lote_estado"
-            referencedColumns: ["lote_id"]
-          },
-          {
             foreignKeyName: "lote_ubicacion_plano_id_fkey"
             columns: ["plano_id"]
             isOneToOne: false
@@ -1192,13 +1185,6 @@ export type Database = {
             referencedRelation: "lote"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "reserva_lote_id_fkey"
-            columns: ["lote_id"]
-            isOneToOne: false
-            referencedRelation: "lote_estado"
-            referencedColumns: ["lote_id"]
-          },
         ]
       }
       vendedor: {
@@ -1385,13 +1371,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "venta_lote_id_fkey"
-            columns: ["lote_id"]
-            isOneToOne: false
-            referencedRelation: "lote_estado"
-            referencedColumns: ["lote_id"]
-          },
-          {
             foreignKeyName: "venta_promotor_id_fkey"
             columns: ["promotor_id"]
             isOneToOne: false
@@ -1498,18 +1477,6 @@ export type Database = {
           estado: string | null
           lote_id: string | null
           saldo_pendiente: number | null
-        }
-        Insert: {
-          en_desistimiento?: never
-          estado?: never
-          lote_id?: string | null
-          saldo_pendiente?: never
-        }
-        Update: {
-          en_desistimiento?: never
-          estado?: never
-          lote_id?: string | null
-          saldo_pendiente?: never
         }
         Relationships: []
       }
