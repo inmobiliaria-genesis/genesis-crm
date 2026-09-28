@@ -934,11 +934,11 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
         {registrando && ventaId ? (
           <DialogoPago ventaId={ventaId} onCerrar={() => setRegistrando(false)} />
         ) : null}
-        {regularizando && ventaId && v ? (
+        {ventaId ? (
           <DialogoIniciarDesistimiento ventaId={ventaId} abierto={iniciando} onCambio={setIniciando} />
         ) : null}
         <DetalleDesistimiento id={verDesist} onCerrar={() => setVerDesist(null)} />
-        {ventaId ? (
+        {regularizando && ventaId && v ? (
           <DialogoRegularizar
             ventaId={ventaId}
             fechaVenta={v.fecha_venta}
