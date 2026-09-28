@@ -32,23 +32,25 @@ type Item = {
   sub?: boolean;
   /** Etiqueta para el asesor; si no la tiene, el asesor no ve el ítem. */
   asesor?: string;
+  /** Roles que no ven el ítem. */
+  ocultar?: Rol[];
 };
 
 const ITEMS: Item[] = [
-  { etiqueta: "Estructura", icono: LayoutGrid, ruta: "/estructura" },
-  { etiqueta: "Lotes", icono: Map, ruta: "/lotes", asesor: "Lotes" },
-  { etiqueta: "Plano", icono: Map, ruta: "/plano", sub: true, asesor: "Plano" },
-  { etiqueta: "Leads", icono: Contact, ruta: "/leads", asesor: "Mis leads" },
+  { etiqueta: "Estructura", icono: LayoutGrid, ruta: "/estructura", ocultar: ["contabilidad"] },
+  { etiqueta: "Lotes", icono: Map, ruta: "/lotes", asesor: "Lotes", ocultar: ["contabilidad"] },
+  { etiqueta: "Plano", icono: Map, ruta: "/plano", sub: true, asesor: "Plano", ocultar: ["contabilidad"] },
+  { etiqueta: "Leads", icono: Contact, ruta: "/leads", asesor: "Mis leads", ocultar: ["contabilidad"] },
   { etiqueta: "Clientes", icono: Users2, ruta: "/clientes", asesor: "Mis clientes" },
-  { etiqueta: "Vendedores", icono: UserCog, ruta: "/vendedores" },
+  { etiqueta: "Vendedores", icono: UserCog, ruta: "/vendedores", ocultar: ["contabilidad"] },
   { etiqueta: "Apartados", icono: Receipt, ruta: "/apartados", asesor: "Mis apartados" },
   { etiqueta: "Ventas", icono: ShoppingCart, ruta: "/ventas", asesor: "Mis ventas" },
   { etiqueta: "Cobranza", icono: Wallet, ruta: "/cobranza" },
   { etiqueta: "Desistimientos", icono: Undo2, ruta: "/desistimientos", sub: true },
-  { etiqueta: "Comisiones", icono: Percent, ruta: "/comisiones", roles: ["admin", "gerente_ventas", "socio", "asesor"], asesor: "Mis comisiones" },
+  { etiqueta: "Comisiones", icono: Percent, ruta: "/comisiones", roles: ["admin", "gerente_ventas", "socio", "asesor", "contabilidad"], asesor: "Mis comisiones" },
   { etiqueta: "Aprobaciones", icono: CheckCircle2, ruta: "/aprobaciones", roles: ["admin", "gerente_ventas", "socio"] },
-  { etiqueta: "Personal y planilla", icono: Users2 },
-  { etiqueta: "Gastos", icono: Receipt },
+  { etiqueta: "Personal y planilla", icono: Users2, ruta: "/planilla", roles: ["admin", "socio", "contabilidad"] },
+  { etiqueta: "Gastos", icono: Receipt, ruta: "/gastos", roles: ["admin", "socio", "contabilidad"] },
   { etiqueta: "Reportes", icono: BarChart3 },
   { etiqueta: "Configuración", icono: Settings, ruta: "/configuracion", roles: ["admin", "socio"] },
   {
@@ -59,7 +61,7 @@ const ITEMS: Item[] = [
     sub: true,
   },
   { etiqueta: "Usuarios", icono: UserCog, ruta: "/usuarios", roles: ["admin", "socio"] },
-  { etiqueta: "Bitácora", icono: ScrollText, ruta: "/bitacora", roles: ["admin", "socio"] },
+  { etiqueta: "Bitácora", icono: ScrollText, ruta: "/bitacora", roles: ["admin", "socio", "contabilidad"] },
 ];
 
 export function AppShell({
@@ -130,7 +132,8 @@ export function AppShell({
           {ITEMS.map((item) => {
             const visible = esAsesorSesion
               ? !!item.asesor
-              : !item.roles || (perfil && item.roles.includes(perfil.rol));
+              : (!item.roles || (perfil && item.roles.includes(perfil.rol))) &&
+                !(perfil && item.ocultar?.includes(perfil.rol));
             if (!visible) return null;
             const etiqueta = esAsesorSesion ? item.asesor! : item.etiqueta;
             const Icono = item.icono;
