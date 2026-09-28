@@ -15,6 +15,7 @@ import {
   LogOut,
   Lock,
   Palette,
+  Undo2,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
