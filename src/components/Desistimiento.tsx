@@ -401,12 +401,11 @@ function DialogoMotivo({
   );
 }
 
-function DialogoEditar({ d, abierto, onCambio }: { d: Desistimiento; abierto: boolean; onCambio: (o: boolean) => void }) {
+function DialogoEditar({ d, devuelto, abierto, onCambio }: { d: Desistimiento; devuelto: number; abierto: boolean; onCambio: (o: boolean) => void }) {
   const qc = useQueryClient();
   const bloqueado = d.aceptacion_disolucion;
-  const [f, setF] = useState({
-    porcentaje: String(d.porcentaje_devolucion ?? ""),
-    descontar: !!d.descontar_comision,
+  const inicialF = () => ({
+    descontar: String(d.monto_descontar ?? ""),
     observacion: d.observacion ?? "",
     carta: d.carta_prenotarial,
     fechaCarta: d.fecha_carta_prenotarial ?? "",
@@ -415,30 +414,30 @@ function DialogoEditar({ d, abierto, onCambio }: { d: Desistimiento; abierto: bo
     limite: d.fecha_limite_devolucion ?? "",
     motivo: "",
   });
+  const [f, setF] = useState(inicialF);
   useEffect(() => {
-    if (abierto)
-      setF({
-        porcentaje: String(d.porcentaje_devolucion ?? ""),
-        descontar: !!d.descontar_comision,
-        observacion: d.observacion ?? "",
-        carta: d.carta_prenotarial,
-        fechaCarta: d.fecha_carta_prenotarial ?? "",
-        solicitud: d.solicitud_liberacion,
-        fechaSolicitud: d.fecha_solicitud_liberacion ?? "",
-        limite: d.fecha_limite_devolucion ?? "",
-        motivo: "",
-      });
+    if (abierto) setF(inicialF());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [abierto, d]);
 
+  const descNum = Number(f.descontar || 0);
+  const nuevoDevolver = Math.max(Math.round((Number(d.total_abonado) - descNum) * Number(d.porcentaje_devolucion)) / 100, 0);
+  const errorDesc =
+    f.descontar === "" || descNum < 0
+      ? "Indica un monto a descontar válido."
+      : nuevoDevolver < devuelto - 0.005
+        ? `El nuevo monto a devolver sería menor que lo ya devuelto (${soles(devuelto)}).`
+        : null;
+
   async function guardar() {
+    if (errorDesc) { toast.error(errorDesc); return; }
     const cambios: Database["public"]["Tables"]["desistimiento"]["Update"] = {
       observacion: f.observacion.trim() || null,
       fecha_limite_devolucion: f.limite || null,
       motivo_cambio: f.motivo.trim(),
+      monto_descontar: descNum,
     };
     if (!bloqueado) {
-      cambios.porcentaje_devolucion = Number(f.porcentaje);
-      cambios.descontar_comision = f.descontar;
       cambios.carta_prenotarial = f.carta;
       cambios.fecha_carta_prenotarial = f.carta ? f.fechaCarta || null : null;
       cambios.solicitud_liberacion = f.solicitud;
@@ -459,18 +458,16 @@ function DialogoEditar({ d, abierto, onCambio }: { d: Desistimiento; abierto: bo
           <DialogDescription>Los montos se recalculan en la base al guardar. Cada cambio queda en la bitácora.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3 text-sm">
+          <div className="space-y-1">
+            <Label>Monto a descontar (S/)</Label>
+            <Input type="number" step="0.01" value={f.descontar} onChange={(e) => setF({ ...f, descontar: e.target.value })} />
+            <p className="text-xs text-muted-foreground">
+              Nuevo monto a devolver: <span className="num">{soles(nuevoDevolver)}</span>
+            </p>
+            {errorDesc ? <p className="text-xs text-destructive">{errorDesc}</p> : null}
+          </div>
           {!bloqueado ? (
             <>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label>Porcentaje de devolución (%)</Label>
-                  <Input type="number" step="any" value={f.porcentaje} onChange={(e) => setF({ ...f, porcentaje: e.target.value })} />
-                </div>
-                <label className="flex items-end gap-2 pb-2">
-                  <Checkbox checked={f.descontar} onCheckedChange={(v) => setF({ ...f, descontar: v === true })} />
-                  Descontar comisión
-                </label>
-              </div>
               <div className="grid grid-cols-2 items-end gap-3">
                 <label className="flex items-center gap-2 pb-2">
                   <Checkbox checked={f.carta} onCheckedChange={(v) => setF({ ...f, carta: v === true })} /> Carta prenotarial
