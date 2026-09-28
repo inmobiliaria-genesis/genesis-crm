@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -68,8 +68,8 @@ export function CategoriasGasto({ editable }: { editable: boolean }) {
           </TableHeader>
           <TableBody>
             {(cats.data?.categorias ?? []).map((c) => (
-              <>
-                <TableRow key={c.id} className="font-medium">
+              <Fragment key={c.id}>
+                <TableRow className="font-medium">
                   <TableCell>{c.nombre}</TableCell>
                   <TableCell className="num text-right">{tope(c.tope === null ? null : Number(c.tope))}</TableCell>
                   <TableCell>{!c.manual ? <Badge variant="outline">Automática</Badge> : null}</TableCell>
@@ -100,7 +100,7 @@ export function CategoriasGasto({ editable }: { editable: boolean }) {
                     </TableCell>
                   </TableRow>
                 ))}
-              </>
+              </Fragment>
             ))}
           </TableBody>
         </Table>

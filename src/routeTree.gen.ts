@@ -25,6 +25,7 @@ import { Route as AuthenticatedEstructuraRouteImport } from './routes/_authentic
 import { Route as AuthenticatedGastosRouteImport } from './routes/_authenticated/gastos'
 import { Route as AuthenticatedLeadsRouteImport } from './routes/_authenticated/leads'
 import { Route as AuthenticatedLotesRouteImport } from './routes/_authenticated/lotes'
+import { Route as AuthenticatedPlanillaRouteImport } from './routes/_authenticated/planilla'
 import { Route as AuthenticatedPlanoRouteImport } from './routes/_authenticated/plano'
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 import { Route as AuthenticatedVendedoresRouteImport } from './routes/_authenticated/vendedores'
@@ -113,6 +114,11 @@ const AuthenticatedLotesRoute = AuthenticatedLotesRouteImport.update({
   path: '/lotes',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPlanillaRoute = AuthenticatedPlanillaRouteImport.update({
+  id: '/planilla',
+  path: '/planilla',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedPlanoRoute = AuthenticatedPlanoRouteImport.update({
   id: '/plano',
   path: '/plano',
@@ -150,6 +156,7 @@ export interface FileRoutesByFullPath {
   '/gastos': typeof AuthenticatedGastosRoute
   '/leads': typeof AuthenticatedLeadsRoute
   '/lotes': typeof AuthenticatedLotesRoute
+  '/planilla': typeof AuthenticatedPlanillaRoute
   '/plano': typeof AuthenticatedPlanoRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/vendedores': typeof AuthenticatedVendedoresRoute
@@ -171,6 +178,7 @@ export interface FileRoutesByTo {
   '/gastos': typeof AuthenticatedGastosRoute
   '/leads': typeof AuthenticatedLeadsRoute
   '/lotes': typeof AuthenticatedLotesRoute
+  '/planilla': typeof AuthenticatedPlanillaRoute
   '/plano': typeof AuthenticatedPlanoRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
   '/vendedores': typeof AuthenticatedVendedoresRoute
@@ -194,6 +202,7 @@ export interface FileRoutesById {
   '/_authenticated/gastos': typeof AuthenticatedGastosRoute
   '/_authenticated/leads': typeof AuthenticatedLeadsRoute
   '/_authenticated/lotes': typeof AuthenticatedLotesRoute
+  '/_authenticated/planilla': typeof AuthenticatedPlanillaRoute
   '/_authenticated/plano': typeof AuthenticatedPlanoRoute
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
   '/_authenticated/vendedores': typeof AuthenticatedVendedoresRoute
@@ -217,6 +226,7 @@ export interface FileRouteTypes {
     | '/gastos'
     | '/leads'
     | '/lotes'
+    | '/planilla'
     | '/plano'
     | '/usuarios'
     | '/vendedores'
@@ -238,6 +248,7 @@ export interface FileRouteTypes {
     | '/gastos'
     | '/leads'
     | '/lotes'
+    | '/planilla'
     | '/plano'
     | '/usuarios'
     | '/vendedores'
@@ -260,6 +271,7 @@ export interface FileRouteTypes {
     | '/_authenticated/gastos'
     | '/_authenticated/leads'
     | '/_authenticated/lotes'
+    | '/_authenticated/planilla'
     | '/_authenticated/plano'
     | '/_authenticated/usuarios'
     | '/_authenticated/vendedores'
@@ -386,6 +398,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLotesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/planilla': {
+      id: '/_authenticated/planilla'
+      path: '/planilla'
+      fullPath: '/planilla'
+      preLoaderRoute: typeof AuthenticatedPlanillaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/plano': {
       id: '/_authenticated/plano'
       path: '/plano'
@@ -431,6 +450,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedGastosRoute: typeof AuthenticatedGastosRoute
   AuthenticatedLeadsRoute: typeof AuthenticatedLeadsRoute
   AuthenticatedLotesRoute: typeof AuthenticatedLotesRoute
+  AuthenticatedPlanillaRoute: typeof AuthenticatedPlanillaRoute
   AuthenticatedPlanoRoute: typeof AuthenticatedPlanoRoute
   AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
   AuthenticatedVendedoresRoute: typeof AuthenticatedVendedoresRoute
@@ -451,6 +471,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedGastosRoute: AuthenticatedGastosRoute,
   AuthenticatedLeadsRoute: AuthenticatedLeadsRoute,
   AuthenticatedLotesRoute: AuthenticatedLotesRoute,
+  AuthenticatedPlanillaRoute: AuthenticatedPlanillaRoute,
   AuthenticatedPlanoRoute: AuthenticatedPlanoRoute,
   AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
   AuthenticatedVendedoresRoute: AuthenticatedVendedoresRoute,
