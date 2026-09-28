@@ -95,7 +95,21 @@ function ComisionesPage() {
         )
         .order("fecha_generada", { ascending: false });
       if (error) throw error;
-      return data ?? [];
+      const filas = data ?? [];
+      // El asesor no lee la tabla de lotes: completamos manzana y número con la función segura
+      const faltan = filas.filter((c) => c.venta && !c.venta.lote && c.venta_id).map((c) => c.venta_id!);
+      if (faltan.length) {
+        const { data: vs } = await supabase.from("venta").select("id, lote_id").in("id", faltan);
+        const rpc = supabase.rpc.bind(supabase);
+        const { data: et } = await rpc("etiquetas_lote" as never, { _ids: (vs ?? []).map((v) => v.lote_id) } as never);
+        const porLote = new Map(((et ?? []) as unknown as { id: string; manzana: string; numero: number }[]).map((e) => [e.id, e]));
+        const porVenta = new Map((vs ?? []).map((v) => [v.id, porLote.get(v.lote_id)]));
+        for (const c of filas) {
+          const e = c.venta_id ? porVenta.get(c.venta_id) : undefined;
+          if (c.venta && !c.venta.lote && e) (c.venta as { lote: unknown }).lote = { numero: e.numero, manzana: { letra: e.manzana } };
+        }
+      }
+      return filas;
     },
   });
 
@@ -167,8 +181,8 @@ function ComisionesPage() {
 
   return (
     <AppShell
-      titulo="Comisiones"
-      descripcion="Comisiones e incentivos de encargados"
+      titulo={perfil?.rol === "asesor" ? "Mis comisiones" : "Comisiones"}
+      descripcion={perfil?.rol === "asesor" ? "Tus comisiones e incentivos" : "Comisiones e incentivos de encargados"}
       acciones={
         admin ? (
           <>
@@ -281,6 +295,7 @@ function ComisionesPage() {
               <TableHead>Encargado</TableHead>
               <TableHead>Tipo</TableHead>
               <TableHead>Venta</TableHead>
+              <TableHead>Mes</TableHead>
               <TableHead className="text-right">Monto</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead>Detalle</TableHead>
@@ -296,6 +311,7 @@ function ComisionesPage() {
                 <TableCell>
                   {c.venta ? `Mz ${c.venta.lote?.manzana?.letra} · Lote ${c.venta.lote?.numero}` : "—"}
                 </TableCell>
+                <TableCell>{c.mes ? fecha(c.mes).slice(3) : c.venta?.fecha_firma ? fecha(c.venta.fecha_firma).slice(3) : "—"}</TableCell>
                 <TableCell className="num text-right">{soles(c.monto)}</TableCell>
                 <TableCell>
                   <Badge variant={c.estado === "pagada" ? "secondary" : "outline"}>{ETQ_ESTADO[c.estado]}</Badge>
