@@ -196,7 +196,7 @@ function PlanoPage() {
   const estados = useQuery({
     queryKey: ["lote-estado"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("lote_estado").select("lote_id, estado, saldo_pendiente");
+      const { data, error } = await supabase.from("lote_estado").select("lote_id, estado, saldo_pendiente, en_desistimiento");
       if (error) throw error;
       return data;
     },
@@ -805,6 +805,7 @@ function PlanoPage() {
                       valor={etiquetaEstadoLote(
                         estadoPorLote.get(detalle.id),
                         saldoPorLote.get(detalle.id) ?? null,
+                        (estados.data ?? []).some((e) => e.lote_id === detalle.id && e.en_desistimiento),
                       )}
                     />
                     {pendienteDatos ? (

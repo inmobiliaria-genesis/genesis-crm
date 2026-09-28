@@ -153,6 +153,7 @@ function LotesPage() {
           {
             estado: e.estado ?? "disponible",
             saldo: e.saldo_pendiente === null || e.saldo_pendiente === undefined ? null : Number(e.saldo_pendiente),
+            desist: Boolean(e.en_desistimiento),
           },
         ]),
       ),
@@ -167,6 +168,7 @@ function LotesPage() {
           ...l,
           estado: e?.estado ?? "disponible",
           saldo_pendiente: e?.saldo ?? null,
+          en_desistimiento: e?.desist ?? false,
         };
       }),
     [lotes.data, mapaEstados],
@@ -345,7 +347,7 @@ function LotesPage() {
                   </TableCell>
                   <TableCell>
                     <Badge variant="secondary">
-                      {etiquetaEstadoLote(l.estado, l.saldo_pendiente)}
+                      {etiquetaEstadoLote(l.estado, l.saldo_pendiente, l.en_desistimiento)}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">

@@ -19,6 +19,7 @@ import { Route as AuthenticatedCobranzaRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedColoresMapaRouteImport } from './routes/_authenticated/colores-mapa'
 import { Route as AuthenticatedComisionesRouteImport } from './routes/_authenticated/comisiones'
 import { Route as AuthenticatedConfiguracionRouteImport } from './routes/_authenticated/configuracion'
+import { Route as AuthenticatedDesistimientosRouteImport } from './routes/_authenticated/desistimientos'
 import { Route as AuthenticatedEstructuraRouteImport } from './routes/_authenticated/estructura'
 import { Route as AuthenticatedLotesRouteImport } from './routes/_authenticated/lotes'
 import { Route as AuthenticatedPlanoRouteImport } from './routes/_authenticated/plano'
@@ -77,6 +78,12 @@ const AuthenticatedConfiguracionRoute =
     path: '/configuracion',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedDesistimientosRoute =
+  AuthenticatedDesistimientosRouteImport.update({
+    id: '/desistimientos',
+    path: '/desistimientos',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedEstructuraRoute = AuthenticatedEstructuraRouteImport.update({
   id: '/estructura',
   path: '/estructura',
@@ -118,6 +125,7 @@ export interface FileRoutesByFullPath {
   '/colores-mapa': typeof AuthenticatedColoresMapaRoute
   '/comisiones': typeof AuthenticatedComisionesRoute
   '/configuracion': typeof AuthenticatedConfiguracionRoute
+  '/desistimientos': typeof AuthenticatedDesistimientosRoute
   '/estructura': typeof AuthenticatedEstructuraRoute
   '/lotes': typeof AuthenticatedLotesRoute
   '/plano': typeof AuthenticatedPlanoRoute
@@ -135,6 +143,7 @@ export interface FileRoutesByTo {
   '/colores-mapa': typeof AuthenticatedColoresMapaRoute
   '/comisiones': typeof AuthenticatedComisionesRoute
   '/configuracion': typeof AuthenticatedConfiguracionRoute
+  '/desistimientos': typeof AuthenticatedDesistimientosRoute
   '/estructura': typeof AuthenticatedEstructuraRoute
   '/lotes': typeof AuthenticatedLotesRoute
   '/plano': typeof AuthenticatedPlanoRoute
@@ -154,6 +163,7 @@ export interface FileRoutesById {
   '/_authenticated/colores-mapa': typeof AuthenticatedColoresMapaRoute
   '/_authenticated/comisiones': typeof AuthenticatedComisionesRoute
   '/_authenticated/configuracion': typeof AuthenticatedConfiguracionRoute
+  '/_authenticated/desistimientos': typeof AuthenticatedDesistimientosRoute
   '/_authenticated/estructura': typeof AuthenticatedEstructuraRoute
   '/_authenticated/lotes': typeof AuthenticatedLotesRoute
   '/_authenticated/plano': typeof AuthenticatedPlanoRoute
@@ -173,6 +183,7 @@ export interface FileRouteTypes {
     | '/colores-mapa'
     | '/comisiones'
     | '/configuracion'
+    | '/desistimientos'
     | '/estructura'
     | '/lotes'
     | '/plano'
@@ -190,6 +201,7 @@ export interface FileRouteTypes {
     | '/colores-mapa'
     | '/comisiones'
     | '/configuracion'
+    | '/desistimientos'
     | '/estructura'
     | '/lotes'
     | '/plano'
@@ -208,6 +220,7 @@ export interface FileRouteTypes {
     | '/_authenticated/colores-mapa'
     | '/_authenticated/comisiones'
     | '/_authenticated/configuracion'
+    | '/_authenticated/desistimientos'
     | '/_authenticated/estructura'
     | '/_authenticated/lotes'
     | '/_authenticated/plano'
@@ -294,6 +307,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedConfiguracionRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/desistimientos': {
+      id: '/_authenticated/desistimientos'
+      path: '/desistimientos'
+      fullPath: '/desistimientos'
+      preLoaderRoute: typeof AuthenticatedDesistimientosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/estructura': {
       id: '/_authenticated/estructura'
       path: '/estructura'
@@ -347,6 +367,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedColoresMapaRoute: typeof AuthenticatedColoresMapaRoute
   AuthenticatedComisionesRoute: typeof AuthenticatedComisionesRoute
   AuthenticatedConfiguracionRoute: typeof AuthenticatedConfiguracionRoute
+  AuthenticatedDesistimientosRoute: typeof AuthenticatedDesistimientosRoute
   AuthenticatedEstructuraRoute: typeof AuthenticatedEstructuraRoute
   AuthenticatedLotesRoute: typeof AuthenticatedLotesRoute
   AuthenticatedPlanoRoute: typeof AuthenticatedPlanoRoute
@@ -363,6 +384,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedColoresMapaRoute: AuthenticatedColoresMapaRoute,
   AuthenticatedComisionesRoute: AuthenticatedComisionesRoute,
   AuthenticatedConfiguracionRoute: AuthenticatedConfiguracionRoute,
+  AuthenticatedDesistimientosRoute: AuthenticatedDesistimientosRoute,
   AuthenticatedEstructuraRoute: AuthenticatedEstructuraRoute,
   AuthenticatedLotesRoute: AuthenticatedLotesRoute,
   AuthenticatedPlanoRoute: AuthenticatedPlanoRoute,

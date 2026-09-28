@@ -50,7 +50,7 @@ export function cantidad(valor: number | string | null | undefined, unidad: stri
   return `${cifra(n, 2, false)}${NBSP}${n === 1 ? s : p}`;
 }
 
-export type Unidad = "soles" | "porcentaje" | "lotes" | "cuotas" | "si_no";
+export type Unidad = "soles" | "porcentaje" | "lotes" | "cuotas" | "dias" | "si_no";
 
 /** Formatea un valor según su unidad de configuración. */
 export function conUnidad(valor: number | string | null | undefined, unidad: string | null | undefined): string {
@@ -59,6 +59,7 @@ export function conUnidad(valor: number | string | null | undefined, unidad: str
     case "soles": return soles(valor);
     case "porcentaje": return porcentaje(valor);
     case "lotes":
+    case "dias":
     case "cuotas": return cantidad(valor, unidad);
     case "si_no": return Number(valor) ? "Sí" : "No";
     default: return numero(valor);

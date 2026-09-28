@@ -73,11 +73,11 @@ function CobranzaPage() {
       if (error) throw error;
       const { data: estados, error: e2 } = await supabase
         .from("cuota_estado")
-        .select("cuota_id, monto_pagado, saldo, estado, vencida");
+        .select("cuota_id, monto_pagado, saldo, estado, vencida, exigible");
       if (e2) throw e2;
       const mapa = new Map((estados ?? []).map((e) => [e.cuota_id, e]));
       return (data ?? [])
-        .filter((c) => c.venta && !c.venta.anulado)
+        .filter((c) => c.venta && !c.venta.anulado && mapa.get(c.id)?.exigible !== false)
         .map((c) => {
           const e = mapa.get(c.id);
           const principal = c.venta?.titulares?.find((t) => t.es_principal && !t.anulado);
