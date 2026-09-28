@@ -227,7 +227,7 @@ function DialogoApartado({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("lead")
-        .select("id, nombre, telefono, origen_lead, referido_por_id")
+        .select("id, nombre, telefono, origen, fuente, promotor_id, referido_por_id")
         .eq("id", leadId!)
         .single();
       if (error) throw error;
@@ -374,7 +374,7 @@ function DialogoApartado({
                     ? {
                         nombres: lead.data.nombre,
                         telefono1: lead.data.telefono,
-                        origen: { origen: lead.data.origen_lead ?? "", referidoId: lead.data.referido_por_id, referidoNombre: null },
+                        origen: origenDeFila(lead.data),
                       }
                     : undefined
                 }

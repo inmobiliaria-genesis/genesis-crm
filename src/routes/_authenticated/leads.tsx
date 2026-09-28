@@ -20,14 +20,18 @@ import { fecha, fechaHora, hoyLima } from "@/lib/format";
 import { usePerfil, esAsesor, esAdmin } from "@/lib/sesion";
 import { useVendedores, nombreVendedor } from "@/lib/vendedores";
 import {
-  CampoOrigenLead,
+  CampoOrigen,
   ETAPAS_LEAD,
   ETIQUETA_ETAPA,
-  ETIQUETA_ORIGEN_LEAD,
-  ORIGENES_LEAD,
+  ETIQUETA_FUENTE,
+  FUENTES,
   ORIGEN_VACIO,
   nombreClientePorId,
-  type OrigenLead,
+  origenAColumnas,
+  origenDeFila,
+  textoOrigen,
+  validarOrigen,
+  type Origen,
 } from "@/lib/leads";
 import { cn } from "@/lib/utils";
 import type { Database } from "@/integrations/supabase/types";
@@ -96,7 +100,7 @@ function LeadsPage() {
   const filas = useMemo(() => {
     return (leads.data ?? [])
       .filter((l) => fEtapa === "todas" || l.etapa === fEtapa)
-      .filter((l) => fOrigen === "todos" || (fOrigen === "ninguno" ? !l.origen_lead : l.origen_lead === fOrigen))
+      .filter((l) => fOrigen === "todos" || (fOrigen === "ninguno" ? !l.origen : fOrigen === "promotor" ? l.origen === "promotor" : l.fuente === fOrigen))
       .filter((l) => fVendedor === "todos" || l.vendedor_id === fVendedor)
       .filter((l) => !desde || l.fecha_contacto >= desde)
       .filter((l) => !hasta || l.fecha_contacto <= hasta)
@@ -153,7 +157,8 @@ function LeadsPage() {
               <SelectContent>
                 <SelectItem value="todos">Todos</SelectItem>
                 <SelectItem value="ninguno">Sin indicar</SelectItem>
-                {ORIGENES_LEAD.map((o) => <SelectItem key={o} value={o}>{ETIQUETA_ORIGEN_LEAD[o]}</SelectItem>)}
+                <SelectItem value="promotor">Promotor</SelectItem>
+                {FUENTES.map((o) => <SelectItem key={o} value={o}>Marketing · {ETIQUETA_FUENTE[o]}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -204,7 +209,7 @@ function LeadsPage() {
                       {l.venta_id ? <Badge className="ml-2">Vendido</Badge> : null}
                     </TableCell>
                     <TableCell className="whitespace-nowrap">{l.telefono}</TableCell>
-                    <TableCell>{l.origen_lead ? ETIQUETA_ORIGEN_LEAD[l.origen_lead] : "—"}</TableCell>
+                    <TableCell>{textoOrigen(l)}</TableCell>
                     <TableCell>{nombreVendedor(l.vendedor)}</TableCell>
                     <TableCell className="min-w-40">
                       <Select value={l.etapa} onValueChange={(e) => cambiarEtapa(l, e)}>
@@ -325,10 +330,7 @@ function DialogoLead({
   const [telefono, setTelefono] = useState(lead?.telefono ?? "+51 ");
   const [aviso, setAviso] = useState<string | null>(null);
   const [vendedorId, setVendedorId] = useState(lead?.vendedor_id ?? "");
-  const [origen, setOrigen] = useState<OrigenLead>(
-    lead ? { origen: lead.origen_lead ?? "", referidoId: lead.referido_por_id, referidoNombre: null } : ORIGEN_VACIO,
-  );
-  const [promotorId, setPromotorId] = useState(lead?.promotor_id ?? "ninguno");
+  const [origen, setOrigen] = useState<Origen>(lead ? origenDeFila(lead) : ORIGEN_VACIO);
   const [fechaC, setFechaC] = useState(lead?.fecha_contacto ?? hoyLima());
   const [etapa, setEtapa] = useState(lead?.etapa ?? "nuevo");
   const [proxF, setProxF] = useState(lead?.proxima_fecha ?? "");
@@ -337,12 +339,6 @@ function DialogoLead({
   const [motivo, setMotivo] = useState(lead?.motivo_no_interesado ?? "");
   const [mas, setMas] = useState(!!lead);
   const [guardando, setGuardando] = useState(false);
-
-  useEffect(() => {
-    if (origen.referidoId && !origen.referidoNombre) {
-      nombreClientePorId(origen.referidoId).then((n) => setOrigen((o) => ({ ...o, referidoNombre: n })));
-    }
-  }, [origen.referidoId, origen.referidoNombre]);
 
   async function revisarTelefono() {
     const { data } = await supabase.rpc("lead_por_telefono" as never, { _telefono: telefono, _excluir: lead?.id ?? null } as never);
@@ -359,8 +355,9 @@ function DialogoLead({
       toast.error("Elige el vendedor asignado");
       return;
     }
-    if (origen.origen === "referido" && !origen.referidoId) {
-      toast.error("Busca el DNI del cliente que lo refirió, o cambia el origen");
+    const errOrigen = validarOrigen(origen, false);
+    if (errOrigen) {
+      toast.error(errOrigen);
       return;
     }
     setGuardando(true);
@@ -368,9 +365,7 @@ function DialogoLead({
       nombre: nombre.trim(),
       telefono: telefono.trim(),
       vendedor_id: asesor ? (lead?.vendedor_id ?? miVendedor?.id ?? "") : vendedorId,
-      origen_lead: origen.origen || null,
-      referido_por_id: origen.origen === "referido" ? origen.referidoId : null,
-      promotor_id: promotorId === "ninguno" ? null : promotorId,
+      ...origenAColumnas(origen),
       fecha_contacto: fechaC || hoyLima(),
       etapa,
       proxima_fecha: proxF || null,
@@ -459,17 +454,12 @@ function DialogoLead({
             <ChevronDown className={cn("h-4 w-4 transition-transform", mas && "rotate-180")} /> Más datos
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-3 grid gap-3 sm:grid-cols-2">
-            <CampoOrigenLead valor={origen} onCambio={setOrigen} />
-            <div>
-              <Label>Promotor (opcional)</Label>
-              <Select value={promotorId} onValueChange={setPromotorId}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ninguno">Sin promotor</SelectItem>
-                  {promotores.map((p) => <SelectItem key={p.id} value={p.id}>{nombreVendedor(p)}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+            <CampoOrigen
+              valor={origen}
+              onCambio={setOrigen}
+              opcional
+              promotores={promotores.filter((p) => p.estado === "activo" || p.id === lead?.promotor_id).map((p) => ({ id: p.id, nombre: nombreVendedor(p) }))}
+            />
             <div>
               <Label>Primer contacto</Label>
               <Input type="date" value={fechaC} onChange={(e) => setFechaC(e.target.value)} />
@@ -585,8 +575,8 @@ function DetalleLead({
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
               <Dato k="Teléfono" v={l.telefono} />
               <Dato k="Etapa" v={ETIQUETA_ETAPA[l.etapa] ?? l.etapa} />
-              <Dato k="Origen" v={l.origen_lead ? ETIQUETA_ORIGEN_LEAD[l.origen_lead] ?? l.origen_lead : "—"} />
-              {l.origen_lead === "referido" ? <Dato k="Referido por" v={l.referidoNombre ?? "—"} /> : null}
+              <Dato k="Origen" v={textoOrigen(l)} />
+              {l.fuente === "referido" ? <Dato k="Referido por" v={l.referidoNombre ?? "—"} /> : null}
               <Dato k="Vendedor asignado" v={nombreVendedor(l.vendedor)} />
               <Dato k="Promotor" v={l.promotor ? nombreVendedor(l.promotor) : "—"} />
               <Dato k="Primer contacto" v={fecha(l.fecha_contacto)} />
