@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedApartadosRouteImport } from './routes/_authenticated/apartados'
+import { Route as AuthenticatedAprobacionesRouteImport } from './routes/_authenticated/aprobaciones'
 import { Route as AuthenticatedBitacoraRouteImport } from './routes/_authenticated/bitacora'
 import { Route as AuthenticatedClientesRouteImport } from './routes/_authenticated/clientes'
 import { Route as AuthenticatedCobranzaRouteImport } from './routes/_authenticated/cobranza'
@@ -46,6 +47,12 @@ const AuthenticatedApartadosRoute = AuthenticatedApartadosRouteImport.update({
   path: '/apartados',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAprobacionesRoute =
+  AuthenticatedAprobacionesRouteImport.update({
+    id: '/aprobaciones',
+    path: '/aprobaciones',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedBitacoraRoute = AuthenticatedBitacoraRouteImport.update({
   id: '/bitacora',
   path: '/bitacora',
@@ -119,6 +126,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/apartados': typeof AuthenticatedApartadosRoute
+  '/aprobaciones': typeof AuthenticatedAprobacionesRoute
   '/bitacora': typeof AuthenticatedBitacoraRoute
   '/clientes': typeof AuthenticatedClientesRoute
   '/cobranza': typeof AuthenticatedCobranzaRoute
@@ -137,6 +145,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/apartados': typeof AuthenticatedApartadosRoute
+  '/aprobaciones': typeof AuthenticatedAprobacionesRoute
   '/bitacora': typeof AuthenticatedBitacoraRoute
   '/clientes': typeof AuthenticatedClientesRoute
   '/cobranza': typeof AuthenticatedCobranzaRoute
@@ -157,6 +166,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/apartados': typeof AuthenticatedApartadosRoute
+  '/_authenticated/aprobaciones': typeof AuthenticatedAprobacionesRoute
   '/_authenticated/bitacora': typeof AuthenticatedBitacoraRoute
   '/_authenticated/clientes': typeof AuthenticatedClientesRoute
   '/_authenticated/cobranza': typeof AuthenticatedCobranzaRoute
@@ -177,6 +187,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/apartados'
+    | '/aprobaciones'
     | '/bitacora'
     | '/clientes'
     | '/cobranza'
@@ -195,6 +206,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/apartados'
+    | '/aprobaciones'
     | '/bitacora'
     | '/clientes'
     | '/cobranza'
@@ -214,6 +226,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/apartados'
+    | '/_authenticated/aprobaciones'
     | '/_authenticated/bitacora'
     | '/_authenticated/clientes'
     | '/_authenticated/cobranza'
@@ -263,6 +276,13 @@ declare module '@tanstack/react-router' {
       path: '/apartados'
       fullPath: '/apartados'
       preLoaderRoute: typeof AuthenticatedApartadosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/aprobaciones': {
+      id: '/_authenticated/aprobaciones'
+      path: '/aprobaciones'
+      fullPath: '/aprobaciones'
+      preLoaderRoute: typeof AuthenticatedAprobacionesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/bitacora': {
@@ -361,6 +381,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedApartadosRoute: typeof AuthenticatedApartadosRoute
+  AuthenticatedAprobacionesRoute: typeof AuthenticatedAprobacionesRoute
   AuthenticatedBitacoraRoute: typeof AuthenticatedBitacoraRoute
   AuthenticatedClientesRoute: typeof AuthenticatedClientesRoute
   AuthenticatedCobranzaRoute: typeof AuthenticatedCobranzaRoute
@@ -378,6 +399,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedApartadosRoute: AuthenticatedApartadosRoute,
+  AuthenticatedAprobacionesRoute: AuthenticatedAprobacionesRoute,
   AuthenticatedBitacoraRoute: AuthenticatedBitacoraRoute,
   AuthenticatedClientesRoute: AuthenticatedClientesRoute,
   AuthenticatedCobranzaRoute: AuthenticatedCobranzaRoute,
