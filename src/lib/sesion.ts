@@ -51,9 +51,9 @@ export function puedeComercial(perfil: Perfil | null | undefined) {
   return esGestion(perfil) || perfil?.rol === "asesor";
 }
 
-/** Registrar y anular pagos: admin, gerente de ventas y contabilidad (contabilidad no regulariza). */
+/** Registrar pagos de clientes: gestión. Contabilidad solo consulta. */
 export function puedeCobrar(perfil: Perfil | null | undefined) {
-  return esGestion(perfil) || perfil?.rol === "contabilidad";
+  return esGestion(perfil);
 }
 
 export function puedeElegirVendedor(perfil: Perfil | null | undefined) {
