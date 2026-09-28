@@ -79,6 +79,9 @@ const rpc = supabase.rpc.bind(supabase) as unknown as (
 function Resumen({ c }: { c: Calculo }) {
   return (
     <div className="text-sm">
+      <p className="mb-2 rounded-md bg-muted p-2 text-xs">
+        Se devuelve el {porcentaje(c.porcentaje_devolucion)} de lo abonado, descontando la cuota inicial.
+      </p>
       <Fila k="Total abonado" v={soles(c.total_abonado)} />
       <Fila k="Monto a descontar" v={soles(c.monto_descontar)} />
       <Fila k="Base de cálculo" v={soles(c.base_calculo)} />
@@ -103,30 +106,56 @@ export function DialogoIniciarDesistimiento({
   onCambio: (o: boolean) => void;
 }) {
   const qc = useQueryClient();
+  const { data: perfil } = usePerfil();
+  const admin = esAdmin(perfil);
   const [fechaInicio, setFechaInicio] = useState(hoyLima());
   const [desc, setDesc] = useState<string>("");
+  const [motivoCambio, setMotivoCambio] = useState("");
   const [obs, setObs] = useState("");
   const [guardando, setGuardando] = useState(false);
+
+  const venta = useQuery({
+    queryKey: ["venta-inicial", ventaId],
+    enabled: abierto,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("venta").select("inicial").eq("id", ventaId).single();
+      if (error) throw error;
+      return Number(data.inicial);
+    },
+  });
+  const inicial = venta.data;
 
   useEffect(() => {
     if (abierto) {
       setFechaInicio(hoyLima());
       setDesc("");
+      setMotivoCambio("");
       setObs("");
     }
   }, [abierto]);
+  useEffect(() => {
+    if (abierto && inicial != null && desc === "") setDesc(String(inicial));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [abierto, inicial]);
+
+  const descNum = desc === "" ? NaN : Number(desc);
+  const descValido = Number.isFinite(descNum) && descNum >= 0;
+  const cambiado = inicial != null && descValido && Math.abs(descNum - inicial) > 0.005;
 
   const sim = useQuery({
-    queryKey: ["simular-desistimiento", ventaId, fechaInicio, desc],
-    enabled: abierto,
+    queryKey: ["simular-desistimiento", ventaId, fechaInicio, descValido ? descNum : null],
+    enabled: abierto && descValido && !!fechaInicio,
+    retry: false,
     queryFn: async () => {
       const { data, error } = await rpc("simular_desistimiento", {
         _venta_id: ventaId,
         _fecha: fechaInicio,
-        _monto_descontar: desc === "" ? null : Number(desc),
+        _monto_descontar: descNum,
       });
-      if (error) throw error;
-      return ((data as Calculo[] | null)?.[0] ?? null) as Calculo | null;
+      if (error) throw new Error(error.message);
+      const fila = (data as Calculo[] | null)?.[0];
+      if (!fila) throw new Error("No se obtuvo el cálculo.");
+      return fila;
     },
   });
 
@@ -136,7 +165,8 @@ export function DialogoIniciarDesistimiento({
       venta_id: ventaId,
       fecha_inicio: fechaInicio,
       observacion: obs.trim() || null,
-      ...(desc === "" ? {} : { monto_descontar: Number(desc) }),
+      monto_descontar: descNum,
+      motivo_cambio: cambiado ? motivoCambio.trim() : null,
     } as Database["public"]["Tables"]["desistimiento"]["Insert"]);
     setGuardando(false);
     if (error) { toast.error("No se pudo iniciar", { description: error.message }); return; }
@@ -146,6 +176,8 @@ export function DialogoIniciarDesistimiento({
   }
 
   const c = sim.data;
+  const errorCalc = venta.error?.message ?? sim.error?.message ?? null;
+  const listo = !!fechaInicio && descValido && !!c && (!cambiado || !!motivoCambio.trim());
   return (
     <Dialog open={abierto} onOpenChange={onCambio}>
       <DialogContent>
@@ -166,20 +198,37 @@ export function DialogoIniciarDesistimiento({
               type="number"
               step="0.01"
               min="0"
-              value={desc === "" ? String(c?.monto_descontar ?? "") : desc}
+              value={desc}
+              disabled={!admin}
               onChange={(e) => setDesc(e.target.value)}
             />
-            <p className="text-xs text-muted-foreground">Por defecto, la cuota inicial de la venta.</p>
+            <p className="text-xs text-muted-foreground">
+              Por defecto, la cuota inicial{inicial != null ? ` (${soles(inicial)})` : ""}.
+            </p>
           </div>
         </div>
-        {c ? <Resumen c={c} /> : <p className="text-sm text-muted-foreground">Calculando…</p>}
+        {cambiado ? (
+          <div className="space-y-1">
+            <Label>Motivo del cambio</Label>
+            <Textarea rows={2} value={motivoCambio} onChange={(e) => setMotivoCambio(e.target.value)} />
+          </div>
+        ) : null}
+        {errorCalc ? (
+          <p className="text-sm text-destructive">No se pudo calcular: {errorCalc}</p>
+        ) : !descValido && desc !== "" ? (
+          <p className="text-sm text-destructive">El monto a descontar debe ser S/ 0 o más.</p>
+        ) : c ? (
+          <Resumen c={c} />
+        ) : (
+          <p className="text-sm text-muted-foreground">Calculando…</p>
+        )}
         <div className="space-y-1">
           <Label>Observación</Label>
           <Textarea rows={2} value={obs} onChange={(e) => setObs(e.target.value)} />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onCambio(false)}>Cancelar</Button>
-          <Button onClick={confirmar} disabled={guardando || !c}>Iniciar desistimiento</Button>
+          <Button onClick={confirmar} disabled={guardando || !listo}>Iniciar desistimiento</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -286,7 +335,9 @@ export function DetalleDesistimiento({ id, onCerrar }: { id: string | null; onCe
               <div>
                 <div className="mb-2 flex items-center justify-between">
                   <p className="font-medium">Devoluciones al cliente</p>
-                  {admin && d.estado === "aceptado" ? (
+                  {pendiente <= 0.005 ? (
+                    <Badge variant="secondary">Devolución completa</Badge>
+                  ) : admin && d.estado === "aceptado" ? (
                     <Button size="sm" onClick={() => setDevolviendo(true)}>Registrar devolución</Button>
                   ) : null}
                 </div>

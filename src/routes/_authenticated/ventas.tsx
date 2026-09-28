@@ -35,7 +35,6 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { SelectorCliente } from "@/components/SelectorCliente";
 import {
-  FORMAS_PAGO,
   nombreCliente,
   documentoCliente,
   useLotesConEstado,
