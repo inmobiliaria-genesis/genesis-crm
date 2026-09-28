@@ -50,7 +50,7 @@ export const Route = createFileRoute("/_authenticated/apartados")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  validateSearch: (s: Record<string, unknown>): { nuevoLote?: string } => ({
+  validateSearch: (s: Record<string, unknown>): { nuevoLote?: string | undefined } => ({
     nuevoLote: typeof s["nuevoLote"] === "string" ? s["nuevoLote"] : undefined,
   }),
   component: ApartadosPage,

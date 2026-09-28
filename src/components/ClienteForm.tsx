@@ -135,7 +135,7 @@ export function DialogoCliente({
         _tipo: payload.tipo_documento,
         _numero: payload.numero_documento,
       } as never);
-      if (Array.isArray(dup) && dup.length > 0) {
+      if (Array.isArray(dup) && (dup as unknown[]).length > 0) {
         setGuardando(false);
         toast.error(`Ya existe un cliente con este ${payload.tipo_documento}`);
         return;
