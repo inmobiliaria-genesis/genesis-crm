@@ -22,6 +22,7 @@ import { Route as AuthenticatedComisionesRouteImport } from './routes/_authentic
 import { Route as AuthenticatedConfiguracionRouteImport } from './routes/_authenticated/configuracion'
 import { Route as AuthenticatedDesistimientosRouteImport } from './routes/_authenticated/desistimientos'
 import { Route as AuthenticatedEstructuraRouteImport } from './routes/_authenticated/estructura'
+import { Route as AuthenticatedLeadsRouteImport } from './routes/_authenticated/leads'
 import { Route as AuthenticatedLotesRouteImport } from './routes/_authenticated/lotes'
 import { Route as AuthenticatedPlanoRouteImport } from './routes/_authenticated/plano'
 import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
@@ -96,6 +97,11 @@ const AuthenticatedEstructuraRoute = AuthenticatedEstructuraRouteImport.update({
   path: '/estructura',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedLeadsRoute = AuthenticatedLeadsRouteImport.update({
+  id: '/leads',
+  path: '/leads',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedLotesRoute = AuthenticatedLotesRouteImport.update({
   id: '/lotes',
   path: '/lotes',
@@ -135,6 +141,7 @@ export interface FileRoutesByFullPath {
   '/configuracion': typeof AuthenticatedConfiguracionRoute
   '/desistimientos': typeof AuthenticatedDesistimientosRoute
   '/estructura': typeof AuthenticatedEstructuraRoute
+  '/leads': typeof AuthenticatedLeadsRoute
   '/lotes': typeof AuthenticatedLotesRoute
   '/plano': typeof AuthenticatedPlanoRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
@@ -154,6 +161,7 @@ export interface FileRoutesByTo {
   '/configuracion': typeof AuthenticatedConfiguracionRoute
   '/desistimientos': typeof AuthenticatedDesistimientosRoute
   '/estructura': typeof AuthenticatedEstructuraRoute
+  '/leads': typeof AuthenticatedLeadsRoute
   '/lotes': typeof AuthenticatedLotesRoute
   '/plano': typeof AuthenticatedPlanoRoute
   '/usuarios': typeof AuthenticatedUsuariosRoute
@@ -175,6 +183,7 @@ export interface FileRoutesById {
   '/_authenticated/configuracion': typeof AuthenticatedConfiguracionRoute
   '/_authenticated/desistimientos': typeof AuthenticatedDesistimientosRoute
   '/_authenticated/estructura': typeof AuthenticatedEstructuraRoute
+  '/_authenticated/leads': typeof AuthenticatedLeadsRoute
   '/_authenticated/lotes': typeof AuthenticatedLotesRoute
   '/_authenticated/plano': typeof AuthenticatedPlanoRoute
   '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
@@ -196,6 +205,7 @@ export interface FileRouteTypes {
     | '/configuracion'
     | '/desistimientos'
     | '/estructura'
+    | '/leads'
     | '/lotes'
     | '/plano'
     | '/usuarios'
@@ -215,6 +225,7 @@ export interface FileRouteTypes {
     | '/configuracion'
     | '/desistimientos'
     | '/estructura'
+    | '/leads'
     | '/lotes'
     | '/plano'
     | '/usuarios'
@@ -235,6 +246,7 @@ export interface FileRouteTypes {
     | '/_authenticated/configuracion'
     | '/_authenticated/desistimientos'
     | '/_authenticated/estructura'
+    | '/_authenticated/leads'
     | '/_authenticated/lotes'
     | '/_authenticated/plano'
     | '/_authenticated/usuarios'
@@ -341,6 +353,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedEstructuraRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/leads': {
+      id: '/_authenticated/leads'
+      path: '/leads'
+      fullPath: '/leads'
+      preLoaderRoute: typeof AuthenticatedLeadsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/lotes': {
       id: '/_authenticated/lotes'
       path: '/lotes'
@@ -390,6 +409,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedConfiguracionRoute: typeof AuthenticatedConfiguracionRoute
   AuthenticatedDesistimientosRoute: typeof AuthenticatedDesistimientosRoute
   AuthenticatedEstructuraRoute: typeof AuthenticatedEstructuraRoute
+  AuthenticatedLeadsRoute: typeof AuthenticatedLeadsRoute
   AuthenticatedLotesRoute: typeof AuthenticatedLotesRoute
   AuthenticatedPlanoRoute: typeof AuthenticatedPlanoRoute
   AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
@@ -408,6 +428,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedConfiguracionRoute: AuthenticatedConfiguracionRoute,
   AuthenticatedDesistimientosRoute: AuthenticatedDesistimientosRoute,
   AuthenticatedEstructuraRoute: AuthenticatedEstructuraRoute,
+  AuthenticatedLeadsRoute: AuthenticatedLeadsRoute,
   AuthenticatedLotesRoute: AuthenticatedLotesRoute,
   AuthenticatedPlanoRoute: AuthenticatedPlanoRoute,
   AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,

@@ -73,7 +73,9 @@ export type Database = {
           notas: string | null
           numero_documento: string
           ocupacion: string | null
+          origen_lead: string | null
           provincia: string | null
+          referido_por_id: string | null
           regimen_patrimonial: string | null
           telefono1: string
           telefono2: string | null
@@ -104,7 +106,9 @@ export type Database = {
           notas?: string | null
           numero_documento: string
           ocupacion?: string | null
+          origen_lead?: string | null
           provincia?: string | null
+          referido_por_id?: string | null
           regimen_patrimonial?: string | null
           telefono1?: string
           telefono2?: string | null
@@ -135,13 +139,23 @@ export type Database = {
           notas?: string | null
           numero_documento?: string
           ocupacion?: string | null
+          origen_lead?: string | null
           provincia?: string | null
+          referido_por_id?: string | null
           regimen_patrimonial?: string | null
           telefono1?: string
           telefono2?: string | null
           tipo_documento?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cliente_referido_por_id_fkey"
+            columns: ["referido_por_id"]
+            isOneToOne: false
+            referencedRelation: "cliente"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       color_estado: {
         Row: {
@@ -609,6 +623,165 @@ export type Database = {
             columns: ["proyecto_id"]
             isOneToOne: false
             referencedRelation: "proyecto"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead: {
+        Row: {
+          anulado: boolean
+          anulado_en: string | null
+          anulado_por: string | null
+          cliente_id: string | null
+          creado_en: string
+          creado_por: string | null
+          etapa: string
+          fecha_contacto: string
+          id: string
+          modificado_en: string
+          modificado_por: string | null
+          motivo_anulacion: string | null
+          motivo_no_interesado: string | null
+          nombre: string
+          notas: string | null
+          origen_lead: string | null
+          promotor_id: string | null
+          proxima_accion: string | null
+          proxima_fecha: string | null
+          referido_por_id: string | null
+          reserva_id: string | null
+          telefono: string
+          vendedor_id: string
+          venta_id: string | null
+        }
+        Insert: {
+          anulado?: boolean
+          anulado_en?: string | null
+          anulado_por?: string | null
+          cliente_id?: string | null
+          creado_en?: string
+          creado_por?: string | null
+          etapa?: string
+          fecha_contacto?: string
+          id?: string
+          modificado_en?: string
+          modificado_por?: string | null
+          motivo_anulacion?: string | null
+          motivo_no_interesado?: string | null
+          nombre: string
+          notas?: string | null
+          origen_lead?: string | null
+          promotor_id?: string | null
+          proxima_accion?: string | null
+          proxima_fecha?: string | null
+          referido_por_id?: string | null
+          reserva_id?: string | null
+          telefono: string
+          vendedor_id: string
+          venta_id?: string | null
+        }
+        Update: {
+          anulado?: boolean
+          anulado_en?: string | null
+          anulado_por?: string | null
+          cliente_id?: string | null
+          creado_en?: string
+          creado_por?: string | null
+          etapa?: string
+          fecha_contacto?: string
+          id?: string
+          modificado_en?: string
+          modificado_por?: string | null
+          motivo_anulacion?: string | null
+          motivo_no_interesado?: string | null
+          nombre?: string
+          notas?: string | null
+          origen_lead?: string | null
+          promotor_id?: string | null
+          proxima_accion?: string | null
+          proxima_fecha?: string | null
+          referido_por_id?: string | null
+          reserva_id?: string | null
+          telefono?: string
+          vendedor_id?: string
+          venta_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "cliente"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_promotor_id_fkey"
+            columns: ["promotor_id"]
+            isOneToOne: false
+            referencedRelation: "vendedor"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_referido_por_id_fkey"
+            columns: ["referido_por_id"]
+            isOneToOne: false
+            referencedRelation: "cliente"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_reserva_id_fkey"
+            columns: ["reserva_id"]
+            isOneToOne: false
+            referencedRelation: "reserva"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_vendedor_id_fkey"
+            columns: ["vendedor_id"]
+            isOneToOne: false
+            referencedRelation: "vendedor"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_venta_id_fkey"
+            columns: ["venta_id"]
+            isOneToOne: false
+            referencedRelation: "venta"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_etapa_historial: {
+        Row: {
+          etapa_anterior: string | null
+          etapa_nueva: string
+          fecha_hora: string
+          id: string
+          lead_id: string
+          usuario_id: string | null
+        }
+        Insert: {
+          etapa_anterior?: string | null
+          etapa_nueva: string
+          fecha_hora?: string
+          id?: string
+          lead_id: string
+          usuario_id?: string | null
+        }
+        Update: {
+          etapa_anterior?: string | null
+          etapa_nueva?: string
+          fecha_hora?: string
+          id?: string
+          lead_id?: string
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_etapa_historial_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "lead"
             referencedColumns: ["id"]
           },
         ]
@@ -1108,6 +1281,7 @@ export type Database = {
           fecha: string
           fecha_limite: string | null
           id: string
+          lead_id: string | null
           lote_id: string
           modificado_en: string
           modificado_por: string | null
@@ -1131,6 +1305,7 @@ export type Database = {
           fecha?: string
           fecha_limite?: string | null
           id?: string
+          lead_id?: string | null
           lote_id: string
           modificado_en?: string
           modificado_por?: string | null
@@ -1154,6 +1329,7 @@ export type Database = {
           fecha?: string
           fecha_limite?: string | null
           id?: string
+          lead_id?: string | null
           lote_id?: string
           modificado_en?: string
           modificado_por?: string | null
@@ -1176,6 +1352,13 @@ export type Database = {
             columns: ["convertida_a_venta_id"]
             isOneToOne: false
             referencedRelation: "venta"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reserva_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "lead"
             referencedColumns: ["id"]
           },
           {
@@ -1286,10 +1469,12 @@ export type Database = {
           notas: string | null
           operacion_inicial: string | null
           origen: string
+          origen_lead: string | null
           plazo_meses: number
           precio_acordado: number
           precio_lista_momento: number | null
           promotor_id: string | null
+          referido_por_id: string | null
           reserva_origen_id: string | null
         }
         Insert: {
@@ -1319,10 +1504,12 @@ export type Database = {
           notas?: string | null
           operacion_inicial?: string | null
           origen: string
+          origen_lead?: string | null
           plazo_meses: number
           precio_acordado: number
           precio_lista_momento?: number | null
           promotor_id?: string | null
+          referido_por_id?: string | null
           reserva_origen_id?: string | null
         }
         Update: {
@@ -1352,10 +1539,12 @@ export type Database = {
           notas?: string | null
           operacion_inicial?: string | null
           origen?: string
+          origen_lead?: string | null
           plazo_meses?: number
           precio_acordado?: number
           precio_lista_momento?: number | null
           promotor_id?: string | null
+          referido_por_id?: string | null
           reserva_origen_id?: string | null
         }
         Relationships: [
@@ -1378,6 +1567,13 @@ export type Database = {
             columns: ["promotor_id"]
             isOneToOne: false
             referencedRelation: "vendedor"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venta_referido_por_id_fkey"
+            columns: ["referido_por_id"]
+            isOneToOne: false
+            referencedRelation: "cliente"
             referencedColumns: ["id"]
           },
           {
@@ -1514,6 +1710,13 @@ export type Database = {
           estado_aprobacion: string
         }[]
       }
+      buscar_referido: {
+        Args: { _dni: string }
+        Returns: {
+          cliente_id: string
+          nombre: string
+        }[]
+      }
       cambiar_historica: {
         Args: { _es_historica: boolean; _motivo: string; _venta_id: string }
         Returns: undefined
@@ -1542,6 +1745,12 @@ export type Database = {
       importar_lotes: { Args: { p_filas: Json }; Returns: Json }
       importar_vendedores: { Args: { p_filas: Json }; Returns: Json }
       inicial_minima: { Args: never; Returns: number }
+      lead_por_telefono: {
+        Args: { _excluir?: string; _telefono: string }
+        Returns: {
+          nombre: string
+        }[]
+      }
       lotes_asesor: {
         Args: never
         Returns: {

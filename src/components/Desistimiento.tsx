@@ -144,7 +144,7 @@ export function DialogoIniciarDesistimiento({
 
   const sim = useQuery({
     queryKey: ["simular-desistimiento", ventaId, fechaInicio, descValido ? descNum : null],
-    enabled: abierto && descValido && !!fechaInicio,
+    enabled: abierto && admin && descValido && !!fechaInicio,
     retry: false,
     queryFn: async () => {
       const { data, error } = await rpc("simular_desistimiento", {
@@ -177,7 +177,7 @@ export function DialogoIniciarDesistimiento({
 
   const c = sim.data;
   const errorCalc = venta.error?.message ?? sim.error?.message ?? null;
-  const listo = !!fechaInicio && descValido && !!c && (!cambiado || !!motivoCambio.trim());
+  const listo = !!fechaInicio && descValido && (!!c || !admin) && (!cambiado || !!motivoCambio.trim());
   return (
     <Dialog open={abierto} onOpenChange={onCambio}>
       <DialogContent>
@@ -217,6 +217,8 @@ export function DialogoIniciarDesistimiento({
           <p className="text-sm text-destructive">No se pudo calcular: {errorCalc}</p>
         ) : !descValido && desc !== "" ? (
           <p className="text-sm text-destructive">El monto a descontar debe ser S/ 0 o más.</p>
+        ) : !admin ? (
+          <p className="text-sm text-muted-foreground">El monto a devolver lo calcula el sistema al iniciar; solo un administrador ve la simulación previa.</p>
         ) : c ? (
           <Resumen c={c} />
         ) : (

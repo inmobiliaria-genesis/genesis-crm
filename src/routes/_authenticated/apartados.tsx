@@ -50,8 +50,9 @@ export const Route = createFileRoute("/_authenticated/apartados")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  validateSearch: (s: Record<string, unknown>): { nuevoLote?: string | undefined } => ({
+  validateSearch: (s: Record<string, unknown>): { nuevoLote?: string | undefined; lead?: string | undefined } => ({
     nuevoLote: typeof s["nuevoLote"] === "string" ? s["nuevoLote"] : undefined,
+    lead: typeof s["lead"] === "string" ? s["lead"] : undefined,
   }),
   component: ApartadosPage,
 });
@@ -59,7 +60,7 @@ export const Route = createFileRoute("/_authenticated/apartados")({
 function ApartadosPage() {
   const navigate = useNavigate();
   const busqueda = Route.useSearch();
-  const [alta, setAlta] = useState(!!busqueda.nuevoLote);
+  const [alta, setAlta] = useState(!!busqueda.nuevoLote || !!busqueda.lead);
   const [editar, setEditar] = useState<{ id: string; monto_anticipo: number | null; notas: string | null } | null>(null);
   const { data: perfilSesion } = usePerfil();
   const asesor = esAsesor(perfilSesion);
@@ -197,6 +198,7 @@ function ApartadosPage() {
 
       {alta ? (
         <DialogoApartado
+          leadId={busqueda.lead ?? null}
           asesor={asesor}
           loteInicial={busqueda.nuevoLote ?? ""}
           onCerrar={() => setAlta(false)}
@@ -211,12 +213,27 @@ function DialogoApartado({
   onCerrar,
   asesor,
   loteInicial,
+  leadId,
 }: {
   onCerrar: () => void;
   asesor: boolean;
   loteInicial: string;
+  leadId: string | null;
 }) {
   const qc = useQueryClient();
+  const lead = useQuery({
+    queryKey: ["lead-apartado", leadId],
+    enabled: !!leadId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("lead")
+        .select("id, nombre, telefono, origen_lead, referido_por_id")
+        .eq("id", leadId!)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+  });
   const lotes = useLotesConEstado(asesor);
   const [loteId, setLoteId] = useState(loteInicial);
   const [cliente, setCliente] = useState<Cliente | null>(null);
@@ -275,6 +292,7 @@ function DialogoApartado({
       vigencia_dias: null as unknown as number,
       monto_anticipo: anticipo ? Number(anticipo) : null,
       notas: notas.trim() || null,
+      lead_id: leadId,
     });
     setGuardando(false);
     if (error) {
@@ -290,7 +308,7 @@ function DialogoApartado({
     <Dialog open onOpenChange={(v) => (!v ? onCerrar() : null)}>
       <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Nuevo apartado</DialogTitle>
+          <DialogTitle>Nuevo apartado{lead.data ? ` — lead ${lead.data.nombre}` : ""}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div>
@@ -348,7 +366,24 @@ function DialogoApartado({
             </div>
           ) : (
             <>
-              <SelectorCliente valor={cliente} onCambio={setCliente} />
+              <SelectorCliente
+                valor={cliente}
+                onCambio={setCliente}
+                inicialNuevo={
+                  lead.data
+                    ? {
+                        nombres: lead.data.nombre,
+                        telefono1: lead.data.telefono,
+                        origen: { origen: lead.data.origen_lead ?? "", referidoId: lead.data.referido_por_id, referidoNombre: null },
+                      }
+                    : undefined
+                }
+              />
+              {lead.data && !cliente ? (
+                <p className="text-xs text-muted-foreground">
+                  Desde el lead «{lead.data.nombre}»: usa «Nuevo» para registrar al cliente con sus datos ya llenos.
+                </p>
+              ) : null}
               {asesor && !cliente ? (
                 <button type="button" className="text-xs underline" onClick={() => setModoDoc(true)}>
                   El cliente ya existe (registrado por otra persona): ingresar su documento

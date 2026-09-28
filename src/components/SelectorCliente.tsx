@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +11,9 @@ export function SelectorCliente({
   label = "Cliente",
   valor,
   onCambio,
+  inicialNuevo,
 }: {
+  inicialNuevo?: React.ComponentProps<typeof DialogoCliente>["inicial"];
   label?: string;
   valor: Cliente | null;
   onCambio: (c: Cliente | null) => void;
@@ -67,6 +70,7 @@ export function SelectorCliente({
           abierto
           onCerrar={() => setNuevo(false)}
           onGuardado={(c) => onCambio(c)}
+          inicial={inicialNuevo}
         />
       ) : null}
     </div>
