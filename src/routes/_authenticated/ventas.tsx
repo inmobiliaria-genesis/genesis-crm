@@ -54,6 +54,7 @@ type Busqueda = {
   venta?: string | undefined;
   nuevoLote?: string | undefined;
   nuevoCliente?: string | undefined;
+  reserva?: string | undefined;
 };
 
 export const Route = createFileRoute("/_authenticated/ventas")({
@@ -61,6 +62,7 @@ export const Route = createFileRoute("/_authenticated/ventas")({
     venta: typeof s["venta"] === "string" ? s["venta"] : undefined,
     nuevoLote: typeof s["nuevoLote"] === "string" ? s["nuevoLote"] : undefined,
     nuevoCliente: typeof s["nuevoCliente"] === "string" ? s["nuevoCliente"] : undefined,
+    reserva: typeof s["reserva"] === "string" ? s["reserva"] : undefined,
   }),
   head: () => ({
     meta: [
@@ -275,6 +277,7 @@ function VentasPage() {
         <DialogoVenta
           loteInicial={busqueda.nuevoLote ?? null}
           clienteInicial={busqueda.nuevoCliente ?? null}
+          reservaOrigen={busqueda.reserva ?? null}
           onCerrar={() => {
             setAlta(false);
             navigate({ to: "/ventas", search: {} });
@@ -323,10 +326,12 @@ function Filtro({
 function DialogoVenta({
   loteInicial,
   clienteInicial,
+  reservaOrigen,
   onCerrar,
 }: {
   loteInicial: string | null;
   clienteInicial: string | null;
+  reservaOrigen: string | null;
   onCerrar: () => void;
 }) {
   const qc = useQueryClient();
@@ -386,36 +391,35 @@ function DialogoVenta({
     }
   }
 
-  // Encargado fijado por un apartado de asesor (solo admin puede cambiarlo, con motivo)
-  const encargadoApartado = useQuery({
-    queryKey: ["encargado-apartado", loteId],
-    enabled: !!loteId,
-    queryFn: async (): Promise<string | null> => {
-      const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Lima" }).format(new Date());
-      const { data: rs } = await supabase
+  // Solo cuando la venta nace de un apartado específico: su encargado es el vendedor del asesor que lo registró
+  const origenApartado = useQuery({
+    queryKey: ["reserva-origen", reservaOrigen],
+    enabled: !!reservaOrigen,
+    queryFn: async (): Promise<{ clienteId: string; encargado: string | null }> => {
+      const { data: r, error } = await supabase
         .from("reserva")
-        .select("creado_por, creado_en")
-        .eq("lote_id", loteId)
-        .eq("anulado", false)
-        .eq("estado_aprobacion", "aprobado")
-        .is("convertida_a_venta_id", null)
-        .gte("fecha_limite", hoy)
-        .order("creado_en", { ascending: false })
-        .limit(1);
-      const autor = rs?.[0]?.creado_por;
-      if (!autor) return null;
-      const { data: p } = await supabase.from("perfil").select("rol").eq("user_id", autor).maybeSingle();
-      if (p?.rol !== "asesor") return null;
-      const { data: v } = await supabase
-        .from("vendedor")
-        .select("id")
-        .eq("usuario_id", autor)
-        .eq("tipo", "encargado")
-        .eq("anulado", false)
-        .maybeSingle();
-      return v?.id ?? null;
+        .select("creado_por, cliente_id")
+        .eq("id", reservaOrigen!)
+        .single();
+      if (error) throw error;
+      let encargado: string | null = null;
+      if (r.creado_por) {
+        const { data: p } = await supabase.from("perfil").select("rol").eq("user_id", r.creado_por).maybeSingle();
+        if (p?.rol === "asesor") {
+          const { data: v } = await supabase
+            .from("vendedor")
+            .select("id")
+            .eq("usuario_id", r.creado_por)
+            .eq("tipo", "encargado")
+            .eq("anulado", false)
+            .maybeSingle();
+          encargado = v?.id ?? null;
+        }
+      }
+      return { clienteId: r.cliente_id, encargado };
     },
   });
+  const encargadoApartado = { data: origenApartado.data?.encargado ?? null };
   const encFijo = encargadoApartado.data ?? null;
   const [motivoEncargado, setMotivoEncargado] = useState("");
   useEffect(() => {
@@ -487,10 +491,18 @@ function DialogoVenta({
       toast.error("Elige la forma de pago de la inicial");
       return;
     }
+    if (
+      origenApartado.data &&
+      principal.id !== origenApartado.data.clienteId &&
+      !window.confirm("El titular no coincide con el cliente del apartado. ¿Guardar de todos modos?")
+    ) {
+      return;
+    }
     setGuardando(true);
     const { data, error } = await supabase
       .from("venta")
       .insert({
+        reserva_origen_id: reservaOrigen,
         lote_id: loteId,
         fecha_venta: fechaVenta,
         fecha_firma: fechaFirma || null,
@@ -555,6 +567,9 @@ function DialogoVenta({
 
           <div className="sm:col-span-2">
             <SelectorCliente label="Titular principal" valor={principal} onCambio={setPrincipal} />
+            {origenApartado.data && principal && principal.id !== origenApartado.data.clienteId ? (
+              <p className="mt-1 text-xs text-destructive">El titular no coincide con el cliente del apartado</p>
+            ) : null}
           </div>
 
           <div className="sm:col-span-2">

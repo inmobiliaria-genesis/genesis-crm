@@ -79,6 +79,16 @@ function ApartadosPage() {
       return data;
     },
   });
+  // El asesor no lee la tabla de lotes: pedimos solo manzana y número de sus lotes
+  const etiquetas = useQuery({
+    queryKey: ["etiquetas-lote", reservas.data?.map((r) => r.lote_id).join(",")],
+    enabled: asesor && !!reservas.data?.length,
+    queryFn: async () => {
+      const rpc = supabase.rpc.bind(supabase);
+      const { data } = await rpc("etiquetas_lote" as never, { _ids: reservas.data!.map((r) => r.lote_id) } as never);
+      return new Map(((data ?? []) as unknown as { id: string; manzana: string; numero: number }[]).map((e) => [e.id, e]));
+    },
+  });
 
   const hoy = hoyLima();
 
@@ -122,7 +132,11 @@ function ApartadosPage() {
                 return (
                   <TableRow key={r.id}>
                     <TableCell>
-                      Mz {r.lote?.manzana?.letra} · Lote {r.lote?.numero}
+                      {r.lote
+                        ? `Mz ${r.lote.manzana?.letra} · Lote ${r.lote.numero}`
+                        : etiquetas.data?.get(r.lote_id)
+                          ? `Mz ${etiquetas.data.get(r.lote_id)!.manzana} · Lote ${etiquetas.data.get(r.lote_id)!.numero}`
+                          : "—"}
                     </TableCell>
                     <TableCell>{r.cliente ? nombreCliente(r.cliente) : "Cliente existente"}</TableCell>
                     <TableCell>{fecha(r.fecha)}</TableCell>
@@ -155,7 +169,7 @@ function ApartadosPage() {
                           onClick={() =>
                             navigate({
                               to: "/ventas",
-                              search: { nuevoLote: r.lote?.id, nuevoCliente: r.cliente?.id },
+                              search: { nuevoLote: r.lote_id, nuevoCliente: r.cliente_id, reserva: r.id },
                             })
                           }
                         >
