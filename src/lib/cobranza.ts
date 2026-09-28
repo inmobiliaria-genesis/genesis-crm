@@ -4,6 +4,23 @@ import type { Database } from "@/integrations/supabase/types";
 
 export type Pago = Database["public"]["Tables"]["pago"]["Row"];
 
+/** Valor vigente hoy de un ajuste de Configuración (null si no existe). */
+export async function valorConfig(clave: string): Promise<number | null> {
+  const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Lima" }).format(new Date());
+  const { data, error } = await supabase
+    .from("config")
+    .select("valor")
+    .eq("clave", clave)
+    .eq("anulado", false)
+    .lte("vigente_desde", hoy)
+    .order("vigente_desde", { ascending: false })
+    .order("creado_en", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? Number(data.valor) : null;
+}
+
 export const METODOS_PAGO = ["transferencia", "efectivo", "yape", "plin"] as const;
 
 export const ETIQUETA_METODO: Record<string, string> = {

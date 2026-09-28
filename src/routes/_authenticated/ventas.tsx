@@ -45,7 +45,8 @@ import { fecha, hoyLima, soles, cantidad } from "@/lib/format";
 import { usePerfil, puedeComercial, puedeElegirVendedor, puedeCobrar } from "@/lib/sesion";
 import { ETIQUETA_ORIGEN, nombreVendedor, useVendedores } from "@/lib/vendedores";
 import { DialogoPago, DialogoRegularizar } from "@/components/PagoForm";
-import { ETIQUETA_CUOTA, useCuotasDeVenta, usePagosDeVenta } from "@/lib/cobranza";
+import { ETIQUETA_CUOTA, useCuotasDeVenta, usePagosDeVenta, valorConfig } from "@/lib/cobranza";
+import { MostrarMetodo, DialogoEditarMetodo } from "@/components/MetodoPago";
 import { BotonHistorica } from "@/components/DialogoHistorica";
 import { DialogoIniciarDesistimiento, DetalleDesistimiento, useDesistimientoDeVenta, ETIQUETA_DESISTIMIENTO } from "@/components/Desistimiento";
 
@@ -299,6 +300,15 @@ function DialogoVenta({
   );
   const promotores = activos.filter((x) => x.tipo === "promotor");
 
+  const inicialMinima = useQuery({
+    queryKey: ["config-valor", "inicial_minima"],
+    queryFn: () => valorConfig("inicial_minima"),
+  });
+  useEffect(() => {
+    if (inicialMinima.data != null && inicial === "") setInicial(String(inicialMinima.data));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inicialMinima.data]);
+
   useEffect(() => {
     if (!encargadoId && encargadosElegibles.length === 1 && !puedeElegirVendedor(perfil)) {
       setEncargadoId(encargadosElegibles[0]!.id);
@@ -368,6 +378,10 @@ function DialogoVenta({
   async function guardar() {
     if (!loteId || !principal || !encargadoId) {
       toast.error("Elige lote, cliente principal y encargado");
+      return;
+    }
+    if (condicion === "financiado" && inicialMinima.data != null && inicialNum < inicialMinima.data) {
+      toast.error(`La cuota inicial mínima es ${soles(inicialMinima.data)}.`);
       return;
     }
     setGuardando(true);
@@ -654,6 +668,7 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
   const enProceso = desist.data?.estado === "en_proceso";
   const [anulando, setAnulando] = useState<{ id: string; grupo: boolean } | null>(null);
   const [motivo, setMotivo] = useState("");
+  const [editMetodo, setEditMetodo] = useState<{ id: string; regularizacion: boolean; metodo: string | null; operacion: string | null } | null>(null);
 
   const v = venta.data;
   const cuotas = cronograma.data ?? [];
@@ -668,7 +683,7 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
     fechaDesde: string;
     fechaHasta: string;
     monto: number;
-    metodo: string;
+    metodo: string | null;
     operacion: string | null;
     aplicado: string;
     anulado: boolean;
@@ -702,7 +717,7 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
         fechaHasta: p.fecha,
         monto: Number(p.monto),
         metodo: p.metodo,
-        operacion: p.notas,
+        operacion: p.numero_operacion,
         aplicado: apl.length > 3 ? cantidad(apl.length, "cuotas") : textos.join(" · "),
         anulado: p.anulado,
       };
@@ -754,6 +769,16 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
     qc.invalidateQueries();
   }
 
+  async function guardarMetodo(m: string, op: string | null) {
+    if (!editMetodo) return null;
+    const q = supabase.from("pago").update({ metodo: m, numero_operacion: op });
+    const { error } = editMetodo.regularizacion
+      ? await q.eq("regularizacion_id" as "id", editMetodo.id).eq("anulado", false)
+      : await q.eq("id", editMetodo.id);
+    if (error) return error.message;
+    qc.invalidateQueries();
+    return null;
+  }
 
   return (
     <Sheet open={!!ventaId} onOpenChange={(o) => (!o ? onCerrar() : null)}>
@@ -903,10 +928,16 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
                         ) : null}
                       </TableCell>
                       <TableCell className="num text-right">{soles(f.monto)}</TableCell>
-                      <TableCell className="capitalize">
-                        {f.metodo === "no_registrado" ? "No registrada" : f.metodo}
-                        {f.operacion ? (
-                          <span className="block text-xs text-muted-foreground">{f.operacion}</span>
+                      <TableCell>
+                        <MostrarMetodo metodo={f.metodo} operacion={f.operacion} />
+                        {cobra && !f.anulado ? (
+                          <button
+                            type="button"
+                            className="block text-xs text-primary underline"
+                            onClick={() => setEditMetodo(f)}
+                          >
+                            Editar
+                          </button>
                         ) : null}
                       </TableCell>
                       <TableCell className="text-xs">{f.aplicado || "—"}</TableCell>
