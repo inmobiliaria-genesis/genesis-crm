@@ -30,7 +30,7 @@ import {
 import { usePerfil, esAdmin, puedeVerAdmin } from "@/lib/sesion";
 import { fecha, conUnidad, hoyLima } from "@/lib/format";
 
-const NOMBRE_UNIDAD: Record<string, string> = { soles: "S/", porcentaje: "%", lotes: "lotes", cuotas: "cuotas", si_no: "1 = Sí, 0 = No" };
+const NOMBRE_UNIDAD: Record<string, string> = { soles: "S/", porcentaje: "%", lotes: "lotes", cuotas: "cuotas", dias: "días", si_no: "1 = Sí, 0 = No" };
 
 export const Route = createFileRoute("/_authenticated/configuracion")({
   head: () => ({

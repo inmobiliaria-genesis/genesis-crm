@@ -10,16 +10,19 @@ export const ETIQUETA_CUOTA: Record<string, string> = {
   pagada: "Pagada",
   parcial: "Parcial",
   pendiente: "Pendiente",
+  no_exigible: "No exigible por desistimiento",
 };
 
 /** Traduce el estado de venta del lote considerando su saldo pendiente. */
 export function etiquetaEstadoLote(
   estado: string | null | undefined,
   saldoPendiente: number | null | undefined,
+  enDesistimiento?: boolean | null,
 ): string {
   if (estado === "disponible") return "Libre";
   if (estado === "apartado") return "Separado";
   if (estado === "vendido") {
+    if (enDesistimiento) return "En desistimiento";
     return Number(saldoPendiente ?? 0) > 0.005 ? "Pagando" : "Cancelado";
   }
   return estado ?? "—";
