@@ -8,12 +8,12 @@ export type Perfil = Database["public"]["Tables"]["perfil"]["Row"];
 export const NOMBRE_ROL: Record<Rol, string> = {
   admin: "Administrador",
   gerente_ventas: "Gerente de ventas",
-  cobranza: "Cobranza",
+  contabilidad: "Contabilidad",
   asesor: "Asesor",
   socio: "Socio",
 };
 
-export const ROLES: Rol[] = ["admin", "gerente_ventas", "cobranza", "asesor", "socio"];
+export const ROLES: Rol[] = ["admin", "gerente_ventas", "contabilidad", "asesor", "socio"];
 
 export function usePerfil() {
   return useQuery({
@@ -51,9 +51,9 @@ export function puedeComercial(perfil: Perfil | null | undefined) {
   return esGestion(perfil) || perfil?.rol === "asesor";
 }
 
-/** Registrar y anular pagos: admin, gerente de ventas y cobranza. */
+/** Registrar y anular pagos: admin, gerente de ventas y contabilidad (contabilidad no regulariza). */
 export function puedeCobrar(perfil: Perfil | null | undefined) {
-  return esGestion(perfil) || perfil?.rol === "cobranza";
+  return esGestion(perfil) || perfil?.rol === "contabilidad";
 }
 
 export function puedeElegirVendedor(perfil: Perfil | null | undefined) {
@@ -66,4 +66,9 @@ export function puedeEditarEstructura(perfil: Perfil | null | undefined) {
 
 export function esAsesor(perfil: Perfil | null | undefined) {
   return perfil?.rol === "asesor";
+}
+
+/** Gastos y planilla: admin, socio y contabilidad. */
+export function puedeGastos(perfil: Perfil | null | undefined) {
+  return perfil?.rol === "admin" || perfil?.rol === "socio" || perfil?.rol === "contabilidad";
 }
