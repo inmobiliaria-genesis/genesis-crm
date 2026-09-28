@@ -22,11 +22,16 @@ export function documentoCliente(c: Pick<Cliente, "tipo_documento" | "numero_doc
   return `${c.tipo_documento} ${c.numero_documento}`;
 }
 
-export function useClientes(busqueda = "") {
+/**
+ * modo "selector": solo clientes aprobados (y, para el asesor, también sus pendientes).
+ * modo "todos": todo lo que la persona puede ver (incluye pendientes y rechazados).
+ */
+export function useClientes(busqueda = "", modo: "selector" | "todos" = "selector") {
   return useQuery({
-    queryKey: ["clientes", busqueda],
+    queryKey: ["clientes", busqueda, modo],
     queryFn: async () => {
       let q = supabase.from("cliente").select("*").eq("anulado", false).order("apellidos").limit(50);
+      if (modo === "selector") q = q.neq("estado_aprobacion", "rechazado");
       const t = busqueda.trim();
       if (t) {
         q = q.or(
@@ -35,10 +40,20 @@ export function useClientes(busqueda = "") {
       }
       const { data, error } = await q;
       if (error) throw error;
+      if (modo === "selector") {
+        const { data: auth } = await supabase.auth.getUser();
+        return data.filter((c) => c.estado_aprobacion === "aprobado" || c.creado_por === auth.user?.id);
+      }
       return data;
     },
   });
 }
+
+export const ETIQUETA_APROBACION: Record<string, string> = {
+  pendiente: "Pendiente de aprobación",
+  aprobado: "Aprobado",
+  rechazado: "Rechazado",
+};
 
 export type LoteConUbicacion = {
   id: string;
