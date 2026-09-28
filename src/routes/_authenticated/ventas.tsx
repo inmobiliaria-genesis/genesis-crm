@@ -962,6 +962,12 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
           </div>
         ) : null}
 
+        <DialogoEditarMetodo
+          abierto={!!editMetodo}
+          inicial={{ metodo: editMetodo?.metodo ?? null, operacion: editMetodo?.operacion ?? null }}
+          onCambio={(o) => (!o ? setEditMetodo(null) : null)}
+          onGuardar={guardarMetodo}
+        />
         {registrando && ventaId ? (
           <DialogoPago ventaId={ventaId} onCerrar={() => setRegistrando(false)} />
         ) : null}
