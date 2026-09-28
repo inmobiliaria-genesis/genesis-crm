@@ -280,7 +280,7 @@ export function DialogoRegularizar({
       _venta_id: ventaId,
       _modo: modo,
       _fecha: modo === "unico" ? fechaPago : null,
-      _metodo: metodo,
+      _metodo: metodo === "no_registrado" ? null : metodo,
       _notas: notas.trim() || null,
     });
     setGuardando(false);
