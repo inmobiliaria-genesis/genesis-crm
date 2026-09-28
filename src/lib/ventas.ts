@@ -68,10 +68,20 @@ export type LoteConUbicacion = {
   etiqueta: string;
 };
 
-export function useLotesConEstado() {
+export function useLotesConEstado(asesor = false) {
   return useQuery({
-    queryKey: ["lotes-con-estado"],
+    queryKey: ["lotes-con-estado", asesor],
     queryFn: async (): Promise<LoteConUbicacion[]> => {
+      if (asesor) {
+        const rpc = supabase.rpc.bind(supabase);
+        const { data, error } = await rpc("lotes_asesor" as never);
+        if (error) throw error;
+        return ((data ?? []) as unknown as { id: string; manzana: string; numero: number; area_m2: number; precio_lista: number }[]).map((l) => ({
+          id: l.id, numero: l.numero, area_m2: l.area_m2, precio_lista: l.precio_lista,
+          manzana_id: "", manzana_letra: l.manzana, etapa: "", proyecto: "",
+          estado: "disponible", etiqueta: `Mz ${l.manzana} · Lote ${l.numero}`,
+        }));
+      }
       const { data, error } = await supabase
         .from("lote")
         .select(

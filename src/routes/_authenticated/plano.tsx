@@ -5,6 +5,7 @@ import { Minus, Plus, Maximize, Upload, Undo2, SkipForward, Trash2 } from "lucid
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
+import { PlanoAsesor } from "@/components/PlanoAsesor";
 import { etiquetaEstadoLote } from "@/lib/cobranza";
 import { EnlaceLote } from "@/components/EnlaceLote";
 import { Button } from "@/components/ui/button";
@@ -45,7 +46,7 @@ export const Route = createFileRoute("/_authenticated/plano")({
       },
     ],
   }),
-  component: PlanoPage,
+  component: PlanoRuta,
 });
 
 const TIPOS_OK = ["image/jpeg", "image/png", "image/webp"];
@@ -59,6 +60,13 @@ type LoteFila = {
   manzana_id: string;
   manzana: { id: string; letra: string; tipo: string } | null;
 };
+
+function PlanoRuta() {
+  const { data: perfil, isLoading } = usePerfil();
+  if (isLoading) return null;
+  if (perfil?.rol === "asesor") return <PlanoAsesor />;
+  return <PlanoPage />;
+}
 
 function PlanoPage() {
   const { data: perfil } = usePerfil();

@@ -217,7 +217,7 @@ function DialogoApartado({
   loteInicial: string;
 }) {
   const qc = useQueryClient();
-  const lotes = useLotesConEstado();
+  const lotes = useLotesConEstado(asesor);
   const [loteId, setLoteId] = useState(loteInicial);
   const [cliente, setCliente] = useState<Cliente | null>(null);
   const [clienteExistente, setClienteExistente] = useState<{ id: string; doc: string } | null>(null);

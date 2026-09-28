@@ -38,6 +38,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useLotesConEstado } from "@/lib/ventas";
 import { usePerfil, puedeEditarEstructura, esAdmin } from "@/lib/sesion";
 import { soles, numero, cantidad } from "@/lib/format";
 import type { Database } from "@/integrations/supabase/types";
@@ -64,8 +65,59 @@ export const Route = createFileRoute("/_authenticated/lotes")({
       { property: "og:description", content: "Listado, alta e importación de lotes." },
     ],
   }),
-  component: LotesPage,
+  component: LotesRuta,
 });
+
+function LotesRuta() {
+  const { data: perfil, isLoading } = usePerfil();
+  if (isLoading) return null;
+  if (perfil?.rol === "asesor") return <LotesAsesor />;
+  return <LotesPage />;
+}
+
+/** Vista del asesor: solo lotes Libres con datos completos, desde la función segura. */
+function LotesAsesor() {
+  const navigate = useNavigate();
+  const lotes = useLotesConEstado(true);
+  const [texto, setTexto] = useState("");
+  const filas = (lotes.data ?? []).filter((l) => !texto.trim() || l.etiqueta.toLowerCase().includes(texto.trim().toLowerCase()));
+  return (
+    <AppShell titulo="Lotes" descripcion="Lotes libres disponibles para apartar">
+      <div className="mb-3 max-w-xs">
+        <Input placeholder="Buscar manzana o lote" value={texto} onChange={(e) => setTexto(e.target.value)} />
+      </div>
+      <div className="rounded-lg border border-border bg-card">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Manzana</TableHead>
+              <TableHead>Lote</TableHead>
+              <TableHead className="text-right">Área (m²)</TableHead>
+              <TableHead className="text-right">Precio de lista</TableHead>
+              <TableHead className="text-right"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filas.length === 0 ? (
+              <TableRow><TableCell colSpan={5} className="text-center text-sm text-muted-foreground">{lotes.isLoading ? "Cargando…" : "No hay lotes libres."}</TableCell></TableRow>
+            ) : null}
+            {filas.map((l) => (
+              <TableRow key={l.id}>
+                <TableCell>{l.manzana_letra}</TableCell>
+                <TableCell>{l.numero}</TableCell>
+                <TableCell className="num text-right">{l.area_m2}</TableCell>
+                <TableCell className="num text-right">{l.precio_lista == null ? "—" : soles(l.precio_lista)}</TableCell>
+                <TableCell className="text-right">
+                  <Button size="sm" onClick={() => navigate({ to: "/apartados", search: { nuevoLote: l.id } })}>Apartar</Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </AppShell>
+  );
+}
 
 function LotesPage() {
   const { data: perfil } = usePerfil();
