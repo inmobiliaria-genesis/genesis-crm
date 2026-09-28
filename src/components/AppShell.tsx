@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   LayoutGrid,
   Map,
@@ -16,6 +16,7 @@ import {
   Lock,
   Palette,
   Undo2,
+  CheckCircle2,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,19 +29,22 @@ type Item = {
   ruta?: string;
   roles?: Rol[];
   sub?: boolean;
+  /** Etiqueta para el asesor; si no la tiene, el asesor no ve el ítem. */
+  asesor?: string;
 };
 
 const ITEMS: Item[] = [
   { etiqueta: "Estructura", icono: LayoutGrid, ruta: "/estructura" },
-  { etiqueta: "Lotes", icono: Map, ruta: "/lotes" },
-  { etiqueta: "Plano", icono: Map, ruta: "/plano", sub: true },
-  { etiqueta: "Clientes", icono: Users2, ruta: "/clientes" },
+  { etiqueta: "Lotes", icono: Map, ruta: "/lotes", asesor: "Lotes" },
+  { etiqueta: "Plano", icono: Map, ruta: "/plano", sub: true, asesor: "Plano" },
+  { etiqueta: "Clientes", icono: Users2, ruta: "/clientes", asesor: "Mis clientes" },
   { etiqueta: "Vendedores", icono: UserCog, ruta: "/vendedores" },
-  { etiqueta: "Apartados", icono: Receipt, ruta: "/apartados" },
-  { etiqueta: "Ventas", icono: ShoppingCart, ruta: "/ventas" },
+  { etiqueta: "Apartados", icono: Receipt, ruta: "/apartados", asesor: "Mis apartados" },
+  { etiqueta: "Ventas", icono: ShoppingCart, ruta: "/ventas", asesor: "Mis ventas" },
   { etiqueta: "Cobranza", icono: Wallet, ruta: "/cobranza" },
   { etiqueta: "Desistimientos", icono: Undo2, ruta: "/desistimientos", sub: true },
-  { etiqueta: "Comisiones", icono: Percent, ruta: "/comisiones", roles: ["admin", "gerente_ventas", "socio", "asesor"] },
+  { etiqueta: "Comisiones", icono: Percent, ruta: "/comisiones", roles: ["admin", "gerente_ventas", "socio", "asesor"], asesor: "Mis comisiones" },
+  { etiqueta: "Aprobaciones", icono: CheckCircle2, ruta: "/aprobaciones", roles: ["admin", "gerente_ventas", "socio"] },
   { etiqueta: "Personal y planilla", icono: Users2 },
   { etiqueta: "Gastos", icono: Receipt },
   { etiqueta: "Reportes", icono: BarChart3 },
@@ -70,6 +74,19 @@ export function AppShell({
   const { data: perfil, isLoading } = usePerfil();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const esAsesorSesion = perfil?.rol === "asesor";
+  const pendientes = useQuery({
+    queryKey: ["aprobaciones-contador"],
+    enabled: !!perfil && ["admin", "gerente_ventas", "socio"].includes(perfil.rol),
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const [c, r] = await Promise.all([
+        supabase.from("cliente").select("id", { count: "exact", head: true }).eq("estado_aprobacion", "pendiente").eq("anulado", false),
+        supabase.from("reserva").select("id", { count: "exact", head: true }).eq("estado_aprobacion", "pendiente").eq("anulado", false),
+      ]);
+      return (c.count ?? 0) + (r.count ?? 0);
+    },
+  });
 
 
   async function salir() {
@@ -109,8 +126,11 @@ export function AppShell({
         </div>
         <nav className="flex-1 space-y-1 overflow-y-auto p-3">
           {ITEMS.map((item) => {
-            const visible = !item.roles || (perfil && item.roles.includes(perfil.rol));
+            const visible = esAsesorSesion
+              ? !!item.asesor
+              : !item.roles || (perfil && item.roles.includes(perfil.rol));
             if (!visible) return null;
+            const etiqueta = esAsesorSesion ? item.asesor! : item.etiqueta;
             const Icono = item.icono;
             if (!item.ruta) {
               return (
@@ -138,7 +158,12 @@ export function AppShell({
                 }}
               >
                 <Icono className="h-4 w-4" />
-                {item.etiqueta}
+                <span className="flex-1">{etiqueta}</span>
+                {item.ruta === "/aprobaciones" && pendientes.data ? (
+                  <span className="rounded-full bg-sidebar-primary px-2 py-0.5 text-[10px] font-semibold text-sidebar-primary-foreground">
+                    {pendientes.data}
+                  </span>
+                ) : null}
               </Link>
             );
           })}

@@ -63,3 +63,7 @@ export function puedeElegirVendedor(perfil: Perfil | null | undefined) {
 export function puedeEditarEstructura(perfil: Perfil | null | undefined) {
   return esGestion(perfil);
 }
+
+export function esAsesor(perfil: Perfil | null | undefined) {
+  return perfil?.rol === "asesor";
+}

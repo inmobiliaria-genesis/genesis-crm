@@ -53,11 +53,14 @@ export type Database = {
           anulado_en: string | null
           anulado_por: string | null
           apellidos: string
+          aprobado_en: string | null
+          aprobado_por: string | null
           creado_en: string
           creado_por: string | null
           departamento: string | null
           distrito: string | null
           email: string | null
+          estado_aprobacion: string
           estado_civil: string | null
           fecha_nacimiento: string | null
           id: string
@@ -65,6 +68,7 @@ export type Database = {
           modificado_en: string
           modificado_por: string | null
           motivo_anulacion: string | null
+          motivo_rechazo: string | null
           nombres: string
           notas: string | null
           numero_documento: string
@@ -80,11 +84,14 @@ export type Database = {
           anulado_en?: string | null
           anulado_por?: string | null
           apellidos: string
+          aprobado_en?: string | null
+          aprobado_por?: string | null
           creado_en?: string
           creado_por?: string | null
           departamento?: string | null
           distrito?: string | null
           email?: string | null
+          estado_aprobacion?: string
           estado_civil?: string | null
           fecha_nacimiento?: string | null
           id?: string
@@ -92,6 +99,7 @@ export type Database = {
           modificado_en?: string
           modificado_por?: string | null
           motivo_anulacion?: string | null
+          motivo_rechazo?: string | null
           nombres: string
           notas?: string | null
           numero_documento: string
@@ -107,11 +115,14 @@ export type Database = {
           anulado_en?: string | null
           anulado_por?: string | null
           apellidos?: string
+          aprobado_en?: string | null
+          aprobado_por?: string | null
           creado_en?: string
           creado_por?: string | null
           departamento?: string | null
           distrito?: string | null
           email?: string | null
+          estado_aprobacion?: string
           estado_civil?: string | null
           fecha_nacimiento?: string | null
           id?: string
@@ -119,6 +130,7 @@ export type Database = {
           modificado_en?: string
           modificado_por?: string | null
           motivo_anulacion?: string | null
+          motivo_rechazo?: string | null
           nombres?: string
           notas?: string | null
           numero_documento?: string
@@ -727,13 +739,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "lote_ubicacion_lote_id_fkey"
-            columns: ["lote_id"]
-            isOneToOne: false
-            referencedRelation: "lote_estado"
-            referencedColumns: ["lote_id"]
-          },
-          {
             foreignKeyName: "lote_ubicacion_plano_id_fkey"
             columns: ["plano_id"]
             isOneToOne: false
@@ -1093,10 +1098,13 @@ export type Database = {
           anulado: boolean
           anulado_en: string | null
           anulado_por: string | null
+          aprobado_en: string | null
+          aprobado_por: string | null
           cliente_id: string
           convertida_a_venta_id: string | null
           creado_en: string
           creado_por: string | null
+          estado_aprobacion: string
           fecha: string
           fecha_limite: string | null
           id: string
@@ -1105,6 +1113,7 @@ export type Database = {
           modificado_por: string | null
           monto_anticipo: number | null
           motivo_anulacion: string | null
+          motivo_rechazo: string | null
           notas: string | null
           vigencia_dias: number
         }
@@ -1112,10 +1121,13 @@ export type Database = {
           anulado?: boolean
           anulado_en?: string | null
           anulado_por?: string | null
+          aprobado_en?: string | null
+          aprobado_por?: string | null
           cliente_id: string
           convertida_a_venta_id?: string | null
           creado_en?: string
           creado_por?: string | null
+          estado_aprobacion?: string
           fecha?: string
           fecha_limite?: string | null
           id?: string
@@ -1124,6 +1136,7 @@ export type Database = {
           modificado_por?: string | null
           monto_anticipo?: number | null
           motivo_anulacion?: string | null
+          motivo_rechazo?: string | null
           notas?: string | null
           vigencia_dias: number
         }
@@ -1131,10 +1144,13 @@ export type Database = {
           anulado?: boolean
           anulado_en?: string | null
           anulado_por?: string | null
+          aprobado_en?: string | null
+          aprobado_por?: string | null
           cliente_id?: string
           convertida_a_venta_id?: string | null
           creado_en?: string
           creado_por?: string | null
+          estado_aprobacion?: string
           fecha?: string
           fecha_limite?: string | null
           id?: string
@@ -1143,6 +1159,7 @@ export type Database = {
           modificado_por?: string | null
           monto_anticipo?: number | null
           motivo_anulacion?: string | null
+          motivo_rechazo?: string | null
           notas?: string | null
           vigencia_dias?: number
         }
@@ -1167,13 +1184,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "lote"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reserva_lote_id_fkey"
-            columns: ["lote_id"]
-            isOneToOne: false
-            referencedRelation: "lote_estado"
-            referencedColumns: ["lote_id"]
           },
         ]
       }
@@ -1270,6 +1280,7 @@ export type Database = {
           modificado_en: string
           modificado_por: string | null
           motivo_anulacion: string | null
+          motivo_cambio_encargado: string | null
           motivo_cambio_historica: string | null
           motivo_diferencia_precio: string | null
           notas: string | null
@@ -1301,6 +1312,7 @@ export type Database = {
           modificado_en?: string
           modificado_por?: string | null
           motivo_anulacion?: string | null
+          motivo_cambio_encargado?: string | null
           motivo_cambio_historica?: string | null
           motivo_diferencia_precio?: string | null
           notas?: string | null
@@ -1332,6 +1344,7 @@ export type Database = {
           modificado_en?: string
           modificado_por?: string | null
           motivo_anulacion?: string | null
+          motivo_cambio_encargado?: string | null
           motivo_cambio_historica?: string | null
           motivo_diferencia_precio?: string | null
           notas?: string | null
@@ -1356,13 +1369,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "lote"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "venta_lote_id_fkey"
-            columns: ["lote_id"]
-            isOneToOne: false
-            referencedRelation: "lote_estado"
-            referencedColumns: ["lote_id"]
           },
           {
             foreignKeyName: "venta_promotor_id_fkey"
@@ -1472,18 +1478,6 @@ export type Database = {
           lote_id: string | null
           saldo_pendiente: number | null
         }
-        Insert: {
-          en_desistimiento?: never
-          estado?: never
-          lote_id?: string | null
-          saldo_pendiente?: never
-        }
-        Update: {
-          en_desistimiento?: never
-          estado?: never
-          lote_id?: string | null
-          saldo_pendiente?: never
-        }
         Relationships: []
       }
     }
@@ -1491,6 +1485,24 @@ export type Database = {
       anular_regularizacion: {
         Args: { _motivo: string; _regularizacion_id: string }
         Returns: number
+      }
+      aprobar_cliente: { Args: { _id: string }; Returns: undefined }
+      aprobar_reserva: { Args: { _id: string }; Returns: undefined }
+      asignar_rol_usuario: {
+        Args: {
+          _perfil_id: string
+          _rol: Database["public"]["Enums"]["app_rol"]
+          _vendedor_id: string
+        }
+        Returns: undefined
+      }
+      buscar_cliente_documento: {
+        Args: { _numero: string; _tipo: string }
+        Returns: {
+          cliente_id: string
+          es_mio: boolean
+          estado_aprobacion: string
+        }[]
       }
       cambiar_historica: {
         Args: { _es_historica: boolean; _motivo: string; _venta_id: string }
@@ -1508,11 +1520,33 @@ export type Database = {
         Args: { _lote_id: string }
         Returns: undefined
       }
+      hay_solicitud_pendiente: { Args: { _lote_id: string }; Returns: boolean }
       importar_lotes: { Args: { p_filas: Json }; Returns: Json }
       importar_vendedores: { Args: { p_filas: Json }; Returns: Json }
       inicial_minima: { Args: never; Returns: number }
+      mis_ventas: {
+        Args: never
+        Returns: {
+          cuotas_pagadas: number
+          cuotas_total: number
+          estado: string
+          fecha_venta: string
+          lote: string
+          precio_acordado: number
+          titular: string
+          venta_id: string
+        }[]
+      }
       motivo_no_revertir: { Args: { _id: string }; Returns: string }
       recalcular_mes: { Args: { _mes: string }; Returns: number }
+      rechazar_cliente: {
+        Args: { _id: string; _motivo: string }
+        Returns: undefined
+      }
+      rechazar_reserva: {
+        Args: { _id: string; _motivo: string }
+        Returns: undefined
+      }
       regularizar_venta: {
         Args: {
           _fecha: string

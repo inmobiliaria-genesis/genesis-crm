@@ -7,6 +7,7 @@ const esquema = z.object({
   password: z.string().min(6),
   nombre: z.string().min(1),
   rol: z.enum(["admin", "gerente_ventas", "cobranza", "asesor", "socio"]),
+  vendedorId: z.string().uuid().nullable().optional(),
 });
 
 export const crearUsuario = createServerFn({ method: "POST" })
@@ -29,6 +30,16 @@ export const crearUsuario = createServerFn({ method: "POST" })
       email_confirm: true,
     });
     if (error || !creado.user) throw new Error(error?.message ?? "No se pudo crear el usuario");
+
+    if (data.rol === "asesor") {
+      if (!data.vendedorId) throw new Error("Un asesor debe estar vinculado a un vendedor encargado activo");
+      const { error: errV } = await supabaseAdmin
+        .from("vendedor")
+        .update({ usuario_id: creado.user.id, modificado_por: context.userId })
+        .eq("id", data.vendedorId)
+        .is("usuario_id", null);
+      if (errV) throw new Error(errV.message);
+    }
 
     const { error: errorInsert } = await supabaseAdmin.from("perfil").insert({
       user_id: creado.user.id,

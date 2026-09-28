@@ -72,8 +72,66 @@ export const Route = createFileRoute("/_authenticated/ventas")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: VentasPage,
+  component: VentasRuta,
 });
+
+function VentasRuta() {
+  const { data: perfil, isLoading } = usePerfil();
+  if (isLoading) return <AppShell titulo="Ventas"><p className="text-sm text-muted-foreground">Cargando…</p></AppShell>;
+  if (perfil?.rol === "asesor") return <MisVentas />;
+  return <VentasPage />;
+}
+
+const ETQ_ESTADO_VENTA: Record<string, string> = {
+  pagando: "Pagando", cancelada: "Cancelada", anulada: "Anulada", desistida: "Desistida", en_desistimiento: "En desistimiento",
+};
+
+function MisVentas() {
+  const q = useQuery({
+    queryKey: ["mis-ventas"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("mis_ventas" as never);
+      if (error) throw error;
+      return (data ?? []) as unknown as {
+        venta_id: string; lote: string; titular: string | null; fecha_venta: string;
+        precio_acordado: number; estado: string; cuotas_pagadas: number; cuotas_total: number;
+      }[];
+    },
+  });
+  return (
+    <AppShell titulo="Mis ventas" descripcion="Ventas donde eres el encargado (solo lectura)">
+      <div className="rounded-lg border border-border bg-card">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Lote</TableHead>
+              <TableHead>Titular principal</TableHead>
+              <TableHead>Fecha de venta</TableHead>
+              <TableHead className="text-right">Precio acordado</TableHead>
+              <TableHead>Estado</TableHead>
+              <TableHead className="text-right">Cuotas pagadas</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {q.data?.length === 0 ? (
+              <TableRow><TableCell colSpan={6} className="text-center text-sm text-muted-foreground">Todavía no tienes ventas.</TableCell></TableRow>
+            ) : null}
+            {q.data?.map((v) => (
+              <TableRow key={v.venta_id}>
+                <TableCell>{v.lote}</TableCell>
+                <TableCell>{v.titular ?? "—"}</TableCell>
+                <TableCell>{fecha(v.fecha_venta)}</TableCell>
+                <TableCell className="num text-right">{soles(v.precio_acordado)}</TableCell>
+                <TableCell><Badge variant="outline">{ETQ_ESTADO_VENTA[v.estado] ?? v.estado}</Badge></TableCell>
+                <TableCell className="num text-right">{v.cuotas_pagadas} de {v.cuotas_total}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </AppShell>
+  );
+}
 
 function VentasPage() {
   const busqueda = Route.useSearch();
@@ -328,6 +386,42 @@ function DialogoVenta({
     }
   }
 
+  // Encargado fijado por un apartado de asesor (solo admin puede cambiarlo, con motivo)
+  const encargadoApartado = useQuery({
+    queryKey: ["encargado-apartado", loteId],
+    enabled: !!loteId,
+    queryFn: async (): Promise<string | null> => {
+      const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Lima" }).format(new Date());
+      const { data: rs } = await supabase
+        .from("reserva")
+        .select("creado_por, creado_en")
+        .eq("lote_id", loteId)
+        .eq("anulado", false)
+        .eq("estado_aprobacion", "aprobado")
+        .is("convertida_a_venta_id", null)
+        .gte("fecha_limite", hoy)
+        .order("creado_en", { ascending: false })
+        .limit(1);
+      const autor = rs?.[0]?.creado_por;
+      if (!autor) return null;
+      const { data: p } = await supabase.from("perfil").select("rol").eq("user_id", autor).maybeSingle();
+      if (p?.rol !== "asesor") return null;
+      const { data: v } = await supabase
+        .from("vendedor")
+        .select("id")
+        .eq("usuario_id", autor)
+        .eq("tipo", "encargado")
+        .eq("anulado", false)
+        .maybeSingle();
+      return v?.id ?? null;
+    },
+  });
+  const encFijo = encargadoApartado.data ?? null;
+  const [motivoEncargado, setMotivoEncargado] = useState("");
+  useEffect(() => {
+    if (encFijo) setEncargadoId(encFijo);
+  }, [encFijo]);
+
   useEffect(() => {
     if (!clienteInicial) return;
     supabase
@@ -401,6 +495,7 @@ function DialogoVenta({
         fecha_venta: fechaVenta,
         fecha_firma: fechaFirma || null,
         encargado_id: encargadoId,
+        motivo_cambio_encargado: encFijo && encargadoId !== encFijo ? motivoEncargado.trim() || null : null,
         origen,
         promotor_id: origen === "promotor" && promotorId !== "ninguno" ? promotorId : null,
         condicion,
@@ -520,7 +615,11 @@ function DialogoVenta({
           </div>
           <div>
             <Label>Encargado</Label>
-            <Select value={encargadoId} onValueChange={setEncargadoId}>
+            <Select
+              value={encargadoId}
+              onValueChange={setEncargadoId}
+              disabled={!!encFijo && perfil?.rol !== "admin"}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Elige el encargado" />
               </SelectTrigger>
@@ -530,10 +629,17 @@ function DialogoVenta({
                 ))}
               </SelectContent>
             </Select>
-            {!puedeElegirVendedor(perfil) ? (
+            {encFijo ? (
               <p className="mt-1 text-xs text-muted-foreground">
-                Como asesor, solo puedes elegir un encargado vinculado a tu cuenta.
+                Este lote viene de un apartado registrado por un asesor: el encargado es su vendedor vinculado.
+                {perfil?.rol === "admin" ? " Solo puedes cambiarlo indicando un motivo." : ""}
               </p>
+            ) : null}
+            {encFijo && encargadoId !== encFijo ? (
+              <div className="mt-2">
+                <Label>Motivo del cambio de encargado</Label>
+                <Input value={motivoEncargado} onChange={(e) => setMotivoEncargado(e.target.value)} />
+              </div>
             ) : null}
           </div>
           <div>
