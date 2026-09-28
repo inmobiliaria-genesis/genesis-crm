@@ -45,10 +45,10 @@ const ITEMS: Item[] = [
   { etiqueta: "Ventas", icono: ShoppingCart, ruta: "/ventas", asesor: "Mis ventas" },
   { etiqueta: "Cobranza", icono: Wallet, ruta: "/cobranza" },
   { etiqueta: "Desistimientos", icono: Undo2, ruta: "/desistimientos", sub: true },
-  { etiqueta: "Comisiones", icono: Percent, ruta: "/comisiones", roles: ["admin", "gerente_ventas", "socio", "asesor"], asesor: "Mis comisiones" },
+  { etiqueta: "Comisiones", icono: Percent, ruta: "/comisiones", roles: ["admin", "gerente_ventas", "socio", "asesor", "contabilidad"], asesor: "Mis comisiones" },
   { etiqueta: "Aprobaciones", icono: CheckCircle2, ruta: "/aprobaciones", roles: ["admin", "gerente_ventas", "socio"] },
-  { etiqueta: "Personal y planilla", icono: Users2 },
-  { etiqueta: "Gastos", icono: Receipt },
+  { etiqueta: "Gastos", icono: Receipt, ruta: "/gastos", roles: ["admin", "socio", "contabilidad"] },
+  { etiqueta: "Planilla", icono: Users2, ruta: "/planilla", roles: ["admin", "socio", "contabilidad"] },
   { etiqueta: "Reportes", icono: BarChart3 },
   { etiqueta: "Configuración", icono: Settings, ruta: "/configuracion", roles: ["admin", "socio"] },
   {
@@ -59,8 +59,11 @@ const ITEMS: Item[] = [
     sub: true,
   },
   { etiqueta: "Usuarios", icono: UserCog, ruta: "/usuarios", roles: ["admin", "socio"] },
-  { etiqueta: "Bitácora", icono: ScrollText, ruta: "/bitacora", roles: ["admin", "socio"] },
+  { etiqueta: "Bitácora", icono: ScrollText, ruta: "/bitacora", roles: ["admin", "socio", "contabilidad"] },
 ];
+
+/** Pantallas que ve contabilidad. */
+const CONTABILIDAD = ["/clientes", "/ventas", "/cobranza", "/desistimientos", "/comisiones", "/gastos", "/planilla", "/bitacora"];
 
 export function AppShell({
   titulo,
@@ -130,7 +133,9 @@ export function AppShell({
           {ITEMS.map((item) => {
             const visible = esAsesorSesion
               ? !!item.asesor
-              : !item.roles || (perfil && item.roles.includes(perfil.rol));
+              : perfil?.rol === "contabilidad"
+                ? !!item.ruta && CONTABILIDAD.includes(item.ruta)
+                : !item.roles || (perfil && item.roles.includes(perfil.rol));
             if (!visible) return null;
             const etiqueta = esAsesorSesion ? item.asesor! : item.etiqueta;
             const Icono = item.icono;
