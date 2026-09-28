@@ -806,7 +806,7 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
               <D k="Inicial" v={soles(v.inicial)} />
               <div>
                 <p className="text-xs text-muted-foreground">Forma de pago inicial</p>
-                <MostrarMetodo metodo={v.forma_pago_inicial} operacion={(v as { operacion_inicial?: string | null }).operacion_inicial} />
+                <MostrarMetodo metodo={v.forma_pago_inicial} operacion={(v as { operacion_inicial?: string | null }).operacion_inicial ?? null} />
                 {perfil && puedeComercial(perfil) && !v.anulado ? (
                   <button type="button" className="block text-xs text-primary underline" onClick={() => setEditInicial(true)}>Editar</button>
                 ) : null}
