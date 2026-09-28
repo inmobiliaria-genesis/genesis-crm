@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DialogoEliminar } from "@/components/DialogoEliminar";
-import { usePerfil, esAdmin } from "@/lib/sesion";
+import { usePerfil, esAdmin, esAsesor } from "@/lib/sesion";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/table";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { DialogoCliente } from "@/components/ClienteForm";
-import { useClientes, nombreCliente, documentoCliente, type Cliente } from "@/lib/ventas";
+import { useClientes, nombreCliente, documentoCliente, ETIQUETA_APROBACION, type Cliente } from "@/lib/ventas";
 import { fecha, soles } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/clientes")({
@@ -41,12 +41,14 @@ function ClientesPage() {
   const [nuevo, setNuevo] = useState(false);
   const [editar, setEditar] = useState<Cliente | null>(null);
   const [ficha, setFicha] = useState<Cliente | null>(null);
-  const clientes = useClientes(busqueda);
+  const clientes = useClientes(busqueda, "todos");
+  const { data: perfil } = usePerfil();
+  const asesor = esAsesor(perfil);
 
   return (
     <AppShell
-      titulo="Clientes"
-      descripcion="Búsqueda, alta y ficha de clientes"
+      titulo={asesor ? "Mis clientes" : "Clientes"}
+      descripcion={asesor ? "Clientes que registraste y su estado de aprobación" : "Búsqueda, alta y ficha de clientes"}
       acciones={<Button onClick={() => setNuevo(true)}>+ Nuevo cliente</Button>}
     >
       <Card>
@@ -67,13 +69,14 @@ function ClientesPage() {
                 <TableHead>Documento</TableHead>
                 <TableHead>Teléfono</TableHead>
                 <TableHead>Distrito</TableHead>
+                <TableHead>Aprobación</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {clientes.data?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
                     No hay clientes que coincidan.
                   </TableCell>
                 </TableRow>
@@ -84,13 +87,18 @@ function ClientesPage() {
                   <TableCell className="num">{documentoCliente(c)}</TableCell>
                   <TableCell className="num">{c.telefono1}</TableCell>
                   <TableCell>{c.distrito ?? "—"}</TableCell>
+                  <TableCell>
+                    <EstadoAprobacion estado={c.estado_aprobacion} motivo={c.motivo_rechazo} />
+                  </TableCell>
                   <TableCell className="space-x-2 text-right">
                     <Button size="sm" variant="ghost" onClick={() => setFicha(c)}>
                       Ficha
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => setEditar(c)}>
-                      Editar
-                    </Button>
+                    {!asesor || c.estado_aprobacion === "pendiente" ? (
+                      <Button size="sm" variant="outline" onClick={() => setEditar(c)}>
+                        Editar
+                      </Button>
+                    ) : null}
                   </TableCell>
                 </TableRow>
               ))}
@@ -232,5 +240,18 @@ function EliminarCliente({ id, onListo }: { id: string; onListo: () => void }) {
         }}
       />
     </>
+  );
+}
+
+export function EstadoAprobacion({ estado, motivo }: { estado: string; motivo?: string | null }) {
+  return (
+    <div>
+      <Badge variant={estado === "aprobado" ? "secondary" : estado === "rechazado" ? "destructive" : "outline"}>
+        {ETIQUETA_APROBACION[estado] ?? estado}
+      </Badge>
+      {estado === "rechazado" && motivo ? (
+        <p className="mt-1 text-xs text-muted-foreground">Motivo: {motivo}</p>
+      ) : null}
+    </div>
   );
 }
