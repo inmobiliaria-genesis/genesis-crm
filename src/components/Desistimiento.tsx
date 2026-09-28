@@ -258,7 +258,7 @@ export function DetalleDesistimiento({ id, onCerrar }: { id: string | null; onCe
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" onClick={() => setEditando(true)}>Editar</Button>
                 <Button size="sm" onClick={() => setAceptando(true)}>Marcar aceptación de disolución</Button>
-                <Button size="sm" variant="ghost" onClick={() => setAnulando(true)}>Revertir desistimiento</Button>
+                <Button size="sm" variant="ghost" onClick={() => setRevirtiendo(true)}>Revertir desistimiento</Button>
               </div>
             ) : null}
             {admin && (d.estado === "aceptado" || d.estado === "devuelto") ? (
