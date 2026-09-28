@@ -782,7 +782,7 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
   const qc = useQueryClient();
   const { data: perfil } = usePerfil();
   const cobra = puedeCobrar(perfil);
-  const regulariza = perfil?.rol === "admin";
+  const regulariza = perfil?.rol === "admin" || perfil?.rol === "cobranza";
   const cronograma = useCuotasDeVenta(ventaId);
   const pagos = usePagosDeVenta(ventaId);
   const [registrando, setRegistrando] = useState(false);

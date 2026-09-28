@@ -640,218 +640,6 @@ export type Database = {
           },
         ]
       }
-      gasto: {
-        Row: {
-          anulado: boolean
-          anulado_en: string | null
-          anulado_por: string | null
-          categoria_id: string
-          comprobante_path: string | null
-          creado_en: string
-          creado_por: string | null
-          descripcion: string | null
-          dias: number | null
-          fecha: string
-          id: string
-          metodo: string
-          modificado_en: string
-          modificado_por: string | null
-          monto: number
-          motivo_anulacion: string | null
-          notas: string | null
-          numero_operacion: string | null
-          pagado_por: string | null
-          persona: string | null
-          reembolso_estado: string | null
-          reembolso_fecha: string | null
-          reembolso_metodo: string | null
-          reembolso_operacion: string | null
-          subcategoria_id: string | null
-          trabajador: string | null
-        }
-        Insert: {
-          anulado?: boolean
-          anulado_en?: string | null
-          anulado_por?: string | null
-          categoria_id: string
-          comprobante_path?: string | null
-          creado_en?: string
-          creado_por?: string | null
-          descripcion?: string | null
-          dias?: number | null
-          fecha: string
-          id?: string
-          metodo: string
-          modificado_en?: string
-          modificado_por?: string | null
-          monto: number
-          motivo_anulacion?: string | null
-          notas?: string | null
-          numero_operacion?: string | null
-          pagado_por?: string | null
-          persona?: string | null
-          reembolso_estado?: string | null
-          reembolso_fecha?: string | null
-          reembolso_metodo?: string | null
-          reembolso_operacion?: string | null
-          subcategoria_id?: string | null
-          trabajador?: string | null
-        }
-        Update: {
-          anulado?: boolean
-          anulado_en?: string | null
-          anulado_por?: string | null
-          categoria_id?: string
-          comprobante_path?: string | null
-          creado_en?: string
-          creado_por?: string | null
-          descripcion?: string | null
-          dias?: number | null
-          fecha?: string
-          id?: string
-          metodo?: string
-          modificado_en?: string
-          modificado_por?: string | null
-          monto?: number
-          motivo_anulacion?: string | null
-          notas?: string | null
-          numero_operacion?: string | null
-          pagado_por?: string | null
-          persona?: string | null
-          reembolso_estado?: string | null
-          reembolso_fecha?: string | null
-          reembolso_metodo?: string | null
-          reembolso_operacion?: string | null
-          subcategoria_id?: string | null
-          trabajador?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "gasto_categoria_id_fkey"
-            columns: ["categoria_id"]
-            isOneToOne: false
-            referencedRelation: "gasto_categoria"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "gasto_subcategoria_id_fkey"
-            columns: ["subcategoria_id"]
-            isOneToOne: false
-            referencedRelation: "gasto_subcategoria"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      gasto_categoria: {
-        Row: {
-          anulado: boolean
-          anulado_en: string | null
-          anulado_por: string | null
-          creado_en: string
-          creado_por: string | null
-          id: string
-          manual: boolean
-          modificado_en: string
-          modificado_por: string | null
-          motivo_anulacion: string | null
-          nombre: string
-          orden: number
-          tipo: string
-          tope: number | null
-        }
-        Insert: {
-          anulado?: boolean
-          anulado_en?: string | null
-          anulado_por?: string | null
-          creado_en?: string
-          creado_por?: string | null
-          id?: string
-          manual?: boolean
-          modificado_en?: string
-          modificado_por?: string | null
-          motivo_anulacion?: string | null
-          nombre: string
-          orden?: number
-          tipo?: string
-          tope?: number | null
-        }
-        Update: {
-          anulado?: boolean
-          anulado_en?: string | null
-          anulado_por?: string | null
-          creado_en?: string
-          creado_por?: string | null
-          id?: string
-          manual?: boolean
-          modificado_en?: string
-          modificado_por?: string | null
-          motivo_anulacion?: string | null
-          nombre?: string
-          orden?: number
-          tipo?: string
-          tope?: number | null
-        }
-        Relationships: []
-      }
-      gasto_subcategoria: {
-        Row: {
-          anulado: boolean
-          anulado_en: string | null
-          anulado_por: string | null
-          categoria_id: string
-          creado_en: string
-          creado_por: string | null
-          exige_nota: boolean
-          id: string
-          modificado_en: string
-          modificado_por: string | null
-          motivo_anulacion: string | null
-          nombre: string
-          orden: number
-          tope: number | null
-        }
-        Insert: {
-          anulado?: boolean
-          anulado_en?: string | null
-          anulado_por?: string | null
-          categoria_id: string
-          creado_en?: string
-          creado_por?: string | null
-          exige_nota?: boolean
-          id?: string
-          modificado_en?: string
-          modificado_por?: string | null
-          motivo_anulacion?: string | null
-          nombre: string
-          orden?: number
-          tope?: number | null
-        }
-        Update: {
-          anulado?: boolean
-          anulado_en?: string | null
-          anulado_por?: string | null
-          categoria_id?: string
-          creado_en?: string
-          creado_por?: string | null
-          exige_nota?: boolean
-          id?: string
-          modificado_en?: string
-          modificado_por?: string | null
-          motivo_anulacion?: string | null
-          nombre?: string
-          orden?: number
-          tope?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "gasto_subcategoria_categoria_id_fkey"
-            columns: ["categoria_id"]
-            isOneToOne: false
-            referencedRelation: "gasto_categoria"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       lead: {
         Row: {
           anulado: boolean
@@ -1386,128 +1174,6 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
-      }
-      personal: {
-        Row: {
-          activo: boolean
-          anulado: boolean
-          anulado_en: string | null
-          anulado_por: string | null
-          cargo: string | null
-          creado_en: string
-          creado_por: string | null
-          dni: string | null
-          id: string
-          modificado_en: string
-          modificado_por: string | null
-          monto_mensual: number
-          motivo_anulacion: string | null
-          nombre: string
-        }
-        Insert: {
-          activo?: boolean
-          anulado?: boolean
-          anulado_en?: string | null
-          anulado_por?: string | null
-          cargo?: string | null
-          creado_en?: string
-          creado_por?: string | null
-          dni?: string | null
-          id?: string
-          modificado_en?: string
-          modificado_por?: string | null
-          monto_mensual: number
-          motivo_anulacion?: string | null
-          nombre: string
-        }
-        Update: {
-          activo?: boolean
-          anulado?: boolean
-          anulado_en?: string | null
-          anulado_por?: string | null
-          cargo?: string | null
-          creado_en?: string
-          creado_por?: string | null
-          dni?: string | null
-          id?: string
-          modificado_en?: string
-          modificado_por?: string | null
-          monto_mensual?: number
-          motivo_anulacion?: string | null
-          nombre?: string
-        }
-        Relationships: []
-      }
-      planilla_linea: {
-        Row: {
-          anulado: boolean
-          anulado_en: string | null
-          anulado_por: string | null
-          comprobante_path: string | null
-          creado_en: string
-          creado_por: string | null
-          fecha_pago: string | null
-          id: string
-          mes: string
-          metodo: string | null
-          modificado_en: string
-          modificado_por: string | null
-          monto: number
-          motivo_anulacion: string | null
-          notas: string | null
-          numero_operacion: string | null
-          pagado: boolean
-          personal_id: string
-        }
-        Insert: {
-          anulado?: boolean
-          anulado_en?: string | null
-          anulado_por?: string | null
-          comprobante_path?: string | null
-          creado_en?: string
-          creado_por?: string | null
-          fecha_pago?: string | null
-          id?: string
-          mes: string
-          metodo?: string | null
-          modificado_en?: string
-          modificado_por?: string | null
-          monto: number
-          motivo_anulacion?: string | null
-          notas?: string | null
-          numero_operacion?: string | null
-          pagado?: boolean
-          personal_id: string
-        }
-        Update: {
-          anulado?: boolean
-          anulado_en?: string | null
-          anulado_por?: string | null
-          comprobante_path?: string | null
-          creado_en?: string
-          creado_por?: string | null
-          fecha_pago?: string | null
-          id?: string
-          mes?: string
-          metodo?: string | null
-          modificado_en?: string
-          modificado_por?: string | null
-          monto?: number
-          motivo_anulacion?: string | null
-          notas?: string | null
-          numero_operacion?: string | null
-          pagado?: boolean
-          personal_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "planilla_linea_personal_id_fkey"
-            columns: ["personal_id"]
-            isOneToOne: false
-            referencedRelation: "personal"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       plano: {
         Row: {
@@ -2091,7 +1757,6 @@ export type Database = {
         Args: { _lote_id: string }
         Returns: undefined
       }
-      generar_planilla: { Args: { _mes: string }; Returns: number }
       hay_solicitud_pendiente: { Args: { _lote_id: string }; Returns: boolean }
       importar_lotes: { Args: { p_filas: Json }; Returns: Json }
       importar_vendedores: { Args: { p_filas: Json }; Returns: Json }
@@ -2157,20 +1822,6 @@ export type Database = {
         }
         Returns: string
       }
-      resumen_gastos: {
-        Args: { _mes: string }
-        Returns: {
-          categoria: string
-          categoria_id: string
-          diferencia: number
-          orden_cat: number
-          orden_sub: number
-          pagado: number
-          subcategoria: string
-          subcategoria_id: string
-          tope: number
-        }[]
-      }
       revertir_desistimiento: {
         Args: { _id: string; _motivo: string }
         Returns: undefined
@@ -2201,21 +1852,9 @@ export type Database = {
           total_abonado: number
         }[]
       }
-      tope_gasto: {
-        Args: {
-          _categoria_id: string
-          _excluir?: string
-          _fecha: string
-          _subcategoria_id: string
-        }
-        Returns: {
-          llevas: number
-          tope: number
-        }[]
-      }
     }
     Enums: {
-      app_rol: "admin" | "gerente_ventas" | "contabilidad" | "asesor" | "socio"
+      app_rol: "admin" | "gerente_ventas" | "cobranza" | "asesor" | "socio"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2343,7 +1982,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_rol: ["admin", "gerente_ventas", "contabilidad", "asesor", "socio"],
+      app_rol: ["admin", "gerente_ventas", "cobranza", "asesor", "socio"],
     },
   },
 } as const
