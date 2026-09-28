@@ -20,7 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CampoOrigenLead, ORIGEN_VACIO, nombreClientePorId, type OrigenLead } from "@/lib/leads";
+import { CampoOrigen, ORIGEN_VACIO, origenAColumnas, origenDeFila, validarOrigen, type Origen } from "@/lib/leads";
+import { useVendedores, nombreVendedor } from "@/lib/vendedores";
 import { useEffect } from "react";
 import { TIPOS_DOCUMENTO, ESTADOS_CIVILES, REGIMENES, type Cliente } from "@/lib/ventas";
 
@@ -96,22 +97,17 @@ export function DialogoCliente({
   onCerrar: () => void;
   cliente?: Cliente | null;
   onGuardado?: (c: Cliente) => void;
-  inicial?: { nombres?: string; telefono1?: string; origen?: OrigenLead } | undefined;
+  inicial?: { nombres?: string; telefono1?: string; origen?: Origen } | undefined;
 }) {
   const qc = useQueryClient();
   const [f, setF] = useState<Borrador>(
     cliente ? desde(cliente) : { ...vacio(), nombres: inicial?.nombres ?? "", telefono1: inicial?.telefono1 || "+51" },
   );
-  const [origen, setOrigen] = useState<OrigenLead>(
-    cliente
-      ? { origen: cliente.origen_lead ?? "", referidoId: cliente.referido_por_id, referidoNombre: null }
-      : (inicial?.origen ?? ORIGEN_VACIO),
-  );
-  useEffect(() => {
-    if (origen.referidoId && !origen.referidoNombre) {
-      nombreClientePorId(origen.referidoId).then((n) => setOrigen((o) => ({ ...o, referidoNombre: n })));
-    }
-  }, [origen.referidoId, origen.referidoNombre]);
+  const [origen, setOrigen] = useState<Origen>(cliente ? origenDeFila(cliente) : (inicial?.origen ?? ORIGEN_VACIO));
+  const vendedores = useVendedores();
+  const promotores = (vendedores.data ?? [])
+    .filter((p) => p.tipo === "promotor" && (p.estado === "activo" || p.id === origen.promotorId))
+    .map((p) => ({ id: p.id, nombre: nombreVendedor(p) }));
   const [guardando, setGuardando] = useState(false);
 
   function set<K extends keyof Borrador>(k: K, v: Borrador[K]) {
@@ -121,6 +117,11 @@ export function DialogoCliente({
   async function guardar() {
     if (!f.numero_documento.trim() || !f.nombres.trim() || !f.apellidos.trim()) {
       toast.error("Documento, nombres y apellidos son obligatorios");
+      return;
+    }
+    const errOrigen = validarOrigen(origen, false);
+    if (errOrigen) {
+      toast.error(errOrigen);
       return;
     }
     setGuardando(true);
@@ -141,8 +142,7 @@ export function DialogoCliente({
       lugar_nacimiento: f.lugar_nacimiento.trim() || null,
       fecha_nacimiento: f.fecha_nacimiento || null,
       notas: f.notas.trim() || null,
-      origen_lead: origen.origen || null,
-      referido_por_id: origen.origen === "referido" ? origen.referidoId : null,
+      ...origenAColumnas(origen),
     };
     const docCambia =
       !cliente ||
@@ -247,7 +247,7 @@ export function DialogoCliente({
               onChange={(e) => set("fecha_nacimiento", e.target.value)}
             />
           </div>
-          <CampoOrigenLead valor={origen} onCambio={setOrigen} />
+          <CampoOrigen valor={origen} onCambio={setOrigen} opcional promotores={promotores} />
           <div className="sm:col-span-2">
             <Label>Notas</Label>
             <Textarea value={f.notas} onChange={(e) => set("notas", e.target.value)} rows={2} />

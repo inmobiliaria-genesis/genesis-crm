@@ -38,6 +38,7 @@ import { fecha, hoyLima, soles } from "@/lib/format";
 import { usePerfil, esGestion, esAsesor } from "@/lib/sesion";
 import { EstadoAprobacion } from "@/components/EstadoAprobacion";
 import { TIPOS_DOCUMENTO } from "@/lib/ventas";
+import { origenDeFila } from "@/lib/leads";
 
 export const Route = createFileRoute("/_authenticated/apartados")({
   head: () => ({
