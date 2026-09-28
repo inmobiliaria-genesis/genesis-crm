@@ -144,7 +144,7 @@ export function DialogoIniciarDesistimiento({
 
   const sim = useQuery({
     queryKey: ["simular-desistimiento", ventaId, fechaInicio, descValido ? descNum : null],
-    enabled: abierto && descValido && !!fechaInicio,
+    enabled: abierto && admin && descValido && !!fechaInicio,
     retry: false,
     queryFn: async () => {
       const { data, error } = await rpc("simular_desistimiento", {
