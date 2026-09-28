@@ -391,12 +391,17 @@ export type Database = {
           modificado_en: string
           modificado_por: string | null
           monto_comision_descontado: number
+          monto_descontar: number
           monto_devolver: number
           monto_retiene_empresa: number
           motivo_anulacion: string | null
           motivo_cambio: string | null
+          motivo_reversion: string | null
           observacion: string | null
           porcentaje_devolucion: number | null
+          revertido: boolean
+          revertido_en: string | null
+          revertido_por: string | null
           solicitud_liberacion: boolean
           total_abonado: number
           venta_id: string
@@ -421,12 +426,17 @@ export type Database = {
           modificado_en?: string
           modificado_por?: string | null
           monto_comision_descontado?: number
+          monto_descontar?: number
           monto_devolver?: number
           monto_retiene_empresa?: number
           motivo_anulacion?: string | null
           motivo_cambio?: string | null
+          motivo_reversion?: string | null
           observacion?: string | null
           porcentaje_devolucion?: number | null
+          revertido?: boolean
+          revertido_en?: string | null
+          revertido_por?: string | null
           solicitud_liberacion?: boolean
           total_abonado?: number
           venta_id: string
@@ -451,12 +461,17 @@ export type Database = {
           modificado_en?: string
           modificado_por?: string | null
           monto_comision_descontado?: number
+          monto_descontar?: number
           monto_devolver?: number
           monto_retiene_empresa?: number
           motivo_anulacion?: string | null
           motivo_cambio?: string | null
+          motivo_reversion?: string | null
           observacion?: string | null
           porcentaje_devolucion?: number | null
+          revertido?: boolean
+          revertido_en?: string | null
+          revertido_por?: string | null
           solicitud_liberacion?: boolean
           total_abonado?: number
           venta_id?: string
@@ -480,7 +495,7 @@ export type Database = {
           creado_por: string | null
           desistimiento_id: string
           fecha: string
-          forma_pago: string
+          forma_pago: string | null
           id: string
           modificado_en: string
           modificado_por: string | null
@@ -497,7 +512,7 @@ export type Database = {
           creado_por?: string | null
           desistimiento_id: string
           fecha: string
-          forma_pago: string
+          forma_pago?: string | null
           id?: string
           modificado_en?: string
           modificado_por?: string | null
@@ -514,7 +529,7 @@ export type Database = {
           creado_por?: string | null
           desistimiento_id?: string
           fecha?: string
-          forma_pago?: string
+          forma_pago?: string | null
           id?: string
           modificado_en?: string
           modificado_por?: string | null
@@ -792,7 +807,7 @@ export type Database = {
           creado_por: string | null
           fecha: string
           id: string
-          metodo: string
+          metodo: string | null
           modificado_en: string
           modificado_por: string | null
           monto: number
@@ -811,7 +826,7 @@ export type Database = {
           creado_por?: string | null
           fecha?: string
           id?: string
-          metodo: string
+          metodo?: string | null
           modificado_en?: string
           modificado_por?: string | null
           monto: number
@@ -830,7 +845,7 @@ export type Database = {
           creado_por?: string | null
           fecha?: string
           id?: string
-          metodo?: string
+          metodo?: string | null
           modificado_en?: string
           modificado_por?: string | null
           monto?: number
@@ -1484,6 +1499,7 @@ export type Database = {
       }
       importar_lotes: { Args: { p_filas: Json }; Returns: Json }
       importar_vendedores: { Args: { p_filas: Json }; Returns: Json }
+      motivo_no_revertir: { Args: { _id: string }; Returns: string }
       recalcular_mes: { Args: { _mes: string }; Returns: number }
       regularizar_venta: {
         Args: {
@@ -1494,6 +1510,10 @@ export type Database = {
           _venta_id: string
         }
         Returns: string
+      }
+      revertir_desistimiento: {
+        Args: { _id: string; _motivo: string }
+        Returns: undefined
       }
       simular_cronograma: {
         Args: {
@@ -1511,16 +1531,10 @@ export type Database = {
         }[]
       }
       simular_desistimiento: {
-        Args: {
-          _descontar: boolean
-          _fecha: string
-          _porcentaje: number
-          _venta_id: string
-        }
+        Args: { _fecha: string; _monto_descontar?: number; _venta_id: string }
         Returns: {
           base_calculo: number
-          descontar_comision: boolean
-          monto_comision_descontado: number
+          monto_descontar: number
           monto_devolver: number
           monto_retiene_empresa: number
           porcentaje_devolucion: number

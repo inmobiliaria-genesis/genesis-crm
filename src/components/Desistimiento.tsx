@@ -22,14 +22,16 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { fecha, hoyLima, porcentaje, soles } from "@/lib/format";
 import { usePerfil, esAdmin } from "@/lib/sesion";
-import { METODOS_PAGO } from "@/lib/cobranza";
+import { llevaOperacion } from "@/lib/cobranza";
+import { CamposMetodo, MostrarMetodo, DialogoEditarMetodo } from "@/components/MetodoPago";
 
-export type Desistimiento = Database["public"]["Tables"]["desistimiento"]["Row"];
+export type Desistimiento = Database["public"]["Tables"]["desistimiento"]["Row"] & { monto_descontar?: number | null };
 
 export const ETIQUETA_DESISTIMIENTO: Record<string, string> = {
   en_proceso: "En proceso",
   aceptado: "Aceptado",
   devuelto: "Devuelto",
+  revertido: "Revertido",
   anulado: "Anulado",
 };
 
@@ -62,23 +64,31 @@ function Fila({ k, v, fuerte }: { k: string; v: string; fuerte?: boolean }) {
 
 type Calculo = {
   total_abonado: number;
-  descontar_comision: boolean;
-  monto_comision_descontado: number;
+  monto_descontar: number;
   porcentaje_devolucion: number;
   base_calculo: number;
   monto_devolver: number;
   monto_retiene_empresa: number;
 };
 
+const rpc = supabase.rpc as unknown as (
+  f: string,
+  a: Record<string, unknown>,
+) => Promise<{ data: unknown; error: { message: string } | null }>;
+
 function Resumen({ c }: { c: Calculo }) {
   return (
     <div className="text-sm">
       <Fila k="Total abonado" v={soles(c.total_abonado)} />
-      <Fila k="Comisión descontada" v={c.descontar_comision ? soles(c.monto_comision_descontado) : "No se descuenta"} />
+      <Fila k="Monto a descontar" v={soles(c.monto_descontar)} />
       <Fila k="Base de cálculo" v={soles(c.base_calculo)} />
       <Fila k="Porcentaje de devolución" v={porcentaje(c.porcentaje_devolucion)} />
       <Fila k="Monto a devolver" v={soles(c.monto_devolver)} fuerte />
       <Fila k="Retiene la empresa" v={soles(c.monto_retiene_empresa)} />
+      <p className="mt-2 text-xs text-muted-foreground">
+        ({soles(c.total_abonado)} − {soles(c.monto_descontar)}) × {porcentaje(c.porcentaje_devolucion)} ={" "}
+        {soles(c.monto_devolver)}
+      </p>
     </div>
   );
 }
@@ -94,32 +104,29 @@ export function DialogoIniciarDesistimiento({
 }) {
   const qc = useQueryClient();
   const [fechaInicio, setFechaInicio] = useState(hoyLima());
-  const [pct, setPct] = useState<string>("");
-  const [descontar, setDescontar] = useState<boolean | null>(null);
+  const [desc, setDesc] = useState<string>("");
   const [obs, setObs] = useState("");
   const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
     if (abierto) {
       setFechaInicio(hoyLima());
-      setPct("");
-      setDescontar(null);
+      setDesc("");
       setObs("");
     }
   }, [abierto]);
 
   const sim = useQuery({
-    queryKey: ["simular-desistimiento", ventaId, fechaInicio, pct, descontar],
+    queryKey: ["simular-desistimiento", ventaId, fechaInicio, desc],
     enabled: abierto,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("simular_desistimiento", {
+      const { data, error } = await rpc("simular_desistimiento", {
         _venta_id: ventaId,
         _fecha: fechaInicio,
-        _porcentaje: pct === "" ? (null as unknown as number) : Number(pct),
-        _descontar: descontar as unknown as boolean,
+        _monto_descontar: desc === "" ? null : Number(desc),
       });
       if (error) throw error;
-      return (data?.[0] ?? null) as Calculo | null;
+      return ((data as Calculo[] | null)?.[0] ?? null) as Calculo | null;
     },
   });
 
@@ -129,9 +136,8 @@ export function DialogoIniciarDesistimiento({
       venta_id: ventaId,
       fecha_inicio: fechaInicio,
       observacion: obs.trim() || null,
-      porcentaje_devolucion: pct === "" ? null : Number(pct),
-      descontar_comision: descontar,
-    });
+      ...(desc === "" ? {} : { monto_descontar: Number(desc) }),
+    } as Database["public"]["Tables"]["desistimiento"]["Insert"]);
     setGuardando(false);
     if (error) { toast.error("No se pudo iniciar", { description: error.message }); return; }
     toast.success("Desistimiento iniciado");
@@ -155,25 +161,17 @@ export function DialogoIniciarDesistimiento({
             <Input type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
           </div>
           <div className="space-y-1">
-            <Label>Porcentaje de devolución</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                step="any"
-                value={pct === "" ? String(c?.porcentaje_devolucion ?? "") : pct}
-                onChange={(e) => setPct(e.target.value)}
-              />
-              <span className="text-sm text-muted-foreground">%</span>
-            </div>
+            <Label>Monto a descontar (S/)</Label>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              value={desc === "" ? String(c?.monto_descontar ?? "") : desc}
+              onChange={(e) => setDesc(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">Por defecto, la cuota inicial de la venta.</p>
           </div>
         </div>
-        <label className="flex items-center gap-2 text-sm">
-          <Checkbox
-            checked={descontar ?? c?.descontar_comision ?? true}
-            onCheckedChange={(v) => setDescontar(v === true)}
-          />
-          Descontar la comisión del encargado
-        </label>
         {c ? <Resumen c={c} /> : <p className="text-sm text-muted-foreground">Calculando…</p>}
         <div className="space-y-1">
           <Label>Observación</Label>
@@ -215,6 +213,8 @@ export function DetalleDesistimiento({ id, onCerrar }: { id: string | null; onCe
   const [anulando, setAnulando] = useState(false);
   const [devolviendo, setDevolviendo] = useState(false);
   const [anulaDev, setAnulaDev] = useState<string | null>(null);
+  const [revirtiendo, setRevirtiendo] = useState(false);
+  const [editDev, setEditDev] = useState<{ id: string; forma_pago: string | null; numero_operacion: string | null } | null>(null);
 
   const devoluciones = (d?.devoluciones ?? []).slice().sort((a, b) => b.fecha.localeCompare(a.fecha));
   const devuelto = devoluciones.filter((x) => !x.anulado).reduce((t, x) => t + Number(x.monto), 0);
@@ -258,11 +258,28 @@ export function DetalleDesistimiento({ id, onCerrar }: { id: string | null; onCe
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" variant="outline" onClick={() => setEditando(true)}>Editar</Button>
                 <Button size="sm" onClick={() => setAceptando(true)}>Marcar aceptación de disolución</Button>
-                <Button size="sm" variant="ghost" onClick={() => setAnulando(true)}>Anular desistimiento</Button>
+                <Button size="sm" variant="ghost" onClick={() => setRevirtiendo(true)}>Revertir desistimiento</Button>
               </div>
             ) : null}
             {admin && (d.estado === "aceptado" || d.estado === "devuelto") ? (
-              <Button size="sm" variant="outline" onClick={() => setEditando(true)}>Cambiar fecha límite u observación</Button>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={() => setEditando(true)}>Editar</Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={async () => {
+                    const { data, error } = await rpc("motivo_no_revertir", { _id: d.id });
+                    if (error) { toast.error("No se pudo verificar", { description: error.message }); return; }
+                    if (data) { toast.error("No se puede revertir", { description: String(data) }); return; }
+                    setRevirtiendo(true);
+                  }}
+                >
+                  Revertir desistimiento
+                </Button>
+              </div>
+            ) : null}
+            {d.estado === "revertido" ? (
+              <p className="text-muted-foreground">Motivo de reversión: {(d as { motivo_reversion?: string | null }).motivo_reversion ?? "—"}</p>
             ) : null}
 
             {d.aceptacion_disolucion ? (
@@ -285,7 +302,7 @@ export function DetalleDesistimiento({ id, onCerrar }: { id: string | null; onCe
                     <TableRow>
                       <TableHead>Fecha</TableHead>
                       <TableHead className="text-right">Monto</TableHead>
-                      <TableHead>Forma</TableHead>
+                      <TableHead>Método</TableHead>
                       <TableHead />
                     </TableRow>
                   </TableHeader>
@@ -295,8 +312,12 @@ export function DetalleDesistimiento({ id, onCerrar }: { id: string | null; onCe
                         <TableCell>{fecha(x.fecha)}</TableCell>
                         <TableCell className="num text-right">{soles(x.monto)}</TableCell>
                         <TableCell>
-                          {x.forma_pago}
-                          {x.numero_operacion ? ` · ${x.numero_operacion}` : ""}
+                          <MostrarMetodo metodo={x.forma_pago} operacion={x.numero_operacion} />
+                          {admin && !x.anulado ? (
+                            <button type="button" className="block text-xs text-primary underline" onClick={() => setEditDev(x)}>
+                              Editar
+                            </button>
+                          ) : null}
                           {x.observacion ? <div className="text-xs text-muted-foreground">{x.observacion}</div> : null}
                         </TableCell>
                         <TableCell className="text-right">
@@ -317,7 +338,33 @@ export function DetalleDesistimiento({ id, onCerrar }: { id: string | null; onCe
 
         {d ? (
           <>
-            <DialogoEditar d={d} abierto={editando} onCambio={setEditando} />
+            <DialogoEditar d={d} devuelto={devuelto} abierto={editando} onCambio={setEditando} />
+            <DialogoMotivo
+              titulo="Revertir desistimiento"
+              descripcion="La venta, sus cuotas, el lote y las comisiones vuelven a su estado anterior al desistimiento."
+              abierto={revirtiendo}
+              onCambio={setRevirtiendo}
+              onConfirmar={async (motivo) => {
+                const { error } = await rpc("revertir_desistimiento", { _id: d.id, _motivo: motivo });
+                if (error) return error.message;
+                qc.invalidateQueries();
+                return null;
+              }}
+            />
+            <DialogoEditarMetodo
+              abierto={!!editDev}
+              inicial={{ metodo: editDev?.forma_pago ?? null, operacion: editDev?.numero_operacion ?? null }}
+              onCambio={(o) => (!o ? setEditDev(null) : null)}
+              onGuardar={async (m, op) => {
+                const { error } = await supabase
+                  .from("desistimiento_devolucion")
+                  .update({ forma_pago: m, numero_operacion: op })
+                  .eq("id", editDev!.id);
+                if (error) return error.message;
+                qc.invalidateQueries();
+                return null;
+              }}
+            />
             <DialogoAceptar id={d.id} abierto={aceptando} onCambio={setAceptando} />
             <DialogoMotivo
               titulo="Anular desistimiento"
@@ -401,12 +448,11 @@ function DialogoMotivo({
   );
 }
 
-function DialogoEditar({ d, abierto, onCambio }: { d: Desistimiento; abierto: boolean; onCambio: (o: boolean) => void }) {
+function DialogoEditar({ d, devuelto, abierto, onCambio }: { d: Desistimiento; devuelto: number; abierto: boolean; onCambio: (o: boolean) => void }) {
   const qc = useQueryClient();
   const bloqueado = d.aceptacion_disolucion;
-  const [f, setF] = useState({
-    porcentaje: String(d.porcentaje_devolucion ?? ""),
-    descontar: !!d.descontar_comision,
+  const inicialF = () => ({
+    descontar: String(d.monto_descontar ?? ""),
     observacion: d.observacion ?? "",
     carta: d.carta_prenotarial,
     fechaCarta: d.fecha_carta_prenotarial ?? "",
@@ -415,30 +461,30 @@ function DialogoEditar({ d, abierto, onCambio }: { d: Desistimiento; abierto: bo
     limite: d.fecha_limite_devolucion ?? "",
     motivo: "",
   });
+  const [f, setF] = useState(inicialF);
   useEffect(() => {
-    if (abierto)
-      setF({
-        porcentaje: String(d.porcentaje_devolucion ?? ""),
-        descontar: !!d.descontar_comision,
-        observacion: d.observacion ?? "",
-        carta: d.carta_prenotarial,
-        fechaCarta: d.fecha_carta_prenotarial ?? "",
-        solicitud: d.solicitud_liberacion,
-        fechaSolicitud: d.fecha_solicitud_liberacion ?? "",
-        limite: d.fecha_limite_devolucion ?? "",
-        motivo: "",
-      });
+    if (abierto) setF(inicialF());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [abierto, d]);
 
+  const descNum = Number(f.descontar || 0);
+  const nuevoDevolver = Math.max(Math.round((Number(d.total_abonado) - descNum) * Number(d.porcentaje_devolucion)) / 100, 0);
+  const errorDesc =
+    f.descontar === "" || descNum < 0
+      ? "Indica un monto a descontar válido."
+      : nuevoDevolver < devuelto - 0.005
+        ? `El nuevo monto a devolver sería menor que lo ya devuelto (${soles(devuelto)}).`
+        : null;
+
   async function guardar() {
+    if (errorDesc) { toast.error(errorDesc); return; }
     const cambios: Database["public"]["Tables"]["desistimiento"]["Update"] = {
       observacion: f.observacion.trim() || null,
       fecha_limite_devolucion: f.limite || null,
       motivo_cambio: f.motivo.trim(),
+      monto_descontar: descNum,
     };
     if (!bloqueado) {
-      cambios.porcentaje_devolucion = Number(f.porcentaje);
-      cambios.descontar_comision = f.descontar;
       cambios.carta_prenotarial = f.carta;
       cambios.fecha_carta_prenotarial = f.carta ? f.fechaCarta || null : null;
       cambios.solicitud_liberacion = f.solicitud;
@@ -459,18 +505,16 @@ function DialogoEditar({ d, abierto, onCambio }: { d: Desistimiento; abierto: bo
           <DialogDescription>Los montos se recalculan en la base al guardar. Cada cambio queda en la bitácora.</DialogDescription>
         </DialogHeader>
         <div className="space-y-3 text-sm">
+          <div className="space-y-1">
+            <Label>Monto a descontar (S/)</Label>
+            <Input type="number" step="0.01" value={f.descontar} onChange={(e) => setF({ ...f, descontar: e.target.value })} />
+            <p className="text-xs text-muted-foreground">
+              Nuevo monto a devolver: <span className="num">{soles(nuevoDevolver)}</span>
+            </p>
+            {errorDesc ? <p className="text-xs text-destructive">{errorDesc}</p> : null}
+          </div>
           {!bloqueado ? (
             <>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label>Porcentaje de devolución (%)</Label>
-                  <Input type="number" step="any" value={f.porcentaje} onChange={(e) => setF({ ...f, porcentaje: e.target.value })} />
-                </div>
-                <label className="flex items-end gap-2 pb-2">
-                  <Checkbox checked={f.descontar} onCheckedChange={(v) => setF({ ...f, descontar: v === true })} />
-                  Descontar comisión
-                </label>
-              </div>
               <div className="grid grid-cols-2 items-end gap-3">
                 <label className="flex items-center gap-2 pb-2">
                   <Checkbox checked={f.carta} onCheckedChange={(v) => setF({ ...f, carta: v === true })} /> Carta prenotarial
@@ -527,7 +571,7 @@ function DialogoAceptar({ id, abierto, onCambio }: { id: string; abierto: boolea
           <DialogTitle>Aceptación de disolución</DialogTitle>
           <DialogDescription>
             La venta pasará a desistida, el lote quedará Libre y las cuotas pendientes dejarán de ser exigibles.
-            Esto no se puede revertir ni cambiar el cálculo después.
+            Solo un administrador podrá revertirlo mientras no haya devoluciones ni otra venta o apartado en el lote.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-1">
@@ -536,7 +580,7 @@ function DialogoAceptar({ id, abierto, onCambio }: { id: string; abierto: boolea
         </div>
         <label className="flex items-center gap-2 text-sm">
           <Checkbox checked={ok} onCheckedChange={(v) => setOk(v === true)} />
-          Confirmo que la disolución fue aceptada y que no se puede deshacer
+          Confirmo que la disolución fue aceptada
         </label>
         <DialogFooter>
           <Button variant="outline" onClick={() => onCambio(false)}>Cancelar</Button>
@@ -559,17 +603,26 @@ function DialogoDevolucion({
   onCambio: (o: boolean) => void;
 }) {
   const qc = useQueryClient();
-  const [f, setF] = useState({ fecha: hoyLima(), monto: "", forma: "transferencia", operacion: "", obs: "" });
+  const [f, setF] = useState({ fecha: hoyLima(), monto: "", forma: "", operacion: "", obs: "" });
   useEffect(() => {
-    if (abierto) setF({ fecha: hoyLima(), monto: pendiente ? String(pendiente) : "", forma: "transferencia", operacion: "", obs: "" });
+    if (abierto) setF({ fecha: hoyLima(), monto: pendiente ? String(pendiente) : "", forma: "", operacion: "", obs: "" });
   }, [abierto, pendiente]);
+  const montoNum = Number(f.monto || 0);
+  const errorMonto =
+    pendiente <= 0.005
+      ? "No queda saldo por devolver en este desistimiento."
+      : montoNum > pendiente + 0.005
+        ? `El monto supera el saldo por devolver (${soles(pendiente)})`
+        : null;
   async function guardar() {
+    if (errorMonto) { toast.error(errorMonto); return; }
+    if (!f.forma) { toast.error("Elige el método de pago"); return; }
     const { error } = await supabase.from("desistimiento_devolucion").insert({
       desistimiento_id: id,
       fecha: f.fecha,
-      monto: Number(f.monto),
+      monto: montoNum,
       forma_pago: f.forma,
-      numero_operacion: f.operacion.trim() || null,
+      numero_operacion: llevaOperacion(f.forma) ? f.operacion.trim() || null : null,
       observacion: f.obs.trim() || null,
     });
     if (error) { toast.error("No se pudo registrar", { description: error.message }); return; }
@@ -582,7 +635,7 @@ function DialogoDevolucion({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Registrar devolución</DialogTitle>
-          <DialogDescription>Pendiente por devolver: {soles(pendiente)}</DialogDescription>
+          <DialogDescription>Saldo por devolver: {soles(pendiente)}</DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
@@ -593,30 +646,21 @@ function DialogoDevolucion({
             <Label>Monto (S/)</Label>
             <Input type="number" step="0.01" value={f.monto} onChange={(e) => setF({ ...f, monto: e.target.value })} />
           </div>
-          <div className="space-y-1">
-            <Label>Forma de pago</Label>
-            <select
-              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-              value={f.forma}
-              onChange={(e) => setF({ ...f, forma: e.target.value })}
-            >
-              {METODOS_PAGO.map((m) => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <Label>N° de operación</Label>
-            <Input value={f.operacion} onChange={(e) => setF({ ...f, operacion: e.target.value })} />
-          </div>
+          <CamposMetodo
+            metodo={f.forma}
+            operacion={f.operacion}
+            onMetodo={(m) => setF((x) => ({ ...x, forma: m }))}
+            onOperacion={(o) => setF((x) => ({ ...x, operacion: o }))}
+          />
         </div>
+        {errorMonto && f.monto ? <p className="text-sm text-destructive">{errorMonto}</p> : null}
         <div className="space-y-1">
           <Label>Observación</Label>
           <Textarea rows={2} value={f.obs} onChange={(e) => setF({ ...f, obs: e.target.value })} />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onCambio(false)}>Cancelar</Button>
-          <Button onClick={guardar} disabled={!f.monto || Number(f.monto) <= 0}>Registrar</Button>
+          <Button onClick={guardar} disabled={!f.monto || montoNum <= 0 || !!errorMonto || !f.forma}>Registrar</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
