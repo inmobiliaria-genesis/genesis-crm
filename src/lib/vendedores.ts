@@ -9,7 +9,7 @@ export const ESTADOS_VENDEDOR = ["activo", "salio"] as const;
 
 export const ETIQUETA_TIPO: Record<string, string> = { encargado: "Encargado", promotor: "Promotor" };
 export const ETIQUETA_ESTADO_VENDEDOR: Record<string, string> = { activo: "Activo", salio: "Salió" };
-export const ETIQUETA_ORIGEN: Record<string, string> = { promotor: "Promotor", marketing: "Marketing" };
+export const ETIQUETA_ORIGEN: Record<string, string> = { promotor: "Promotor", marketing: "Marketing", sin_dato: "Sin dato" };
 
 /** Nombre para mostrar en toda la app: agrega "(salió)" si corresponde. */
 export function nombreVendedor(

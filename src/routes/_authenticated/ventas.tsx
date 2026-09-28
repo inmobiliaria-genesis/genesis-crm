@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/table";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { SelectorCliente } from "@/components/SelectorCliente";
-import { CampoOrigen, ORIGEN_VACIO, origenAColumnas, origenDeFila, textoOrigen, validarOrigen, ETIQUETA_FUENTE, type Origen } from "@/lib/leads";
+import { CampoOrigen, ORIGEN_VACIO, origenAColumnas, origenDeFila, textoOrigen, validarOrigen, type Origen } from "@/lib/leads";
 import {
   nombreCliente,
   documentoCliente,
