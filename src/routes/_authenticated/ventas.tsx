@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/table";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { SelectorCliente } from "@/components/SelectorCliente";
+import { CampoOrigenLead, ORIGEN_VACIO, ETIQUETA_ORIGEN_LEAD, type OrigenLead } from "@/lib/leads";
 import {
   nombreCliente,
   documentoCliente,
@@ -395,10 +396,10 @@ function DialogoVenta({
   const origenApartado = useQuery({
     queryKey: ["reserva-origen", reservaOrigen],
     enabled: !!reservaOrigen,
-    queryFn: async (): Promise<{ clienteId: string; encargado: string | null }> => {
+    queryFn: async (): Promise<{ clienteId: string; encargado: string | null; lead: { origen_lead: string | null; promotor_id: string | null } | null }> => {
       const { data: r, error } = await supabase
         .from("reserva")
-        .select("creado_por, cliente_id")
+        .select("creado_por, cliente_id, lead_id")
         .eq("id", reservaOrigen!)
         .single();
       if (error) throw error;
@@ -416,12 +417,22 @@ function DialogoVenta({
           encargado = v?.id ?? null;
         }
       }
-      return { clienteId: r.cliente_id, encargado };
+      let lead: { origen_lead: string | null; promotor_id: string | null } | null = null;
+      if (r.lead_id) {
+        const { data: l } = await supabase.from("lead").select("origen_lead, promotor_id").eq("id", r.lead_id).maybeSingle();
+        lead = l ?? { origen_lead: null, promotor_id: null };
+      }
+      return { clienteId: r.cliente_id, encargado, lead };
     },
   });
   const encargadoApartado = { data: origenApartado.data?.encargado ?? null };
   const encFijo = encargadoApartado.data ?? null;
   const [motivoEncargado, setMotivoEncargado] = useState("");
+  const [origenLead, setOrigenLead] = useState<OrigenLead>(ORIGEN_VACIO);
+  const leadOrigen = origenApartado.data?.lead ?? null;
+  useEffect(() => {
+    if (leadOrigen?.promotor_id) { setOrigen("promotor"); setPromotorId(leadOrigen.promotor_id); }
+  }, [leadOrigen?.promotor_id]);
   useEffect(() => {
     if (encFijo) setEncargadoId(encFijo);
   }, [encFijo]);
@@ -510,6 +521,8 @@ function DialogoVenta({
         motivo_cambio_encargado: encFijo && encargadoId !== encFijo ? motivoEncargado.trim() || null : null,
         origen,
         promotor_id: origen === "promotor" && promotorId !== "ninguno" ? promotorId : null,
+        origen_lead: leadOrigen ? null : origenLead.origen || null,
+        referido_por_id: leadOrigen || origenLead.origen !== "referido" ? null : origenLead.referidoId,
         condicion,
         precio_acordado: precioNum,
         motivo_diferencia_precio: motivo.trim() || null,
@@ -606,6 +619,14 @@ function DialogoVenta({
             </div>
           </div>
 
+          {leadOrigen ? (
+            <div className="sm:col-span-2 rounded-md border border-border px-3 py-2 text-sm">
+              Origen del lead: {leadOrigen.origen_lead ? ETIQUETA_ORIGEN_LEAD[leadOrigen.origen_lead] : "Sin indicar"}{" "}
+              <span className="text-xs text-muted-foreground">(se hereda del lead del apartado)</span>
+            </div>
+          ) : (
+            <CampoOrigenLead valor={origenLead} onCambio={setOrigenLead} />
+          )}
           <div>
             <Label>Origen</Label>
             <Select value={origen} onValueChange={(o) => { setOrigen(o); if (o === "marketing") setPromotorId("ninguno"); }}>
