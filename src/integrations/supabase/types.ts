@@ -1262,7 +1262,7 @@ export type Database = {
           fecha_firma: string | null
           fecha_primera_cuota: string | null
           fecha_venta: string
-          forma_pago_inicial: string
+          forma_pago_inicial: string | null
           id: string
           importada: boolean
           inicial: number
@@ -1273,6 +1273,7 @@ export type Database = {
           motivo_cambio_historica: string | null
           motivo_diferencia_precio: string | null
           notas: string | null
+          operacion_inicial: string | null
           origen: string
           plazo_meses: number
           precio_acordado: number
@@ -1292,7 +1293,7 @@ export type Database = {
           fecha_firma?: string | null
           fecha_primera_cuota?: string | null
           fecha_venta?: string
-          forma_pago_inicial: string
+          forma_pago_inicial?: string | null
           id?: string
           importada?: boolean
           inicial: number
@@ -1303,6 +1304,7 @@ export type Database = {
           motivo_cambio_historica?: string | null
           motivo_diferencia_precio?: string | null
           notas?: string | null
+          operacion_inicial?: string | null
           origen: string
           plazo_meses: number
           precio_acordado: number
@@ -1322,7 +1324,7 @@ export type Database = {
           fecha_firma?: string | null
           fecha_primera_cuota?: string | null
           fecha_venta?: string
-          forma_pago_inicial?: string
+          forma_pago_inicial?: string | null
           id?: string
           importada?: boolean
           inicial?: number
@@ -1333,6 +1335,7 @@ export type Database = {
           motivo_cambio_historica?: string | null
           motivo_diferencia_precio?: string | null
           notas?: string | null
+          operacion_inicial?: string | null
           origen?: string
           plazo_meses?: number
           precio_acordado?: number
@@ -1493,12 +1496,21 @@ export type Database = {
         Args: { _es_historica: boolean; _motivo: string; _venta_id: string }
         Returns: undefined
       }
+      eliminar_cliente: {
+        Args: { _cliente_id: string; _motivo: string }
+        Returns: undefined
+      }
+      eliminar_venta: {
+        Args: { _motivo: string; _venta_id: string }
+        Returns: undefined
+      }
       fn_valida_lote_comercializable: {
         Args: { _lote_id: string }
         Returns: undefined
       }
       importar_lotes: { Args: { p_filas: Json }; Returns: Json }
       importar_vendedores: { Args: { p_filas: Json }; Returns: Json }
+      inicial_minima: { Args: never; Returns: number }
       motivo_no_revertir: { Args: { _id: string }; Returns: string }
       recalcular_mes: { Args: { _mes: string }; Returns: number }
       regularizar_venta: {

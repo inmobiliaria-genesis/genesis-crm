@@ -35,7 +35,6 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { SelectorCliente } from "@/components/SelectorCliente";
 import {
-  FORMAS_PAGO,
   nombreCliente,
   documentoCliente,
   useLotesConEstado,
@@ -45,8 +44,9 @@ import { fecha, hoyLima, soles, cantidad } from "@/lib/format";
 import { usePerfil, puedeComercial, puedeElegirVendedor, puedeCobrar } from "@/lib/sesion";
 import { ETIQUETA_ORIGEN, nombreVendedor, useVendedores } from "@/lib/vendedores";
 import { DialogoPago, DialogoRegularizar } from "@/components/PagoForm";
-import { ETIQUETA_CUOTA, useCuotasDeVenta, usePagosDeVenta, valorConfig } from "@/lib/cobranza";
-import { MostrarMetodo, DialogoEditarMetodo } from "@/components/MetodoPago";
+import { ETIQUETA_CUOTA, useCuotasDeVenta, usePagosDeVenta, llevaOperacion } from "@/lib/cobranza";
+import { MostrarMetodo, DialogoEditarMetodo, CamposMetodo } from "@/components/MetodoPago";
+import { DialogoEliminar } from "@/components/DialogoEliminar";
 import { BotonHistorica } from "@/components/DialogoHistorica";
 import { DialogoIniciarDesistimiento, DetalleDesistimiento, useDesistimientoDeVenta, ETIQUETA_DESISTIMIENTO } from "@/components/Desistimiento";
 
@@ -288,7 +288,8 @@ function DialogoVenta({
   const [precio, setPrecio] = useState("");
   const [motivo, setMotivo] = useState("");
   const [inicial, setInicial] = useState("");
-  const [formaPago, setFormaPago] = useState("efectivo");
+  const [formaPago, setFormaPago] = useState("");
+  const [operacionInicial, setOperacionInicial] = useState("");
   const [plazo, setPlazo] = useState("12");
   const [primeraCuota, setPrimeraCuota] = useState("");
   const [notas, setNotas] = useState("");
@@ -302,7 +303,11 @@ function DialogoVenta({
 
   const inicialMinima = useQuery({
     queryKey: ["config-valor", "inicial_minima"],
-    queryFn: () => valorConfig("inicial_minima"),
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("inicial_minima" as never);
+      if (error) throw error;
+      return data == null ? null : Number(data);
+    },
   });
   useEffect(() => {
     if (inicialMinima.data != null && inicial === "") setInicial(String(inicialMinima.data));
@@ -384,6 +389,10 @@ function DialogoVenta({
       toast.error(`La cuota inicial mínima es ${soles(inicialMinima.data)}.`);
       return;
     }
+    if (!formaPago) {
+      toast.error("Elige la forma de pago de la inicial");
+      return;
+    }
     setGuardando(true);
     const { data, error } = await supabase
       .from("venta")
@@ -399,6 +408,7 @@ function DialogoVenta({
         motivo_diferencia_precio: motivo.trim() || null,
         inicial: condicion === "contado" ? precioNum : inicialNum,
         forma_pago_inicial: formaPago,
+        operacion_inicial: llevaOperacion(formaPago) ? operacionInicial.trim() || null : null,
         plazo_meses: plazoNum,
         fecha_primera_cuota: primeraCuota,
         notas: notas.trim() || null,
@@ -576,21 +586,13 @@ function DialogoVenta({
               </div>
             </>
           ) : null}
-          <div>
-            <Label>Forma de pago de la inicial</Label>
-            <Select value={formaPago} onValueChange={setFormaPago}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {FORMAS_PAGO.map((f) => (
-                  <SelectItem key={f} value={f} className="capitalize">
-                    {f}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <CamposMetodo
+            etiqueta="Forma de pago de la inicial"
+            metodo={formaPago}
+            operacion={operacionInicial}
+            onMetodo={setFormaPago}
+            onOperacion={setOperacionInicial}
+          />
           <div className="sm:col-span-2">
             <Label>Notas</Label>
             <Textarea rows={2} value={notas} onChange={(e) => setNotas(e.target.value)} />
@@ -670,6 +672,8 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
   const [motivo, setMotivo] = useState("");
   const [editMetodo, setEditMetodo] = useState<{ id: string; regularizacion: boolean; metodo: string | null; operacion: string | null } | null>(null);
 
+  const [editInicial, setEditInicial] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
   const v = venta.data;
   const cuotas = cronograma.data ?? [];
   const total = cuotas.reduce((t, c) => t + Number(c.monto_vigente), 0);
@@ -748,7 +752,7 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
       return;
     }
     const { error } = anulando.grupo
-      ? await (supabase.rpc as unknown as (
+      ? await (supabase.rpc.bind(supabase) as unknown as (
           f: string,
           a: Record<string, unknown>,
         ) => Promise<{ error: { message: string } | null }>)("anular_regularizacion", {
@@ -800,10 +804,21 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
               <D k="Precio de lista al vender" v={soles(v.precio_lista_momento)} />
               <D k="Precio acordado" v={soles(v.precio_acordado)} />
               <D k="Inicial" v={soles(v.inicial)} />
-              <D k="Forma de pago inicial" v={v.forma_pago_inicial} />
+              <div>
+                <p className="text-xs text-muted-foreground">Forma de pago inicial</p>
+                <MostrarMetodo metodo={v.forma_pago_inicial} operacion={(v as { operacion_inicial?: string | null }).operacion_inicial ?? null} />
+                {perfil && puedeComercial(perfil) && !v.anulado ? (
+                  <button type="button" className="block text-xs text-primary underline" onClick={() => setEditInicial(true)}>Editar</button>
+                ) : null}
+              </div>
               <D k="Plazo" v={`${v.plazo_meses} ${v.plazo_meses === 1 ? "cuota" : "cuotas"}`} />
               <D k="Primera cuota" v={fecha(v.fecha_primera_cuota)} />
             </div>
+            {perfil?.rol === "admin" ? (
+              <div className="flex justify-end">
+                <Button size="sm" variant="destructive" onClick={() => setEliminando(true)}>Eliminar venta</Button>
+              </div>
+            ) : null}
             <div className="flex items-center justify-between rounded-md border border-border p-3">
               <div>
                 <p className="text-xs text-muted-foreground">Venta histórica</p>
@@ -962,6 +977,43 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
           </div>
         ) : null}
 
+        {v && ventaId ? (
+          <>
+            <DialogoEditarMetodo
+              abierto={editInicial}
+              inicial={{ metodo: v.forma_pago_inicial, operacion: (v as { operacion_inicial?: string | null }).operacion_inicial ?? null }}
+              onCambio={setEditInicial}
+              onGuardar={async (m, op) => {
+                const { error } = await supabase
+                  .from("venta")
+                  .update({ forma_pago_inicial: m, operacion_inicial: op } as never)
+                  .eq("id", ventaId);
+                if (error) return error.message;
+                qc.invalidateQueries();
+                return null;
+              }}
+            />
+            <DialogoEliminar
+              titulo="Eliminar venta"
+              abierto={eliminando}
+              onCambio={setEliminando}
+              onConfirmar={async (motivo) => {
+                const { error } = await supabase.rpc("eliminar_venta" as never, { _venta_id: ventaId, _motivo: motivo } as never);
+                if (error) return error.message;
+                qc.invalidateQueries();
+                onCerrar();
+                return null;
+              }}
+            >
+              <div className="text-sm">
+                <p>Lote: Mz {v.lote?.manzana?.letra} · Lote {v.lote?.numero}</p>
+                <p>Titular principal: {(() => { const t = v.titulares?.find((x) => x.es_principal && !x.anulado)?.cliente; return t ? `${t.apellidos} ${t.nombres}` : "—"; })()}</p>
+                <p>Total abonado: {soles((pagos.data ?? []).filter((p) => !p.anulado).reduce((t, p) => t + Number(p.monto), 0))}</p>
+                <p>Pagos que se borrarán: {(pagos.data ?? []).length}</p>
+              </div>
+            </DialogoEliminar>
+          </>
+        ) : null}
         <DialogoEditarMetodo
           abierto={!!editMetodo}
           inicial={{ metodo: editMetodo?.metodo ?? null, operacion: editMetodo?.operacion ?? null }}

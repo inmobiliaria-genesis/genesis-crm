@@ -13,7 +13,9 @@ export function CamposMetodo({
   operacion,
   onMetodo,
   onOperacion,
+  etiqueta = "Método de pago",
 }: {
+  etiqueta?: string;
   metodo: string;
   operacion: string;
   onMetodo: (m: string) => void;
@@ -22,7 +24,7 @@ export function CamposMetodo({
   return (
     <>
       <div className="space-y-1">
-        <Label>Método de pago</Label>
+        <Label>{etiqueta}</Label>
         <Select
           value={metodo}
           onValueChange={(m) => {

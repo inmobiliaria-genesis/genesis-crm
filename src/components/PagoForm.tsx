@@ -273,7 +273,7 @@ export function DialogoRegularizar({
 
   async function confirmar() {
     setGuardando(true);
-    const { error } = await (supabase.rpc as unknown as (
+    const { error } = await (supabase.rpc.bind(supabase) as unknown as (
       f: string,
       a: Record<string, unknown>,
     ) => Promise<{ error: { message: string } | null }>)("regularizar_venta", {
