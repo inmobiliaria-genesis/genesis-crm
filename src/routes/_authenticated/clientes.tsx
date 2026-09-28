@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { DialogoEliminar } from "@/components/DialogoEliminar";
+import { usePerfil, esAdmin } from "@/lib/sesion";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
@@ -206,5 +208,29 @@ function Dato({ k, v }: { k: string; v: string }) {
       <p className="text-xs text-muted-foreground">{k}</p>
       <p>{v}</p>
     </div>
+  );
+}
+
+function EliminarCliente({ id, onListo }: { id: string; onListo: () => void }) {
+  const { data: perfil } = usePerfil();
+  const qc = useQueryClient();
+  const [abierto, setAbierto] = useState(false);
+  if (!esAdmin(perfil)) return null;
+  return (
+    <>
+      <Button size="sm" variant="destructive" className="mb-2" onClick={() => setAbierto(true)}>Eliminar cliente</Button>
+      <DialogoEliminar
+        titulo="Eliminar cliente"
+        abierto={abierto}
+        onCambio={setAbierto}
+        onConfirmar={async (motivo) => {
+          const { error } = await supabase.rpc("eliminar_cliente" as never, { _cliente_id: id, _motivo: motivo } as never);
+          if (error) return error.message;
+          qc.invalidateQueries();
+          onListo();
+          return null;
+        }}
+      />
+    </>
   );
 }
