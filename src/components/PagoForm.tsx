@@ -30,7 +30,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { fecha, hoyLima, soles, cantidad } from "@/lib/format";
-import { METODOS_PAGO, useCuotasDeVenta } from "@/lib/cobranza";
+import { METODOS_PAGO, ETIQUETA_METODO, useCuotasDeVenta } from "@/lib/cobranza";
+import { CamposMetodo } from "@/components/MetodoPago";
 
 function redondear(n: number) {
   return Math.round(n * 100) / 100;
