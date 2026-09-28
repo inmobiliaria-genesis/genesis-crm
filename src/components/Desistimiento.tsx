@@ -527,7 +527,7 @@ function DialogoAceptar({ id, abierto, onCambio }: { id: string; abierto: boolea
           <DialogTitle>Aceptación de disolución</DialogTitle>
           <DialogDescription>
             La venta pasará a desistida, el lote quedará Libre y las cuotas pendientes dejarán de ser exigibles.
-            Esto no se puede revertir ni cambiar el cálculo después.
+            Solo un administrador podrá revertirlo mientras no haya devoluciones ni otra venta o apartado en el lote.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-1">
@@ -536,7 +536,7 @@ function DialogoAceptar({ id, abierto, onCambio }: { id: string; abierto: boolea
         </div>
         <label className="flex items-center gap-2 text-sm">
           <Checkbox checked={ok} onCheckedChange={(v) => setOk(v === true)} />
-          Confirmo que la disolución fue aceptada y que no se puede deshacer
+          Confirmo que la disolución fue aceptada
         </label>
         <DialogFooter>
           <Button variant="outline" onClick={() => onCambio(false)}>Cancelar</Button>
@@ -559,17 +559,26 @@ function DialogoDevolucion({
   onCambio: (o: boolean) => void;
 }) {
   const qc = useQueryClient();
-  const [f, setF] = useState({ fecha: hoyLima(), monto: "", forma: "transferencia", operacion: "", obs: "" });
+  const [f, setF] = useState({ fecha: hoyLima(), monto: "", forma: "", operacion: "", obs: "" });
   useEffect(() => {
-    if (abierto) setF({ fecha: hoyLima(), monto: pendiente ? String(pendiente) : "", forma: "transferencia", operacion: "", obs: "" });
+    if (abierto) setF({ fecha: hoyLima(), monto: pendiente ? String(pendiente) : "", forma: "", operacion: "", obs: "" });
   }, [abierto, pendiente]);
+  const montoNum = Number(f.monto || 0);
+  const errorMonto =
+    pendiente <= 0.005
+      ? "No queda saldo por devolver en este desistimiento."
+      : montoNum > pendiente + 0.005
+        ? `El monto supera el saldo por devolver (${soles(pendiente)})`
+        : null;
   async function guardar() {
+    if (errorMonto) { toast.error(errorMonto); return; }
+    if (!f.forma) { toast.error("Elige el método de pago"); return; }
     const { error } = await supabase.from("desistimiento_devolucion").insert({
       desistimiento_id: id,
       fecha: f.fecha,
-      monto: Number(f.monto),
+      monto: montoNum,
       forma_pago: f.forma,
-      numero_operacion: f.operacion.trim() || null,
+      numero_operacion: llevaOperacion(f.forma) ? f.operacion.trim() || null : null,
       observacion: f.obs.trim() || null,
     });
     if (error) { toast.error("No se pudo registrar", { description: error.message }); return; }
@@ -582,7 +591,7 @@ function DialogoDevolucion({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Registrar devolución</DialogTitle>
-          <DialogDescription>Pendiente por devolver: {soles(pendiente)}</DialogDescription>
+          <DialogDescription>Saldo por devolver: {soles(pendiente)}</DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
@@ -593,30 +602,21 @@ function DialogoDevolucion({
             <Label>Monto (S/)</Label>
             <Input type="number" step="0.01" value={f.monto} onChange={(e) => setF({ ...f, monto: e.target.value })} />
           </div>
-          <div className="space-y-1">
-            <Label>Forma de pago</Label>
-            <select
-              className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-              value={f.forma}
-              onChange={(e) => setF({ ...f, forma: e.target.value })}
-            >
-              {METODOS_PAGO.map((m) => (
-                <option key={m} value={m}>{m}</option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-1">
-            <Label>N° de operación</Label>
-            <Input value={f.operacion} onChange={(e) => setF({ ...f, operacion: e.target.value })} />
-          </div>
+          <CamposMetodo
+            metodo={f.forma}
+            operacion={f.operacion}
+            onMetodo={(m) => setF((x) => ({ ...x, forma: m }))}
+            onOperacion={(o) => setF((x) => ({ ...x, operacion: o }))}
+          />
         </div>
+        {errorMonto && f.monto ? <p className="text-sm text-destructive">{errorMonto}</p> : null}
         <div className="space-y-1">
           <Label>Observación</Label>
           <Textarea rows={2} value={f.obs} onChange={(e) => setF({ ...f, obs: e.target.value })} />
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onCambio(false)}>Cancelar</Button>
-          <Button onClick={guardar} disabled={!f.monto || Number(f.monto) <= 0}>Registrar</Button>
+          <Button onClick={guardar} disabled={!f.monto || montoNum <= 0 || !!errorMonto || !f.forma}>Registrar</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
