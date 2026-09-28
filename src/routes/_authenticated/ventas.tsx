@@ -941,6 +941,7 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
               <D k="Fecha de firma" v={fecha(v.fecha_firma)} />
               <D k="Encargado" v={v.encargado ? nombreVendedor(v.encargado) : v.importada ? "— (venta importada)" : "—"} />
               <D k="Origen" v={ETIQUETA_ORIGEN[v.origen] ?? v.origen} />
+              <D k="Origen del lead" v={v.origen_lead ? ETIQUETA_ORIGEN_LEAD[v.origen_lead] ?? v.origen_lead : "—"} />
               <D k="Promotor" v={v.promotor ? nombreVendedor(v.promotor) : "—"} />
               <D k="Condición" v={v.condicion} />
               <D k="Precio de lista al vender" v={soles(v.precio_lista_momento)} />
