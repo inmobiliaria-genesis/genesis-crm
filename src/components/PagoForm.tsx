@@ -49,7 +49,7 @@ export function DialogoPago({
   const cuotas = useCuotasDeVenta(ventaId);
   const [fechaPago, setFechaPago] = useState(hoyLima());
   const [monto, setMonto] = useState("");
-  const [metodo, setMetodo] = useState<string>("efectivo");
+  const [metodo, setMetodo] = useState<string>("");
   const [operacion, setOperacion] = useState("");
   const [notas, setNotas] = useState("");
   const [manual, setManual] = useState(false);
@@ -90,6 +90,10 @@ export function DialogoPago({
   async function guardar() {
     if (montoNum <= 0) {
       toast.error("Indica un monto mayor a cero");
+      return;
+    }
+    if (!metodo) {
+      toast.error("Elige el método de pago");
       return;
     }
     const detalle = Object.entries(aplicaciones)
@@ -161,25 +165,7 @@ export function DialogoPago({
               }}
             />
           </div>
-          <div>
-            <Label>Método</Label>
-            <Select value={metodo} onValueChange={setMetodo}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {METODOS_PAGO.map((m) => (
-                  <SelectItem key={m} value={m} className="capitalize">
-                    {m}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label>N° de operación (opcional)</Label>
-            <Input value={operacion} onChange={(e) => setOperacion(e.target.value)} />
-          </div>
+          <CamposMetodo metodo={metodo} operacion={operacion} onMetodo={setMetodo} onOperacion={setOperacion} />
           <div className="sm:col-span-2">
             <Label>Notas (opcional)</Label>
             <Textarea rows={2} value={notas} onChange={(e) => setNotas(e.target.value)} />
@@ -351,8 +337,8 @@ export function DialogoRegularizar({
               <SelectContent>
                 <SelectItem value="no_registrado">No registrada</SelectItem>
                 {METODOS_PAGO.map((m) => (
-                  <SelectItem key={m} value={m} className="capitalize">
-                    {m}
+                  <SelectItem key={m} value={m}>
+                    {ETIQUETA_METODO[m]}
                   </SelectItem>
                 ))}
               </SelectContent>
