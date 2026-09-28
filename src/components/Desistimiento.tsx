@@ -133,7 +133,7 @@ export function DialogoIniciarDesistimiento({
       descontar_comision: descontar,
     });
     setGuardando(false);
-    if (error) return toast.error("No se pudo iniciar", { description: error.message });
+    if (error) { toast.error("No se pudo iniciar", { description: error.message }); return; }
     toast.success("Desistimiento iniciado");
     onCambio(false);
     qc.invalidateQueries();
@@ -387,7 +387,7 @@ function DialogoMotivo({
               setGuardando(true);
               const err = await onConfirmar(motivo.trim());
               setGuardando(false);
-              if (err) return toast.error("No se pudo completar", { description: err });
+              if (err) { toast.error("No se pudo completar", { description: err }); return; }
               toast.success("Listo");
               setMotivo("");
               onCambio(false);
@@ -445,7 +445,7 @@ function DialogoEditar({ d, abierto, onCambio }: { d: Desistimiento; abierto: bo
       cambios.fecha_solicitud_liberacion = f.solicitud ? f.fechaSolicitud || null : null;
     }
     const { error } = await supabase.from("desistimiento").update(cambios).eq("id", d.id);
-    if (error) return toast.error("No se pudo guardar", { description: error.message });
+    if (error) { toast.error("No se pudo guardar", { description: error.message }); return; }
     toast.success("Cambios guardados");
     onCambio(false);
     qc.invalidateQueries();
@@ -514,7 +514,7 @@ function DialogoAceptar({ id, abierto, onCambio }: { id: string; abierto: boolea
       .from("desistimiento")
       .update({ aceptacion_disolucion: true, fecha_aceptacion_disolucion: f })
       .eq("id", id);
-    if (error) return toast.error("No se pudo aceptar", { description: error.message });
+    if (error) { toast.error("No se pudo aceptar", { description: error.message }); return; }
     toast.success("Disolución aceptada: la venta quedó desistida y el lote libre");
     setOk(false);
     onCambio(false);
@@ -572,7 +572,7 @@ function DialogoDevolucion({
       numero_operacion: f.operacion.trim() || null,
       observacion: f.obs.trim() || null,
     });
-    if (error) return toast.error("No se pudo registrar", { description: error.message });
+    if (error) { toast.error("No se pudo registrar", { description: error.message }); return; }
     toast.success("Devolución registrada");
     onCambio(false);
     qc.invalidateQueries();

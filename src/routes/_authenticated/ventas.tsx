@@ -47,6 +47,7 @@ import { ETIQUETA_ORIGEN, nombreVendedor, useVendedores } from "@/lib/vendedores
 import { DialogoPago, DialogoRegularizar } from "@/components/PagoForm";
 import { ETIQUETA_CUOTA, useCuotasDeVenta, usePagosDeVenta } from "@/lib/cobranza";
 import { BotonHistorica } from "@/components/DialogoHistorica";
+import { DialogoIniciarDesistimiento, DetalleDesistimiento, useDesistimientoDeVenta, ETIQUETA_DESISTIMIENTO } from "@/components/Desistimiento";
 
 type Busqueda = {
   venta?: string | undefined;
@@ -93,7 +94,7 @@ function VentasPage() {
       const { data, error } = await supabase
         .from("venta")
         .select(
-          "*, lote:lote_id(numero, manzana:manzana_id(id, letra)), encargado:vendedor!venta_encargado_id_fkey(nombre, apodo, estado), promotor:vendedor!venta_promotor_id_fkey(nombre, apodo, estado), titulares:venta_titular(id, es_principal, anulado, cliente:cliente_id(id, nombres, apellidos, tipo_documento, numero_documento))",
+          "*, lote:lote_id(numero, manzana:manzana_id(id, letra)), encargado:vendedor!venta_encargado_id_fkey(nombre, apodo, estado), promotor:vendedor!venta_promotor_id_fkey(nombre, apodo, estado), titulares:venta_titular(id, es_principal, anulado, cliente:cliente_id(id, nombres, apellidos, tipo_documento, numero_documento)), desistimientos:desistimiento(estado, anulado)",
         )
         .order("fecha_venta", { ascending: false });
       if (error) throw error;
@@ -105,7 +106,7 @@ function VentasPage() {
     return (ventas.data ?? []).filter((v) => {
       if (vendedor !== "todos" && v.encargado_id !== vendedor) return false;
       if (manzana !== "todas" && v.lote?.manzana?.id !== manzana) return false;
-      if (estado === "activas" && v.anulado) return false;
+      if (estado === "activas" && (v.anulado || v.desistida)) return false;
       if (estado === "anuladas" && !v.anulado) return false;
       return true;
     });
@@ -190,7 +191,11 @@ function VentasPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      {v.anulado ? <Badge variant="outline">Anulada</Badge> : null}{" "}
+                      {v.anulado ? <Badge variant="outline">Anulada</Badge> : null}
+                      {v.desistida ? <Badge variant="outline">Desistida</Badge> : null}
+                      {!v.desistida && v.desistimientos?.some((d) => !d.anulado && d.estado === "en_proceso") ? (
+                        <Badge variant="destructive">En desistimiento</Badge>
+                      ) : null}{" "}
                       <Button
                         size="sm"
                         variant="ghost"
@@ -643,6 +648,10 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
   const pagos = usePagosDeVenta(ventaId);
   const [registrando, setRegistrando] = useState(false);
   const [regularizando, setRegularizando] = useState(false);
+  const desist = useDesistimientoDeVenta(ventaId);
+  const [iniciando, setIniciando] = useState(false);
+  const [verDesist, setVerDesist] = useState<string | null>(null);
+  const enProceso = desist.data?.estado === "en_proceso";
   const [anulando, setAnulando] = useState<{ id: string; grupo: boolean } | null>(null);
   const [motivo, setMotivo] = useState("");
 
@@ -779,6 +788,20 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
                 <BotonHistorica ventaId={ventaId} esHistorica={v.es_historica} />
               ) : null}
             </div>
+            <div className="flex items-center justify-between rounded-md border border-border p-3">
+              <div>
+                <p className="text-xs text-muted-foreground">Desistimiento</p>
+                <p>
+                  {v.desistida ? "Venta desistida" : desist.data ? ETIQUETA_DESISTIMIENTO[desist.data.estado] : "Sin desistimiento"}
+                  {enProceso ? <Badge variant="destructive" className="ml-2">En desistimiento</Badge> : null}
+                </p>
+              </div>
+              {desist.data ? (
+                <Button size="sm" variant="outline" onClick={() => setVerDesist(desist.data!.id)}>Ver detalle</Button>
+              ) : perfil?.rol === "admin" && !v.anulado && !v.desistida ? (
+                <Button size="sm" variant="outline" onClick={() => setIniciando(true)}>Iniciar desistimiento</Button>
+              ) : null}
+            </div>
             {v.motivo_diferencia_precio ? (
               <D k="Motivo de la diferencia de precio" v={v.motivo_diferencia_precio} />
             ) : null}
@@ -800,12 +823,12 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
               <div className="mb-2 flex items-center justify-between">
                 <p className="font-medium">Cronograma</p>
                 <div className="flex gap-2">
-                  {cobra && !v.anulado ? (
+                  {cobra && !v.anulado && !v.desistida && !enProceso ? (
                     <Button size="sm" onClick={() => setRegistrando(true)}>
                       Registrar pago
                     </Button>
                   ) : null}
-                  {regulariza && !v.anulado && saldoTotal > 0.005 ? (
+                  {regulariza && !v.anulado && !v.desistida && !enProceso && saldoTotal > 0.005 ? (
                     <Button size="sm" variant="outline" onClick={() => setRegularizando(true)}>
                       Marcar como pagada
                     </Button>
@@ -911,6 +934,10 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
         {registrando && ventaId ? (
           <DialogoPago ventaId={ventaId} onCerrar={() => setRegistrando(false)} />
         ) : null}
+        {ventaId ? (
+          <DialogoIniciarDesistimiento ventaId={ventaId} abierto={iniciando} onCambio={setIniciando} />
+        ) : null}
+        <DetalleDesistimiento id={verDesist} onCerrar={() => setVerDesist(null)} />
         {regularizando && ventaId && v ? (
           <DialogoRegularizar
             ventaId={ventaId}
