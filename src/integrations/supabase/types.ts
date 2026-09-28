@@ -1290,6 +1290,7 @@ export type Database = {
           precio_acordado: number
           precio_lista_momento: number | null
           promotor_id: string | null
+          reserva_origen_id: string | null
         }
         Insert: {
           anulado?: boolean
@@ -1322,6 +1323,7 @@ export type Database = {
           precio_acordado: number
           precio_lista_momento?: number | null
           promotor_id?: string | null
+          reserva_origen_id?: string | null
         }
         Update: {
           anulado?: boolean
@@ -1354,6 +1356,7 @@ export type Database = {
           precio_acordado?: number
           precio_lista_momento?: number | null
           promotor_id?: string | null
+          reserva_origen_id?: string | null
         }
         Relationships: [
           {
@@ -1375,6 +1378,13 @@ export type Database = {
             columns: ["promotor_id"]
             isOneToOne: false
             referencedRelation: "vendedor"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venta_reserva_origen_id_fkey"
+            columns: ["reserva_origen_id"]
+            isOneToOne: false
+            referencedRelation: "reserva"
             referencedColumns: ["id"]
           },
         ]
@@ -1516,6 +1526,14 @@ export type Database = {
         Args: { _motivo: string; _venta_id: string }
         Returns: undefined
       }
+      etiquetas_lote: {
+        Args: { _ids: string[] }
+        Returns: {
+          id: string
+          manzana: string
+          numero: number
+        }[]
+      }
       fn_valida_lote_comercializable: {
         Args: { _lote_id: string }
         Returns: undefined
@@ -1524,6 +1542,16 @@ export type Database = {
       importar_lotes: { Args: { p_filas: Json }; Returns: Json }
       importar_vendedores: { Args: { p_filas: Json }; Returns: Json }
       inicial_minima: { Args: never; Returns: number }
+      lotes_asesor: {
+        Args: never
+        Returns: {
+          area_m2: number
+          id: string
+          manzana: string
+          numero: number
+          precio_lista: number
+        }[]
+      }
       mis_ventas: {
         Args: never
         Returns: {
@@ -1538,6 +1566,18 @@ export type Database = {
         }[]
       }
       motivo_no_revertir: { Args: { _id: string }; Returns: string }
+      plano_asesor: {
+        Args: { _plano_id: string }
+        Returns: {
+          area_m2: number
+          estado: string
+          forma: Json
+          id: string
+          manzana: string
+          numero: number
+          precio_lista: number
+        }[]
+      }
       recalcular_mes: { Args: { _mes: string }; Returns: number }
       rechazar_cliente: {
         Args: { _id: string; _motivo: string }
