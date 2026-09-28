@@ -126,12 +126,30 @@ export function DialogoCliente({
       fecha_nacimiento: f.fecha_nacimiento || null,
       notas: f.notas.trim() || null,
     };
+    const docCambia =
+      !cliente ||
+      cliente.tipo_documento !== payload.tipo_documento ||
+      cliente.numero_documento !== payload.numero_documento;
+    if (docCambia) {
+      const { data: dup } = await supabase.rpc("buscar_cliente_documento" as never, {
+        _tipo: payload.tipo_documento,
+        _numero: payload.numero_documento,
+      } as never);
+      if (Array.isArray(dup) && dup.length > 0) {
+        setGuardando(false);
+        toast.error(`Ya existe un cliente con este ${payload.tipo_documento}`);
+        return;
+      }
+    }
     const res = cliente
       ? await supabase.from("cliente").update(payload).eq("id", cliente.id).select("*").single()
       : await supabase.from("cliente").insert(payload).select("*").single();
     setGuardando(false);
     if (res.error) {
-      toast.error("No se pudo guardar", { description: res.error.message });
+      const dup = res.error.code === "23505";
+      toast.error(dup ? `Ya existe un cliente con este ${payload.tipo_documento}` : "No se pudo guardar", {
+        description: dup ? undefined : res.error.message,
+      });
       return;
     }
     toast.success(cliente ? "Cliente actualizado" : "Cliente registrado");
