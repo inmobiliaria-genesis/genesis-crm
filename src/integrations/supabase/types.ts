@@ -63,6 +63,7 @@ export type Database = {
           estado_aprobacion: string
           estado_civil: string | null
           fecha_nacimiento: string | null
+          fuente: string | null
           id: string
           lugar_nacimiento: string | null
           modificado_en: string
@@ -73,7 +74,8 @@ export type Database = {
           notas: string | null
           numero_documento: string
           ocupacion: string | null
-          origen_lead: string | null
+          origen: string | null
+          promotor_id: string | null
           provincia: string | null
           referido_por_id: string | null
           regimen_patrimonial: string | null
@@ -96,6 +98,7 @@ export type Database = {
           estado_aprobacion?: string
           estado_civil?: string | null
           fecha_nacimiento?: string | null
+          fuente?: string | null
           id?: string
           lugar_nacimiento?: string | null
           modificado_en?: string
@@ -106,7 +109,8 @@ export type Database = {
           notas?: string | null
           numero_documento: string
           ocupacion?: string | null
-          origen_lead?: string | null
+          origen?: string | null
+          promotor_id?: string | null
           provincia?: string | null
           referido_por_id?: string | null
           regimen_patrimonial?: string | null
@@ -129,6 +133,7 @@ export type Database = {
           estado_aprobacion?: string
           estado_civil?: string | null
           fecha_nacimiento?: string | null
+          fuente?: string | null
           id?: string
           lugar_nacimiento?: string | null
           modificado_en?: string
@@ -139,7 +144,8 @@ export type Database = {
           notas?: string | null
           numero_documento?: string
           ocupacion?: string | null
-          origen_lead?: string | null
+          origen?: string | null
+          promotor_id?: string | null
           provincia?: string | null
           referido_por_id?: string | null
           regimen_patrimonial?: string | null
@@ -148,6 +154,13 @@ export type Database = {
           tipo_documento?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "cliente_promotor_id_fkey"
+            columns: ["promotor_id"]
+            isOneToOne: false
+            referencedRelation: "vendedor"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "cliente_referido_por_id_fkey"
             columns: ["referido_por_id"]
@@ -637,6 +650,7 @@ export type Database = {
           creado_por: string | null
           etapa: string
           fecha_contacto: string
+          fuente: string | null
           id: string
           modificado_en: string
           modificado_por: string | null
@@ -644,7 +658,7 @@ export type Database = {
           motivo_no_interesado: string | null
           nombre: string
           notas: string | null
-          origen_lead: string | null
+          origen: string | null
           promotor_id: string | null
           proxima_accion: string | null
           proxima_fecha: string | null
@@ -663,6 +677,7 @@ export type Database = {
           creado_por?: string | null
           etapa?: string
           fecha_contacto?: string
+          fuente?: string | null
           id?: string
           modificado_en?: string
           modificado_por?: string | null
@@ -670,7 +685,7 @@ export type Database = {
           motivo_no_interesado?: string | null
           nombre: string
           notas?: string | null
-          origen_lead?: string | null
+          origen?: string | null
           promotor_id?: string | null
           proxima_accion?: string | null
           proxima_fecha?: string | null
@@ -689,6 +704,7 @@ export type Database = {
           creado_por?: string | null
           etapa?: string
           fecha_contacto?: string
+          fuente?: string | null
           id?: string
           modificado_en?: string
           modificado_por?: string | null
@@ -696,7 +712,7 @@ export type Database = {
           motivo_no_interesado?: string | null
           nombre?: string
           notas?: string | null
-          origen_lead?: string | null
+          origen?: string | null
           promotor_id?: string | null
           proxima_accion?: string | null
           proxima_fecha?: string | null
@@ -1456,6 +1472,7 @@ export type Database = {
           fecha_primera_cuota: string | null
           fecha_venta: string
           forma_pago_inicial: string | null
+          fuente: string | null
           id: string
           importada: boolean
           inicial: number
@@ -1469,7 +1486,6 @@ export type Database = {
           notas: string | null
           operacion_inicial: string | null
           origen: string
-          origen_lead: string | null
           plazo_meses: number
           precio_acordado: number
           precio_lista_momento: number | null
@@ -1491,6 +1507,7 @@ export type Database = {
           fecha_primera_cuota?: string | null
           fecha_venta?: string
           forma_pago_inicial?: string | null
+          fuente?: string | null
           id?: string
           importada?: boolean
           inicial: number
@@ -1504,7 +1521,6 @@ export type Database = {
           notas?: string | null
           operacion_inicial?: string | null
           origen: string
-          origen_lead?: string | null
           plazo_meses: number
           precio_acordado: number
           precio_lista_momento?: number | null
@@ -1526,6 +1542,7 @@ export type Database = {
           fecha_primera_cuota?: string | null
           fecha_venta?: string
           forma_pago_inicial?: string | null
+          fuente?: string | null
           id?: string
           importada?: boolean
           inicial?: number
@@ -1539,7 +1556,6 @@ export type Database = {
           notas?: string | null
           operacion_inicial?: string | null
           origen?: string
-          origen_lead?: string | null
           plazo_meses?: number
           precio_acordado?: number
           precio_lista_momento?: number | null
