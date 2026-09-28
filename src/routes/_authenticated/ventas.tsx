@@ -72,8 +72,66 @@ export const Route = createFileRoute("/_authenticated/ventas")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: VentasPage,
+  component: VentasRuta,
 });
+
+function VentasRuta() {
+  const { data: perfil, isLoading } = usePerfil();
+  if (isLoading) return <AppShell titulo="Ventas"><p className="text-sm text-muted-foreground">Cargando…</p></AppShell>;
+  if (perfil?.rol === "asesor") return <MisVentas />;
+  return <VentasPage />;
+}
+
+const ETQ_ESTADO_VENTA: Record<string, string> = {
+  pagando: "Pagando", cancelada: "Cancelada", anulada: "Anulada", desistida: "Desistida", en_desistimiento: "En desistimiento",
+};
+
+function MisVentas() {
+  const q = useQuery({
+    queryKey: ["mis-ventas"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("mis_ventas" as never);
+      if (error) throw error;
+      return (data ?? []) as unknown as {
+        venta_id: string; lote: string; titular: string | null; fecha_venta: string;
+        precio_acordado: number; estado: string; cuotas_pagadas: number; cuotas_total: number;
+      }[];
+    },
+  });
+  return (
+    <AppShell titulo="Mis ventas" descripcion="Ventas donde eres el encargado (solo lectura)">
+      <div className="rounded-lg border border-border bg-card">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Lote</TableHead>
+              <TableHead>Titular principal</TableHead>
+              <TableHead>Fecha de venta</TableHead>
+              <TableHead className="text-right">Precio acordado</TableHead>
+              <TableHead>Estado</TableHead>
+              <TableHead className="text-right">Cuotas pagadas</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {q.data?.length === 0 ? (
+              <TableRow><TableCell colSpan={6} className="text-center text-sm text-muted-foreground">Todavía no tienes ventas.</TableCell></TableRow>
+            ) : null}
+            {q.data?.map((v) => (
+              <TableRow key={v.venta_id}>
+                <TableCell>{v.lote}</TableCell>
+                <TableCell>{v.titular ?? "—"}</TableCell>
+                <TableCell>{fecha(v.fecha_venta)}</TableCell>
+                <TableCell className="num text-right">{soles(v.precio_acordado)}</TableCell>
+                <TableCell><Badge variant="outline">{ETQ_ESTADO_VENTA[v.estado] ?? v.estado}</Badge></TableCell>
+                <TableCell className="num text-right">{v.cuotas_pagadas} de {v.cuotas_total}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </AppShell>
+  );
+}
 
 function VentasPage() {
   const busqueda = Route.useSearch();
