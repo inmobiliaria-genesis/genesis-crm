@@ -65,7 +65,7 @@ function CobranzaPage() {
       const { data, error } = await supabase
         .from("cuota")
         .select(
-          "id, numero, fecha_vencimiento, monto_vigente, venta_id, venta:venta_id(id, anulado, lote:lote_id(numero, manzana:manzana_id(letra)), titulares:venta_titular(es_principal, anulado, cliente:cliente_id(nombres, apellidos, tipo_documento, numero_documento)))",
+          "id, numero, fecha_vencimiento, monto_vigente, venta_id, venta:venta_id(id, anulado, lote:lote_id(numero, manzana:manzana_id(letra)), titulares:venta_titular(es_principal, anulado, cliente:cliente_id(nombres, apellidos, tipo_documento, numero_documento))), aplicaciones:pago_aplicacion(monto_aplicado, anulado, pago:pago_id(anulado, recibido_por))",
         )
         .eq("anulado", false)
         .order("fecha_vencimiento")
@@ -81,6 +81,10 @@ function CobranzaPage() {
         .map((c) => {
           const e = mapa.get(c.id);
           const principal = c.venta?.titulares?.find((t) => t.es_principal && !t.anulado);
+          const apls = ((c as unknown as { aplicaciones?: { monto_aplicado: number; anulado: boolean; pago: { anulado: boolean; recibido_por: string } | null }[] }).aplicaciones ?? []);
+          const vendedor = apls
+            .filter((a) => !a.anulado && a.pago && !a.pago.anulado && a.pago.recibido_por === "vendedor")
+            .reduce((t, a) => t + Number(a.monto_aplicado), 0);
           return {
             id: c.id,
             venta_id: c.venta_id,
@@ -88,6 +92,7 @@ function CobranzaPage() {
             fecha_vencimiento: c.fecha_vencimiento,
             monto_vigente: Number(c.monto_vigente),
             monto_pagado: Number(e?.monto_pagado ?? 0),
+            pagado_vendedor: vendedor,
             saldo: Number(e?.saldo ?? c.monto_vigente),
             estado: e?.estado ?? "pendiente",
             vencida: Boolean(e?.vencida),
@@ -116,6 +121,8 @@ function CobranzaPage() {
   }, [cuotas.data, busqueda, estado, soloVencidas]);
 
   const totalSaldo = filtradas.reduce((t, c) => t + Math.max(c.saldo, 0), 0);
+  const totalInmobiliaria = filtradas.reduce((t, c) => t + c.monto_pagado - c.pagado_vendedor, 0);
+  const totalVendedor = filtradas.reduce((t, c) => t + c.pagado_vendedor, 0);
 
   return (
     <AppShell titulo="Cobranza" descripcion="Cuotas, pagos y saldos por cobrar">
@@ -196,7 +203,14 @@ function CobranzaPage() {
                     <TableCell className="num">{c.numero === 0 ? "Inicial" : c.numero}</TableCell>
                     <TableCell>{fecha(c.fecha_vencimiento)}</TableCell>
                     <TableCell className="num text-right">{soles(c.monto_vigente)}</TableCell>
-                    <TableCell className="num text-right">{soles(c.monto_pagado)}</TableCell>
+                    <TableCell className="num text-right">
+                      {soles(c.monto_pagado)}
+                      {c.pagado_vendedor > 0.005 ? (
+                        <span className="block text-xs text-muted-foreground">
+                          Recibido por vendedor: {soles(c.pagado_vendedor)}
+                        </span>
+                      ) : null}
+                    </TableCell>
                     <TableCell className="num text-right">{soles(Math.max(c.saldo, 0))}</TableCell>
                     <TableCell>
                       <Badge variant={c.estado === "pagada" ? "secondary" : "outline"}>
@@ -229,7 +243,9 @@ function CobranzaPage() {
             </TableBody>
           </Table>
           <p className="mt-3 text-xs text-muted-foreground">
-            Saldo por cobrar con estos filtros: <span className="num">{soles(totalSaldo)}</span>
+            Saldo por cobrar con estos filtros: <span className="num">{soles(totalSaldo)}</span> · Ingresos de la
+            inmobiliaria: <span className="num">{soles(totalInmobiliaria)}</span> · Recibido por vendedores:{" "}
+            <span className="num">{soles(totalVendedor)}</span>
           </p>
         </CardContent>
       </Card>
