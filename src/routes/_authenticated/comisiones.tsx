@@ -81,8 +81,8 @@ function sePuedePagar(c: { tipo: string; modalidad?: string | null; estado: stri
   return c.modalidad === "historica" && c.estado === "pendiente";
 }
 
-function mesDe(c: { mes: string | null; fecha_generada: string; venta?: { fecha_firma: string | null } | null }) {
-  return (c.mes ?? c.venta?.fecha_firma ?? c.fecha_generada).slice(0, 7);
+function mesDe(c: { mes: string | null; fecha_generada: string; venta?: { fecha_venta: string | null } | null }) {
+  return (c.mes ?? c.venta?.fecha_venta ?? c.fecha_generada).slice(0, 7);
 }
 
 function ComisionesPage() {
@@ -107,7 +107,7 @@ function ComisionesPage() {
       const { data, error } = await supabase
         .from("comision")
         .select(
-          "*, encargado:encargado_id(nombre, apodo, estado), venta:venta_id(fecha_firma, anulado, lote:lote_id(numero, manzana:manzana_id(letra)))",
+          "*, encargado:encargado_id(nombre, apodo, estado), venta:venta_id(fecha_venta, anulado, lote:lote_id(numero, manzana:manzana_id(letra)))",
         )
         .order("fecha_generada", { ascending: false });
       if (error) throw error;
@@ -149,12 +149,12 @@ function ComisionesPage() {
       const fin = new Date(Date.UTC(y!, m!, 1)).toISOString().slice(0, 10);
       const { data, error } = await supabase
         .from("venta")
-        .select("id, fecha_firma, encargado:vendedor!venta_encargado_id_fkey(nombre, apodo, estado), lote:lote_id(numero, manzana:manzana_id(letra))")
+        .select("id, fecha_venta, encargado:vendedor!venta_encargado_id_fkey(nombre, apodo, estado), lote:lote_id(numero, manzana:manzana_id(letra))")
         .eq("es_historica", true)
         .eq("anulado", false)
-        .gte("fecha_firma", ini)
-        .lt("fecha_firma", fin)
-        .order("fecha_firma");
+        .gte("fecha_venta", ini)
+        .lt("fecha_venta", fin)
+        .order("fecha_venta");
       if (error) throw error;
       return data ?? [];
     },
@@ -217,7 +217,7 @@ function ComisionesPage() {
         {admin ? (
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Ventas firmadas este mes aún marcadas como históricas</CardTitle>
+              <CardTitle className="text-base">Ventas de este mes aún marcadas como históricas</CardTitle>
             </CardHeader>
             <CardContent>
               {(historicas.data ?? []).length === 0 ? (
@@ -227,7 +227,7 @@ function ComisionesPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Lote</TableHead>
-                      <TableHead>Firma</TableHead>
+                      <TableHead>Fecha de venta</TableHead>
                       <TableHead>Encargado</TableHead>
                       <TableHead />
                     </TableRow>
@@ -236,7 +236,7 @@ function ComisionesPage() {
                     {(historicas.data ?? []).map((v) => (
                       <TableRow key={v.id}>
                         <TableCell>Mz {v.lote?.manzana?.letra} · Lote {v.lote?.numero}</TableCell>
-                        <TableCell>{fecha(v.fecha_firma)}</TableCell>
+                        <TableCell>{fecha(v.fecha_venta)}</TableCell>
                         <TableCell>{nombreVendedor(v.encargado)}</TableCell>
                         <TableCell className="text-right">
                           <BotonHistorica ventaId={v.id} esHistorica />
@@ -331,7 +331,7 @@ function ComisionesPage() {
                 <TableCell>
                   {c.venta ? `Mz ${c.venta.lote?.manzana?.letra} · Lote ${c.venta.lote?.numero}` : "—"}
                 </TableCell>
-                <TableCell>{c.mes ? fecha(c.mes).slice(3) : c.venta?.fecha_firma ? fecha(c.venta.fecha_firma).slice(3) : "—"}</TableCell>
+                <TableCell>{c.mes ? fecha(c.mes).slice(3) : c.venta?.fecha_venta ? fecha(c.venta.fecha_venta).slice(3) : "—"}</TableCell>
                 <TableCell className="num text-right">{soles(c.monto)}</TableCell>
                 <TableCell>
                   <Badge variant={c.estado === "pagada" ? "secondary" : "outline"}>{ETQ_ESTADO[c.estado]}</Badge>
