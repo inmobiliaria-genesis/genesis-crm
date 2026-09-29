@@ -18,6 +18,7 @@ import {
   Undo2,
   CheckCircle2,
   Contact,
+  Landmark,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -48,6 +49,7 @@ const ITEMS: Item[] = [
   { etiqueta: "Comisiones", icono: Percent, ruta: "/comisiones", roles: ["admin", "gerente_ventas", "socio", "asesor", "contabilidad"], asesor: "Mis comisiones" },
   { etiqueta: "Aprobaciones", icono: CheckCircle2, ruta: "/aprobaciones", roles: ["admin", "gerente_ventas", "socio"] },
   { etiqueta: "Gastos", icono: Receipt, ruta: "/gastos", roles: ["admin", "socio", "contabilidad"] },
+  { etiqueta: "Deudas", icono: Landmark, ruta: "/deudas", roles: ["admin", "socio", "contabilidad"] },
   { etiqueta: "Planilla", icono: Users2, ruta: "/planilla", roles: ["admin", "socio", "contabilidad"] },
   { etiqueta: "Reportes", icono: BarChart3 },
   { etiqueta: "Configuración", icono: Settings, ruta: "/configuracion", roles: ["admin", "socio"] },
@@ -63,7 +65,7 @@ const ITEMS: Item[] = [
 ];
 
 /** Pantallas que ve contabilidad. */
-const CONTABILIDAD = ["/clientes", "/ventas", "/cobranza", "/desistimientos", "/comisiones", "/gastos", "/planilla", "/bitacora"];
+const CONTABILIDAD = ["/clientes", "/ventas", "/cobranza", "/desistimientos", "/comisiones", "/gastos", "/deudas", "/planilla", "/bitacora"];
 
 export function AppShell({
   titulo,
