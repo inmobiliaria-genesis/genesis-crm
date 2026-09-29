@@ -45,7 +45,7 @@ import { fecha, hoyLima, soles, cantidad } from "@/lib/format";
 import { usePerfil, puedeComercial, puedeElegirVendedor, puedeCobrar } from "@/lib/sesion";
 import { nombreVendedor, useVendedores } from "@/lib/vendedores";
 import { DialogoPago, DialogoRegularizar } from "@/components/PagoForm";
-import { ETIQUETA_CUOTA, useCuotasDeVenta, usePagosDeVenta, llevaOperacion } from "@/lib/cobranza";
+import { ETIQUETA_CUOTA, useCuotasDeVenta, usePagosDeVenta, llevaOperacion, valorConfig, ETIQUETA_RECIBIDO } from "@/lib/cobranza";
 import { MostrarMetodo, DialogoEditarMetodo, CamposMetodo } from "@/components/MetodoPago";
 import { DialogoEliminar } from "@/components/DialogoEliminar";
 import { BotonHistorica } from "@/components/DialogoHistorica";
@@ -352,6 +352,12 @@ function DialogoVenta({
   const [inicial, setInicial] = useState("");
   const [formaPago, setFormaPago] = useState("");
   const [operacionInicial, setOperacionInicial] = useState("");
+  const [metodoResto, setMetodoResto] = useState("");
+  const [operacionResto, setOperacionResto] = useState("");
+  const montoComision = useQuery({
+    queryKey: ["config-valor", "monto_comision"],
+    queryFn: () => valorConfig("monto_comision"),
+  });
   const [plazo, setPlazo] = useState("12");
   const [primeraCuota, setPrimeraCuota] = useState("");
   const [notas, setNotas] = useState("");
@@ -463,6 +469,9 @@ function DialogoVenta({
   const plazoNum = condicion === "contado" ? 1 : Number(plazo || 0);
   const precioNum = Number(precio || 0);
   const inicialNum = Number(inicial || 0);
+  const montoInicial = condicion === "contado" ? precioNum : inicialNum;
+  const comisionInicial = Math.min(montoComision.data ?? 0, montoInicial);
+  const restoInicial = Math.round((montoInicial - comisionInicial) * 100) / 100;
 
   const cronograma = useQuery({
     queryKey: ["simular", precioNum, inicialNum, plazoNum, fechaVenta, primeraCuota, condicion],
@@ -498,7 +507,11 @@ function DialogoVenta({
       return;
     }
     if (!formaPago) {
-      toast.error("Elige la forma de pago de la inicial");
+      toast.error("Elige el método de la comisión al vendedor");
+      return;
+    }
+    if (restoInicial > 0.005 && !metodoResto) {
+      toast.error("Elige el método del resto a la inmobiliaria");
       return;
     }
     if (
@@ -542,9 +555,27 @@ function DialogoVenta({
       ...adicionales.map((c) => ({ venta_id: data.id, cliente_id: c.id, es_principal: false })),
     ];
     const { error: e2 } = await supabase.from("venta_titular").insert(titulares);
-    setGuardando(false);
     if (e2) {
+      setGuardando(false);
       toast.error("La venta se creó pero falló registrar titulares", { description: e2.message });
+      return;
+    }
+    const rpc = supabase.rpc.bind(supabase) as unknown as (
+      f: string,
+      a: Record<string, unknown>,
+    ) => Promise<{ error: { message: string } | null }>;
+    const { error: e3 } = await rpc("registrar_inicial", {
+      _venta_id: data.id,
+      _metodo_comision: formaPago,
+      _operacion_comision: llevaOperacion(formaPago) ? operacionInicial.trim() || null : null,
+      _metodo_resto: restoInicial > 0.005 ? metodoResto : null,
+      _operacion_resto: llevaOperacion(metodoResto) ? operacionResto.trim() || null : null,
+    });
+    setGuardando(false);
+    if (e3) {
+      toast.error("La venta se creó pero no se pudo registrar el pago de la inicial", { description: e3.message });
+      qc.invalidateQueries();
+      onCerrar();
       return;
     }
     toast.success("Venta registrada");
@@ -709,13 +740,36 @@ function DialogoVenta({
               </div>
             </>
           ) : null}
-          <CamposMetodo
-            etiqueta="Forma de pago de la inicial"
-            metodo={formaPago}
-            operacion={operacionInicial}
-            onMetodo={setFormaPago}
-            onOperacion={setOperacionInicial}
-          />
+          <div className="rounded-md border border-border p-3 sm:col-span-2">
+            <p className="text-sm font-medium">
+              1. Comisión al vendedor — <span className="num">{soles(comisionInicial)}</span>
+              <span className="ml-1 text-xs font-normal text-muted-foreground">(recibido por el vendedor)</span>
+            </p>
+            <div className="mt-2 grid gap-3 sm:grid-cols-2">
+              <CamposMetodo
+                metodo={formaPago}
+                operacion={operacionInicial}
+                onMetodo={setFormaPago}
+                onOperacion={setOperacionInicial}
+              />
+            </div>
+          </div>
+          {restoInicial > 0.005 ? (
+            <div className="rounded-md border border-border p-3 sm:col-span-2">
+              <p className="text-sm font-medium">
+                2. Resto a la inmobiliaria — <span className="num">{soles(restoInicial)}</span>
+                <span className="ml-1 text-xs font-normal text-muted-foreground">(recibido por la inmobiliaria)</span>
+              </p>
+              <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                <CamposMetodo
+                  metodo={metodoResto}
+                  operacion={operacionResto}
+                  onMetodo={setMetodoResto}
+                  onOperacion={setOperacionResto}
+                />
+              </div>
+            </div>
+          ) : null}
           <div className="sm:col-span-2">
             <Label>Notas</Label>
             <Textarea rows={2} value={notas} onChange={(e) => setNotas(e.target.value)} />
@@ -814,6 +868,7 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
     operacion: string | null;
     aplicado: string;
     anulado: boolean;
+    recibido: string;
   };
   const filasPago: FilaPago[] = [];
   const grupos = new Map<string, FilaPago>();
@@ -847,6 +902,7 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
         operacion: p.numero_operacion,
         aplicado: apl.length > 3 ? cantidad(apl.length, "cuotas") : textos.join(" · "),
         anulado: p.anulado,
+        recibido: (p as { recibido_por?: string }).recibido_por ?? "inmobiliaria",
       };
       grupos.set(k, fila);
       filasPago.push(fila);
@@ -863,10 +919,14 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
         operacion: p.numero_operacion,
         aplicado: textos.join(" · "),
         anulado: p.anulado,
+        recibido: (p as { recibido_por?: string }).recibido_por ?? "inmobiliaria",
       });
     }
   }
   for (const g of grupos.values()) if (g.cantidad > 1) g.aplicado = cantidad(g.cantidad, "cuotas");
+  const vigentes = filasPago.filter((f) => !f.anulado);
+  const ingresoInmobiliaria = vigentes.filter((f) => f.recibido !== "vendedor").reduce((t, f) => t + f.monto, 0);
+  const recibidoVendedor = vigentes.filter((f) => f.recibido === "vendedor").reduce((t, f) => t + f.monto, 0);
 
   async function anularPago() {
     if (!anulando) return;
@@ -1041,6 +1101,7 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
                     <TableHead>Fecha</TableHead>
                     <TableHead className="text-right">Monto</TableHead>
                     <TableHead>Método</TableHead>
+                    <TableHead>Recibido por</TableHead>
                     <TableHead>Aplicado a</TableHead>
                     <TableHead className="text-right"></TableHead>
                   </TableRow>
@@ -1048,7 +1109,7 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
                 <TableBody>
                   {filasPago.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center text-muted-foreground">
                         Todavía no hay pagos.
                       </TableCell>
                     </TableRow>
@@ -1078,6 +1139,9 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
                           </button>
                         ) : null}
                       </TableCell>
+                      <TableCell>
+                        <Badge variant={f.recibido === "vendedor" ? "outline" : "secondary"}>{ETIQUETA_RECIBIDO[f.recibido] ?? f.recibido}</Badge>
+                      </TableCell>
                       <TableCell className="text-xs">{f.aplicado || "—"}</TableCell>
                       <TableCell className="text-right">
                         {f.anulado ? (
@@ -1096,6 +1160,10 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
                   ))}
                 </TableBody>
               </Table>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Ingresado a la inmobiliaria: <span className="num">{soles(ingresoInmobiliaria)}</span> · Recibido por el
+                vendedor (comisión): <span className="num">{soles(recibidoVendedor)}</span>
+              </p>
             </div>
           </div>
         ) : null}

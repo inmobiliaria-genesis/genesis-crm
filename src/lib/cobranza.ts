@@ -40,6 +40,11 @@ export function llevaOperacion(m: string | null | undefined): boolean {
   return m === "transferencia" || m === "yape" || m === "plin";
 }
 
+export const ETIQUETA_RECIBIDO: Record<string, string> = {
+  vendedor: "Vendedor",
+  inmobiliaria: "Inmobiliaria",
+};
+
 export const ETIQUETA_CUOTA: Record<string, string> = {
   pagada: "Pagada",
   parcial: "Parcial",

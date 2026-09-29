@@ -36,7 +36,9 @@ import {
 import { usePerfil } from "@/lib/sesion";
 import { fecha, hoyLima, soles } from "@/lib/format";
 import { nombreVendedor, useVendedores } from "@/lib/vendedores";
-import { FORMAS_PAGO } from "@/lib/ventas";
+import { CamposMetodo } from "@/components/MetodoPago";
+import { etiquetaMetodo, llevaOperacion } from "@/lib/cobranza";
+import { subirComprobante } from "@/lib/gastos";
 import { BotonHistorica } from "@/components/DialogoHistorica";
 
 export const Route = createFileRoute("/_authenticated/comisiones")({
@@ -53,8 +55,11 @@ export const Route = createFileRoute("/_authenticated/comisiones")({
   component: ComisionesPage,
 });
 
-const ESTADOS = ["pendiente", "retenido", "por_pagar", "pagada", "perdida", "anulada"] as const;
+const ESTADOS = ["pendiente_cobro_vendedor", "cobrada_vendedor", "pendiente", "retenido", "por_pagar", "pagada", "pagada_antes_crm", "perdida", "anulada"] as const;
 const ETQ_ESTADO: Record<string, string> = {
+  pendiente_cobro_vendedor: "Pendiente de cobro por el vendedor",
+  cobrada_vendedor: "Cobrada por el vendedor",
+  pagada_antes_crm: "Pagada antes del CRM",
   pendiente: "Pendiente",
   retenido: "Retenido",
   por_pagar: "Por pagar",
@@ -64,6 +69,17 @@ const ETQ_ESTADO: Record<string, string> = {
 };
 const ETQ_TIPO: Record<string, string> = { comision: "Comisión", incentivo: "Incentivo", manual: "Manual" };
 const TODOS = "__todos";
+
+function tipoDe(c: { tipo: string; modalidad?: string | null }) {
+  if (c.tipo === "comision") return c.modalidad === "historica" ? "Comisión histórica" : "Comisión (cobra el vendedor)";
+  return ETQ_TIPO[c.tipo] ?? c.tipo;
+}
+/** Comisiones que paga la empresa y admin puede marcar como pagadas. */
+function sePuedePagar(c: { tipo: string; modalidad?: string | null; estado: string }) {
+  if (c.tipo === "incentivo") return c.estado === "por_pagar";
+  if (c.tipo === "manual") return c.estado === "pendiente";
+  return c.modalidad === "historica" && c.estado === "pendiente";
+}
 
 function mesDe(c: { mes: string | null; fecha_generada: string; venta?: { fecha_firma: string | null } | null }) {
   return (c.mes ?? c.venta?.fecha_firma ?? c.fecha_generada).slice(0, 7);
@@ -80,7 +96,7 @@ function ComisionesPage() {
   const [fEstado, setFEstado] = useState(TODOS);
   const [fMes, setFMes] = useState("");
   const [pagando, setPagando] = useState<string | null>(null);
-  const [cambiando, setCambiando] = useState<{ id: string; estado: "anulada" | "perdida" } | null>(null);
+  const [cambiando, setCambiando] = useState<{ id: string; estado: "anulada" | "perdida" | "pendiente" | "por_pagar" } | null>(null);
   const [manual, setManual] = useState(false);
   const [mesRecalc, setMesRecalc] = useState(hoyLima().slice(0, 7));
 
@@ -243,7 +259,9 @@ function ComisionesPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Encargado</TableHead>
-                  <TableHead className="text-right">Pendiente</TableHead>
+                  <TableHead className="text-right">Por cobrar del cliente</TableHead>
+                  <TableHead className="text-right">Cobrada por el vendedor</TableHead>
+                  <TableHead className="text-right">Deuda pendiente</TableHead>
                   <TableHead className="text-right">Retenido</TableHead>
                   <TableHead className="text-right">Por pagar</TableHead>
                   <TableHead className="text-right">Pagado</TableHead>
@@ -253,6 +271,8 @@ function ComisionesPage() {
                 {(resumen.data ?? []).map((r) => (
                   <TableRow key={r.encargado_id ?? ""}>
                     <TableCell>{nombreEnc(r.encargado_id ?? "")}</TableCell>
+                    <TableCell className="num text-right">{soles((r as { pendiente_cobro?: number }).pendiente_cobro ?? 0)}</TableCell>
+                    <TableCell className="num text-right">{soles((r as { cobrada_vendedor?: number }).cobrada_vendedor ?? 0)}</TableCell>
                     <TableCell className="num text-right">{soles(r.pendiente)}</TableCell>
                     <TableCell className="num text-right">{soles(r.retenido)}</TableCell>
                     <TableCell className="num text-right">{soles(r.por_pagar)}</TableCell>
@@ -261,7 +281,7 @@ function ComisionesPage() {
                 ))}
                 {(resumen.data ?? []).length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">Sin comisiones.</TableCell>
+                    <TableCell colSpan={7} className="text-center text-muted-foreground">Sin comisiones.</TableCell>
                   </TableRow>
                 ) : null}
               </TableBody>
@@ -307,7 +327,7 @@ function ComisionesPage() {
               <TableRow key={c.id} className={c.estado === "anulada" ? "opacity-50" : ""}>
                 <TableCell>{fecha(c.fecha_generada)}</TableCell>
                 <TableCell>{nombreVendedor(c.encargado)}</TableCell>
-                <TableCell>{ETQ_TIPO[c.tipo]}</TableCell>
+                <TableCell>{tipoDe(c as { tipo: string; modalidad?: string | null })}</TableCell>
                 <TableCell>
                   {c.venta ? `Mz ${c.venta.lote?.manzana?.letra} · Lote ${c.venta.lote?.numero}` : "—"}
                 </TableCell>
@@ -322,13 +342,16 @@ function ComisionesPage() {
                   ) : null}
                 </TableCell>
                 <TableCell className="max-w-56 text-xs text-muted-foreground">
-                  {c.fecha_pago ? `Pagada ${fecha(c.fecha_pago)} (${c.forma_pago ?? "—"}). ` : ""}
+                  {c.fecha_pago ? `Pagada ${fecha(c.fecha_pago)} (${etiquetaMetodo(c.forma_pago)}${(c as { numero_operacion?: string | null }).numero_operacion ? ` · Op. ${(c as { numero_operacion?: string | null }).numero_operacion}` : ""}). ` : ""}
                   {c.motivo_anulacion ?? c.motivo_estado ?? ""} {c.observacion ?? ""}
                 </TableCell>
                 {admin ? (
                   <TableCell className="space-x-1 whitespace-nowrap text-right">
-                    {c.estado === "pendiente" || c.estado === "por_pagar" ? (
+                    {sePuedePagar(c as { tipo: string; modalidad?: string | null; estado: string }) ? (
                       <Button size="sm" variant="outline" onClick={() => setPagando(c.id)}>Marcar como pagada</Button>
+                    ) : null}
+                    {c.estado === "pagada" ? (
+                      <Button size="sm" variant="ghost" onClick={() => setCambiando({ id: c.id, estado: c.tipo === "incentivo" ? "por_pagar" : "pendiente" })}>Anular pago</Button>
                     ) : null}
                     {c.tipo === "incentivo" && (c.estado === "retenido" || c.estado === "por_pagar") ? (
                       <Button size="sm" variant="ghost" onClick={() => setCambiando({ id: c.id, estado: "perdida" })}>Perdida</Button>
@@ -376,16 +399,31 @@ function Filtro({ label, valor, onChange, opciones }: {
 function DialogoPagar({ id, onCerrar }: { id: string; onCerrar: () => void }) {
   const qc = useQueryClient();
   const [f, setF] = useState(hoyLima());
-  const [forma, setForma] = useState<string>("efectivo");
+  const [metodo, setMetodo] = useState("");
+  const [operacion, setOperacion] = useState("");
+  const [archivo, setArchivo] = useState<File | null>(null);
   const [obs, setObs] = useState("");
+  const [guardando, setGuardando] = useState(false);
   async function guardar() {
-    const { error } = await supabase.from("comision")
-      .update({ estado: "pagada", fecha_pago: f, forma_pago: forma, observacion: obs.trim() || null })
-      .eq("id", id);
-    if (error) { toast.error("No se pudo registrar", { description: error.message }); return; }
-    toast.success("Comisión pagada");
-    qc.invalidateQueries();
-    onCerrar();
+    setGuardando(true);
+    try {
+      const comprobante_path = archivo ? await subirComprobante(archivo) : null;
+      const { error } = await supabase.from("comision")
+        .update({
+          estado: "pagada", fecha_pago: f, forma_pago: metodo,
+          numero_operacion: llevaOperacion(metodo) ? operacion.trim() || null : null,
+          comprobante_path, observacion: obs.trim() || null,
+        } as never)
+        .eq("id", id);
+      if (error) throw error;
+      toast.success("Pago registrado; se creó el gasto correspondiente");
+      qc.invalidateQueries();
+      onCerrar();
+    } catch (e) {
+      toast.error("No se pudo registrar", { description: (e as Error).message });
+    } finally {
+      setGuardando(false);
+    }
   }
   return (
     <Dialog open onOpenChange={(o) => (!o ? onCerrar() : null)}>
@@ -394,21 +432,19 @@ function DialogoPagar({ id, onCerrar }: { id: string; onCerrar: () => void }) {
         <div className="space-y-3">
           <div className="space-y-1"><Label>Fecha de pago</Label>
             <Input type="date" max={hoyLima()} value={f} onChange={(e) => setF(e.target.value)} /></div>
-          <div className="space-y-1"><Label>Forma de pago</Label>
-            <Select value={forma} onValueChange={setForma}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>{FORMAS_PAGO.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-            </Select></div>
+          <CamposMetodo metodo={metodo} operacion={operacion} onMetodo={setMetodo} onOperacion={setOperacion} />
+          <div className="space-y-1"><Label>Comprobante (opcional)</Label>
+            <Input type="file" accept="image/*,application/pdf" onChange={(e) => setArchivo(e.target.files?.[0] ?? null)} /></div>
           <div className="space-y-1"><Label>Observación</Label>
             <Textarea rows={2} value={obs} onChange={(e) => setObs(e.target.value)} /></div>
         </div>
-        <DialogFooter><Button onClick={guardar} disabled={!f}>Guardar</Button></DialogFooter>
+        <DialogFooter><Button onClick={guardar} disabled={!f || !metodo || guardando}>Guardar</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 
-function DialogoMotivo({ id, estado, onCerrar }: { id: string; estado: "anulada" | "perdida"; onCerrar: () => void }) {
+function DialogoMotivo({ id, estado, onCerrar }: { id: string; estado: "anulada" | "perdida" | "pendiente" | "por_pagar"; onCerrar: () => void }) {
   const qc = useQueryClient();
   const [motivo, setMotivo] = useState("");
   async function guardar() {
@@ -417,14 +453,14 @@ function DialogoMotivo({ id, estado, onCerrar }: { id: string; estado: "anulada"
       : { estado, motivo_estado: motivo.trim() };
     const { error } = await supabase.from("comision").update(cambios).eq("id", id);
     if (error) { toast.error("No se pudo guardar", { description: error.message }); return; }
-    toast.success(estado === "anulada" ? "Anulada" : "Marcada como perdida");
+    toast.success(estado === "anulada" ? "Anulada" : estado === "perdida" ? "Marcada como perdida" : "Pago anulado");
     qc.invalidateQueries();
     onCerrar();
   }
   return (
     <Dialog open onOpenChange={(o) => (!o ? onCerrar() : null)}>
       <DialogContent>
-        <DialogHeader><DialogTitle>{estado === "anulada" ? "Anular comisión" : "Marcar incentivo como perdido"}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{estado === "anulada" ? "Anular comisión" : estado === "perdida" ? "Marcar incentivo como perdido" : "Anular el pago (su gasto también se anula)"}</DialogTitle></DialogHeader>
         <div className="space-y-1"><Label>Motivo</Label>
           <Textarea rows={3} value={motivo} onChange={(e) => setMotivo(e.target.value)} /></div>
         <DialogFooter>

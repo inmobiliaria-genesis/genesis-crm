@@ -241,8 +241,14 @@ function GastosPage() {
                           <Paperclip className="h-4 w-4" />
                         </Button>
                       ) : null}
-                      <Button size="sm" variant="ghost" onClick={() => setEditando(g)}>Editar</Button>
-                      {admin ? <Button size="sm" variant="ghost" onClick={() => setAnular(g)}>Anular</Button> : null}
+                      {(g as { comision_id?: string | null }).comision_id ? (
+                        <span className="text-xs text-muted-foreground">Automático · se modifica en Comisiones</span>
+                      ) : (
+                        <>
+                          <Button size="sm" variant="ghost" onClick={() => setEditando(g)}>Editar</Button>
+                          {admin ? <Button size="sm" variant="ghost" onClick={() => setAnular(g)}>Anular</Button> : null}
+                        </>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

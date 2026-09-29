@@ -218,6 +218,7 @@ export type Database = {
           anulado: boolean
           anulado_en: string | null
           anulado_por: string | null
+          comprobante_path: string | null
           creado_en: string
           creado_por: string | null
           encargado_id: string
@@ -225,13 +226,16 @@ export type Database = {
           fecha_generada: string
           fecha_pago: string | null
           forma_pago: string | null
+          gasto_id: string | null
           id: string
           mes: string | null
+          modalidad: string | null
           modificado_en: string
           modificado_por: string | null
           monto: number
           motivo_anulacion: string | null
           motivo_estado: string | null
+          numero_operacion: string | null
           observacion: string | null
           tipo: string
           venta_id: string | null
@@ -241,6 +245,7 @@ export type Database = {
           anulado?: boolean
           anulado_en?: string | null
           anulado_por?: string | null
+          comprobante_path?: string | null
           creado_en?: string
           creado_por?: string | null
           encargado_id: string
@@ -248,13 +253,16 @@ export type Database = {
           fecha_generada?: string
           fecha_pago?: string | null
           forma_pago?: string | null
+          gasto_id?: string | null
           id?: string
           mes?: string | null
+          modalidad?: string | null
           modificado_en?: string
           modificado_por?: string | null
           monto: number
           motivo_anulacion?: string | null
           motivo_estado?: string | null
+          numero_operacion?: string | null
           observacion?: string | null
           tipo: string
           venta_id?: string | null
@@ -264,6 +272,7 @@ export type Database = {
           anulado?: boolean
           anulado_en?: string | null
           anulado_por?: string | null
+          comprobante_path?: string | null
           creado_en?: string
           creado_por?: string | null
           encargado_id?: string
@@ -271,13 +280,16 @@ export type Database = {
           fecha_generada?: string
           fecha_pago?: string | null
           forma_pago?: string | null
+          gasto_id?: string | null
           id?: string
           mes?: string | null
+          modalidad?: string | null
           modificado_en?: string
           modificado_por?: string | null
           monto?: number
           motivo_anulacion?: string | null
           motivo_estado?: string | null
+          numero_operacion?: string | null
           observacion?: string | null
           tipo?: string
           venta_id?: string | null
@@ -288,6 +300,13 @@ export type Database = {
             columns: ["encargado_id"]
             isOneToOne: false
             referencedRelation: "vendedor"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comision_gasto_id_fkey"
+            columns: ["gasto_id"]
+            isOneToOne: false
+            referencedRelation: "gasto"
             referencedColumns: ["id"]
           },
           {
@@ -646,6 +665,7 @@ export type Database = {
           anulado_en: string | null
           anulado_por: string | null
           categoria_id: string
+          comision_id: string | null
           comprobante_path: string | null
           creado_en: string
           creado_por: string | null
@@ -674,6 +694,7 @@ export type Database = {
           anulado_en?: string | null
           anulado_por?: string | null
           categoria_id: string
+          comision_id?: string | null
           comprobante_path?: string | null
           creado_en?: string
           creado_por?: string | null
@@ -702,6 +723,7 @@ export type Database = {
           anulado_en?: string | null
           anulado_por?: string | null
           categoria_id?: string
+          comision_id?: string | null
           comprobante_path?: string | null
           creado_en?: string
           creado_por?: string | null
@@ -731,6 +753,13 @@ export type Database = {
             columns: ["categoria_id"]
             isOneToOne: false
             referencedRelation: "gasto_categoria"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gasto_comision_id_fkey"
+            columns: ["comision_id"]
+            isOneToOne: false
+            referencedRelation: "comision"
             referencedColumns: ["id"]
           },
           {
@@ -1221,6 +1250,7 @@ export type Database = {
           notas: string | null
           numero_operacion: string | null
           origen: string
+          recibido_por: string
           regularizacion_id: string | null
           venta_id: string
         }
@@ -1240,6 +1270,7 @@ export type Database = {
           notas?: string | null
           numero_operacion?: string | null
           origen?: string
+          recibido_por?: string
           regularizacion_id?: string | null
           venta_id: string
         }
@@ -1259,6 +1290,7 @@ export type Database = {
           notas?: string | null
           numero_operacion?: string | null
           origen?: string
+          recibido_por?: string
           regularizacion_id?: string | null
           venta_id?: string
         }
@@ -1999,9 +2031,12 @@ export type Database = {
     Views: {
       comision_resumen: {
         Row: {
+          cobrada_vendedor: number | null
           encargado_id: string | null
+          pagada_antes_crm: number | null
           pagado: number | null
           pendiente: number | null
+          pendiente_cobro: number | null
           por_pagar: number | null
           retenido: number | null
         }
@@ -2068,7 +2103,13 @@ export type Database = {
         }[]
       }
       cambiar_historica: {
-        Args: { _es_historica: boolean; _motivo: string; _venta_id: string }
+        Args: {
+          _es_historica: boolean
+          _estado?: string
+          _monto?: number
+          _motivo: string
+          _venta_id: string
+        }
         Returns: undefined
       }
       eliminar_cliente: {
@@ -2145,6 +2186,16 @@ export type Database = {
       }
       rechazar_reserva: {
         Args: { _id: string; _motivo: string }
+        Returns: undefined
+      }
+      registrar_inicial: {
+        Args: {
+          _metodo_comision: string
+          _metodo_resto: string
+          _operacion_comision: string
+          _operacion_resto: string
+          _venta_id: string
+        }
         Returns: undefined
       }
       regularizar_venta: {
