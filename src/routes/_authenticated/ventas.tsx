@@ -352,6 +352,12 @@ function DialogoVenta({
   const [inicial, setInicial] = useState("");
   const [formaPago, setFormaPago] = useState("");
   const [operacionInicial, setOperacionInicial] = useState("");
+  const [metodoResto, setMetodoResto] = useState("");
+  const [operacionResto, setOperacionResto] = useState("");
+  const montoComision = useQuery({
+    queryKey: ["config-valor", "monto_comision"],
+    queryFn: () => valorConfig("monto_comision"),
+  });
   const [plazo, setPlazo] = useState("12");
   const [primeraCuota, setPrimeraCuota] = useState("");
   const [notas, setNotas] = useState("");
@@ -463,6 +469,9 @@ function DialogoVenta({
   const plazoNum = condicion === "contado" ? 1 : Number(plazo || 0);
   const precioNum = Number(precio || 0);
   const inicialNum = Number(inicial || 0);
+  const montoInicial = condicion === "contado" ? precioNum : inicialNum;
+  const comisionInicial = Math.min(montoComision.data ?? 0, montoInicial);
+  const restoInicial = Math.round((montoInicial - comisionInicial) * 100) / 100;
 
   const cronograma = useQuery({
     queryKey: ["simular", precioNum, inicialNum, plazoNum, fechaVenta, primeraCuota, condicion],
@@ -498,7 +507,11 @@ function DialogoVenta({
       return;
     }
     if (!formaPago) {
-      toast.error("Elige la forma de pago de la inicial");
+      toast.error("Elige el método de la comisión al vendedor");
+      return;
+    }
+    if (restoInicial > 0.005 && !metodoResto) {
+      toast.error("Elige el método del resto a la inmobiliaria");
       return;
     }
     if (
@@ -542,9 +555,27 @@ function DialogoVenta({
       ...adicionales.map((c) => ({ venta_id: data.id, cliente_id: c.id, es_principal: false })),
     ];
     const { error: e2 } = await supabase.from("venta_titular").insert(titulares);
-    setGuardando(false);
     if (e2) {
+      setGuardando(false);
       toast.error("La venta se creó pero falló registrar titulares", { description: e2.message });
+      return;
+    }
+    const rpc = supabase.rpc.bind(supabase) as unknown as (
+      f: string,
+      a: Record<string, unknown>,
+    ) => Promise<{ error: { message: string } | null }>;
+    const { error: e3 } = await rpc("registrar_inicial", {
+      _venta_id: data.id,
+      _metodo_comision: formaPago,
+      _operacion_comision: llevaOperacion(formaPago) ? operacionInicial.trim() || null : null,
+      _metodo_resto: restoInicial > 0.005 ? metodoResto : null,
+      _operacion_resto: llevaOperacion(metodoResto) ? operacionResto.trim() || null : null,
+    });
+    setGuardando(false);
+    if (e3) {
+      toast.error("La venta se creó pero no se pudo registrar el pago de la inicial", { description: e3.message });
+      qc.invalidateQueries();
+      onCerrar();
       return;
     }
     toast.success("Venta registrada");
@@ -709,13 +740,36 @@ function DialogoVenta({
               </div>
             </>
           ) : null}
-          <CamposMetodo
-            etiqueta="Forma de pago de la inicial"
-            metodo={formaPago}
-            operacion={operacionInicial}
-            onMetodo={setFormaPago}
-            onOperacion={setOperacionInicial}
-          />
+          <div className="rounded-md border border-border p-3 sm:col-span-2">
+            <p className="text-sm font-medium">
+              1. Comisión al vendedor — <span className="num">{soles(comisionInicial)}</span>
+              <span className="ml-1 text-xs font-normal text-muted-foreground">(recibido por el vendedor)</span>
+            </p>
+            <div className="mt-2 grid gap-3 sm:grid-cols-2">
+              <CamposMetodo
+                metodo={formaPago}
+                operacion={operacionInicial}
+                onMetodo={setFormaPago}
+                onOperacion={setOperacionInicial}
+              />
+            </div>
+          </div>
+          {restoInicial > 0.005 ? (
+            <div className="rounded-md border border-border p-3 sm:col-span-2">
+              <p className="text-sm font-medium">
+                2. Resto a la inmobiliaria — <span className="num">{soles(restoInicial)}</span>
+                <span className="ml-1 text-xs font-normal text-muted-foreground">(recibido por la inmobiliaria)</span>
+              </p>
+              <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                <CamposMetodo
+                  metodo={metodoResto}
+                  operacion={operacionResto}
+                  onMetodo={setMetodoResto}
+                  onOperacion={setOperacionResto}
+                />
+              </div>
+            </div>
+          ) : null}
           <div className="sm:col-span-2">
             <Label>Notas</Label>
             <Textarea rows={2} value={notas} onChange={(e) => setNotas(e.target.value)} />
