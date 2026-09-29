@@ -45,7 +45,7 @@ import { fecha, hoyLima, soles, cantidad } from "@/lib/format";
 import { usePerfil, puedeComercial, puedeElegirVendedor, puedeCobrar } from "@/lib/sesion";
 import { nombreVendedor, useVendedores } from "@/lib/vendedores";
 import { DialogoPago, DialogoRegularizar } from "@/components/PagoForm";
-import { ETIQUETA_CUOTA, useCuotasDeVenta, usePagosDeVenta, llevaOperacion } from "@/lib/cobranza";
+import { ETIQUETA_CUOTA, useCuotasDeVenta, usePagosDeVenta, llevaOperacion, valorConfig, ETIQUETA_RECIBIDO } from "@/lib/cobranza";
 import { MostrarMetodo, DialogoEditarMetodo, CamposMetodo } from "@/components/MetodoPago";
 import { DialogoEliminar } from "@/components/DialogoEliminar";
 import { BotonHistorica } from "@/components/DialogoHistorica";
@@ -868,6 +868,7 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
     operacion: string | null;
     aplicado: string;
     anulado: boolean;
+    recibido: string;
   };
   const filasPago: FilaPago[] = [];
   const grupos = new Map<string, FilaPago>();
@@ -901,6 +902,7 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
         operacion: p.numero_operacion,
         aplicado: apl.length > 3 ? cantidad(apl.length, "cuotas") : textos.join(" · "),
         anulado: p.anulado,
+        recibido: (p as { recibido_por?: string }).recibido_por ?? "inmobiliaria",
       };
       grupos.set(k, fila);
       filasPago.push(fila);
@@ -917,10 +919,14 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
         operacion: p.numero_operacion,
         aplicado: textos.join(" · "),
         anulado: p.anulado,
+        recibido: (p as { recibido_por?: string }).recibido_por ?? "inmobiliaria",
       });
     }
   }
   for (const g of grupos.values()) if (g.cantidad > 1) g.aplicado = cantidad(g.cantidad, "cuotas");
+  const vigentes = filasPago.filter((f) => !f.anulado);
+  const ingresoInmobiliaria = vigentes.filter((f) => f.recibido !== "vendedor").reduce((t, f) => t + f.monto, 0);
+  const recibidoVendedor = vigentes.filter((f) => f.recibido === "vendedor").reduce((t, f) => t + f.monto, 0);
 
   async function anularPago() {
     if (!anulando) return;
@@ -1095,6 +1101,7 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
                     <TableHead>Fecha</TableHead>
                     <TableHead className="text-right">Monto</TableHead>
                     <TableHead>Método</TableHead>
+                    <TableHead>Recibido por</TableHead>
                     <TableHead>Aplicado a</TableHead>
                     <TableHead className="text-right"></TableHead>
                   </TableRow>
@@ -1102,7 +1109,7 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
                 <TableBody>
                   {filasPago.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center text-muted-foreground">
+                      <TableCell colSpan={6} className="text-center text-muted-foreground">
                         Todavía no hay pagos.
                       </TableCell>
                     </TableRow>
@@ -1132,6 +1139,9 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
                           </button>
                         ) : null}
                       </TableCell>
+                      <TableCell>
+                        <Badge variant={f.recibido === "vendedor" ? "outline" : "secondary"}>{ETIQUETA_RECIBIDO[f.recibido] ?? f.recibido}</Badge>
+                      </TableCell>
                       <TableCell className="text-xs">{f.aplicado || "—"}</TableCell>
                       <TableCell className="text-right">
                         {f.anulado ? (
@@ -1150,6 +1160,10 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
                   ))}
                 </TableBody>
               </Table>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Ingresado a la inmobiliaria: <span className="num">{soles(ingresoInmobiliaria)}</span> · Recibido por el
+                vendedor (comisión): <span className="num">{soles(recibidoVendedor)}</span>
+              </p>
             </div>
           </div>
         ) : null}

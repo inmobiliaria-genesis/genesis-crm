@@ -30,7 +30,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { fecha, hoyLima, soles, cantidad } from "@/lib/format";
-import { METODOS_PAGO, ETIQUETA_METODO, useCuotasDeVenta } from "@/lib/cobranza";
+import { METODOS_PAGO, ETIQUETA_METODO, ETIQUETA_RECIBIDO, useCuotasDeVenta } from "@/lib/cobranza";
 import { CamposMetodo } from "@/components/MetodoPago";
 
 function redondear(n: number) {
@@ -53,6 +53,7 @@ export function DialogoPago({
   const [metodo, setMetodo] = useState<string>("");
   const [operacion, setOperacion] = useState("");
   const [notas, setNotas] = useState("");
+  const [recibidoPor, setRecibidoPor] = useState("inmobiliaria");
   const [manual, setManual] = useState(false);
   const [aplicaciones, setAplicaciones] = useState<Record<string, string>>({});
   const [guardando, setGuardando] = useState(false);
@@ -118,7 +119,8 @@ export function DialogoPago({
         metodo,
         numero_operacion: operacion.trim() || null,
         notas: notas.trim() || null,
-      })
+        recibido_por: recibidoPor,
+      } as never)
       .select("id")
       .single();
     if (error || !data) {
@@ -167,6 +169,19 @@ export function DialogoPago({
             />
           </div>
           <CamposMetodo metodo={metodo} operacion={operacion} onMetodo={setMetodo} onOperacion={setOperacion} />
+          <div className="space-y-1">
+            <Label>Recibido por</Label>
+            <Select value={recibidoPor} onValueChange={setRecibidoPor}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(ETIQUETA_RECIBIDO).map(([k, t]) => (
+                  <SelectItem key={k} value={k}>{t}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="sm:col-span-2">
             <Label>Notas (opcional)</Label>
             <Textarea rows={2} value={notas} onChange={(e) => setNotas(e.target.value)} />
