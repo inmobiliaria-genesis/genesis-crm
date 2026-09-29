@@ -21,6 +21,7 @@ import { Route as AuthenticatedColoresMapaRouteImport } from './routes/_authenti
 import { Route as AuthenticatedComisionesRouteImport } from './routes/_authenticated/comisiones'
 import { Route as AuthenticatedConfiguracionRouteImport } from './routes/_authenticated/configuracion'
 import { Route as AuthenticatedDesistimientosRouteImport } from './routes/_authenticated/desistimientos'
+import { Route as AuthenticatedDeudasRouteImport } from './routes/_authenticated/deudas'
 import { Route as AuthenticatedEstructuraRouteImport } from './routes/_authenticated/estructura'
 import { Route as AuthenticatedGastosRouteImport } from './routes/_authenticated/gastos'
 import { Route as AuthenticatedLeadsRouteImport } from './routes/_authenticated/leads'
@@ -94,6 +95,11 @@ const AuthenticatedDesistimientosRoute =
     path: '/desistimientos',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedDeudasRoute = AuthenticatedDeudasRouteImport.update({
+  id: '/deudas',
+  path: '/deudas',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedEstructuraRoute = AuthenticatedEstructuraRouteImport.update({
   id: '/estructura',
   path: '/estructura',
@@ -152,6 +158,7 @@ export interface FileRoutesByFullPath {
   '/comisiones': typeof AuthenticatedComisionesRoute
   '/configuracion': typeof AuthenticatedConfiguracionRoute
   '/desistimientos': typeof AuthenticatedDesistimientosRoute
+  '/deudas': typeof AuthenticatedDeudasRoute
   '/estructura': typeof AuthenticatedEstructuraRoute
   '/gastos': typeof AuthenticatedGastosRoute
   '/leads': typeof AuthenticatedLeadsRoute
@@ -174,6 +181,7 @@ export interface FileRoutesByTo {
   '/comisiones': typeof AuthenticatedComisionesRoute
   '/configuracion': typeof AuthenticatedConfiguracionRoute
   '/desistimientos': typeof AuthenticatedDesistimientosRoute
+  '/deudas': typeof AuthenticatedDeudasRoute
   '/estructura': typeof AuthenticatedEstructuraRoute
   '/gastos': typeof AuthenticatedGastosRoute
   '/leads': typeof AuthenticatedLeadsRoute
@@ -198,6 +206,7 @@ export interface FileRoutesById {
   '/_authenticated/comisiones': typeof AuthenticatedComisionesRoute
   '/_authenticated/configuracion': typeof AuthenticatedConfiguracionRoute
   '/_authenticated/desistimientos': typeof AuthenticatedDesistimientosRoute
+  '/_authenticated/deudas': typeof AuthenticatedDeudasRoute
   '/_authenticated/estructura': typeof AuthenticatedEstructuraRoute
   '/_authenticated/gastos': typeof AuthenticatedGastosRoute
   '/_authenticated/leads': typeof AuthenticatedLeadsRoute
@@ -222,6 +231,7 @@ export interface FileRouteTypes {
     | '/comisiones'
     | '/configuracion'
     | '/desistimientos'
+    | '/deudas'
     | '/estructura'
     | '/gastos'
     | '/leads'
@@ -244,6 +254,7 @@ export interface FileRouteTypes {
     | '/comisiones'
     | '/configuracion'
     | '/desistimientos'
+    | '/deudas'
     | '/estructura'
     | '/gastos'
     | '/leads'
@@ -267,6 +278,7 @@ export interface FileRouteTypes {
     | '/_authenticated/comisiones'
     | '/_authenticated/configuracion'
     | '/_authenticated/desistimientos'
+    | '/_authenticated/deudas'
     | '/_authenticated/estructura'
     | '/_authenticated/gastos'
     | '/_authenticated/leads'
@@ -370,6 +382,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDesistimientosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/deudas': {
+      id: '/_authenticated/deudas'
+      path: '/deudas'
+      fullPath: '/deudas'
+      preLoaderRoute: typeof AuthenticatedDeudasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/estructura': {
       id: '/_authenticated/estructura'
       path: '/estructura'
@@ -446,6 +465,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedComisionesRoute: typeof AuthenticatedComisionesRoute
   AuthenticatedConfiguracionRoute: typeof AuthenticatedConfiguracionRoute
   AuthenticatedDesistimientosRoute: typeof AuthenticatedDesistimientosRoute
+  AuthenticatedDeudasRoute: typeof AuthenticatedDeudasRoute
   AuthenticatedEstructuraRoute: typeof AuthenticatedEstructuraRoute
   AuthenticatedGastosRoute: typeof AuthenticatedGastosRoute
   AuthenticatedLeadsRoute: typeof AuthenticatedLeadsRoute
@@ -467,6 +487,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedComisionesRoute: AuthenticatedComisionesRoute,
   AuthenticatedConfiguracionRoute: AuthenticatedConfiguracionRoute,
   AuthenticatedDesistimientosRoute: AuthenticatedDesistimientosRoute,
+  AuthenticatedDeudasRoute: AuthenticatedDeudasRoute,
   AuthenticatedEstructuraRoute: AuthenticatedEstructuraRoute,
   AuthenticatedGastosRoute: AuthenticatedGastosRoute,
   AuthenticatedLeadsRoute: AuthenticatedLeadsRoute,
