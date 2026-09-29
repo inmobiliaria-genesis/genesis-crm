@@ -227,7 +227,7 @@ function ComisionesPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Lote</TableHead>
-                      <TableHead>Firma</TableHead>
+                      <TableHead>Fecha de venta</TableHead>
                       <TableHead>Encargado</TableHead>
                       <TableHead />
                     </TableRow>
