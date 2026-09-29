@@ -241,7 +241,9 @@ function GastosPage() {
                           <Paperclip className="h-4 w-4" />
                         </Button>
                       ) : null}
-                      {(g as { comision_id?: string | null }).comision_id ? (
+                      {g.deuda_abono_id ? (
+                        <span className="text-xs text-muted-foreground">Automático · se modifica en Deudas</span>
+                      ) : (g as { comision_id?: string | null }).comision_id ? (
                         <span className="text-xs text-muted-foreground">Automático · se modifica en Comisiones</span>
                       ) : (
                         <>
