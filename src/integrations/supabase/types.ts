@@ -606,6 +606,148 @@ export type Database = {
           },
         ]
       }
+      deuda: {
+        Row: {
+          acreedor: string
+          anulado: boolean
+          anulado_en: string | null
+          anulado_por: string | null
+          concepto: string
+          creado_en: string
+          creado_por: string | null
+          documento_path: string | null
+          fecha_vencimiento: string | null
+          id: string
+          modificado_en: string
+          modificado_por: string | null
+          monto_total: number
+          motivo_anulacion: string | null
+          notas: string | null
+          subtipo: string | null
+          tipo: string
+        }
+        Insert: {
+          acreedor: string
+          anulado?: boolean
+          anulado_en?: string | null
+          anulado_por?: string | null
+          concepto: string
+          creado_en?: string
+          creado_por?: string | null
+          documento_path?: string | null
+          fecha_vencimiento?: string | null
+          id?: string
+          modificado_en?: string
+          modificado_por?: string | null
+          monto_total: number
+          motivo_anulacion?: string | null
+          notas?: string | null
+          subtipo?: string | null
+          tipo: string
+        }
+        Update: {
+          acreedor?: string
+          anulado?: boolean
+          anulado_en?: string | null
+          anulado_por?: string | null
+          concepto?: string
+          creado_en?: string
+          creado_por?: string | null
+          documento_path?: string | null
+          fecha_vencimiento?: string | null
+          id?: string
+          modificado_en?: string
+          modificado_por?: string | null
+          monto_total?: number
+          motivo_anulacion?: string | null
+          notas?: string | null
+          subtipo?: string | null
+          tipo?: string
+        }
+        Relationships: []
+      }
+      deuda_abono: {
+        Row: {
+          anulado: boolean
+          anulado_en: string | null
+          anulado_por: string | null
+          comprobante_path: string | null
+          creado_en: string
+          creado_por: string | null
+          deuda_id: string
+          fecha: string
+          gasto_id: string | null
+          id: string
+          metodo: string
+          modificado_en: string
+          modificado_por: string | null
+          monto: number
+          motivo_anulacion: string | null
+          notas: string | null
+          numero_operacion: string | null
+        }
+        Insert: {
+          anulado?: boolean
+          anulado_en?: string | null
+          anulado_por?: string | null
+          comprobante_path?: string | null
+          creado_en?: string
+          creado_por?: string | null
+          deuda_id: string
+          fecha: string
+          gasto_id?: string | null
+          id?: string
+          metodo: string
+          modificado_en?: string
+          modificado_por?: string | null
+          monto: number
+          motivo_anulacion?: string | null
+          notas?: string | null
+          numero_operacion?: string | null
+        }
+        Update: {
+          anulado?: boolean
+          anulado_en?: string | null
+          anulado_por?: string | null
+          comprobante_path?: string | null
+          creado_en?: string
+          creado_por?: string | null
+          deuda_id?: string
+          fecha?: string
+          gasto_id?: string | null
+          id?: string
+          metodo?: string
+          modificado_en?: string
+          modificado_por?: string | null
+          monto?: number
+          motivo_anulacion?: string | null
+          notas?: string | null
+          numero_operacion?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deuda_abono_deuda_id_fkey"
+            columns: ["deuda_id"]
+            isOneToOne: false
+            referencedRelation: "deuda"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deuda_abono_deuda_id_fkey"
+            columns: ["deuda_id"]
+            isOneToOne: false
+            referencedRelation: "deuda_resumen"
+            referencedColumns: ["deuda_id"]
+          },
+          {
+            foreignKeyName: "deuda_abono_gasto_id_fkey"
+            columns: ["gasto_id"]
+            isOneToOne: false
+            referencedRelation: "gasto"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       etapa: {
         Row: {
           anulado: boolean
@@ -670,6 +812,7 @@ export type Database = {
           creado_en: string
           creado_por: string | null
           descripcion: string | null
+          deuda_abono_id: string | null
           dias: number | null
           fecha: string
           id: string
@@ -699,6 +842,7 @@ export type Database = {
           creado_en?: string
           creado_por?: string | null
           descripcion?: string | null
+          deuda_abono_id?: string | null
           dias?: number | null
           fecha: string
           id?: string
@@ -728,6 +872,7 @@ export type Database = {
           creado_en?: string
           creado_por?: string | null
           descripcion?: string | null
+          deuda_abono_id?: string | null
           dias?: number | null
           fecha?: string
           id?: string
@@ -760,6 +905,13 @@ export type Database = {
             columns: ["comision_id"]
             isOneToOne: false
             referencedRelation: "comision"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gasto_deuda_abono_id_fkey"
+            columns: ["deuda_abono_id"]
+            isOneToOne: false
+            referencedRelation: "deuda_abono"
             referencedColumns: ["id"]
           },
           {
@@ -2059,6 +2211,15 @@ export type Database = {
           monto_vigente: number | null
           saldo: number | null
           vencida: boolean | null
+        }
+        Relationships: []
+      }
+      deuda_resumen: {
+        Row: {
+          abonado: number | null
+          deuda_id: string | null
+          estado: string | null
+          saldo: number | null
         }
         Relationships: []
       }
