@@ -1,7 +1,8 @@
 import { useNavigate, createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Plus, Upload, Pencil, AlertTriangle, Download } from "lucide-react";
+import { Plus, Upload, Pencil, AlertTriangle, Download, FileDown, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,7 +41,7 @@ import {
 } from "@/components/ui/table";
 import { useLotesConEstado } from "@/lib/ventas";
 import { usePerfil, puedeEditarEstructura, esAdmin } from "@/lib/sesion";
-import { soles, numero, cantidad } from "@/lib/format";
+import { soles, numero, cantidad, fecha, hoyLima } from "@/lib/format";
 import type { Database } from "@/integrations/supabase/types";
 
 type Lote = Database["public"]["Tables"]["lote"]["Row"];
@@ -119,16 +120,53 @@ function LotesAsesor() {
   );
 }
 
+type Orden = { col: ColId; dir: "asc" | "desc" } | null;
+type ColId = "manzana" | "lote" | "area" | "lista" | "venta" | "m2" | "fecha" | "estado";
+type FilaLote = Lote & {
+  estadoVenta: "libre" | "apartado" | "vendido";
+  etapaNombre: string;
+  manzanaLetra: string;
+  ventaId: string | null;
+  precioVenta: number | null;
+  fechaVenta: string | null;
+  precioM2: number | null;
+};
+
+const colNat = new Intl.Collator("es", { numeric: true, sensitivity: "base" });
+const ETIQUETA_ESTADO = { libre: "Libre", apartado: "Apartado", vendido: "Vendido" } as const;
+
+function compararDefecto(a: FilaLote, b: FilaLote) {
+  return colNat.compare(a.etapaNombre, b.etapaNombre) || colNat.compare(a.manzanaLetra, b.manzanaLetra) || a.numero - b.numero;
+}
+
+function valorCol(l: FilaLote, c: ColId): string | number | null {
+  switch (c) {
+    case "manzana": return l.manzanaLetra || null;
+    case "lote": return l.numero;
+    case "area": return l.area_m2 == null ? null : Number(l.area_m2);
+    case "lista": return l.precio_lista == null ? null : Number(l.precio_lista);
+    case "venta": return l.precioVenta;
+    case "m2": return l.precioM2;
+    case "fecha": return l.fechaVenta;
+    case "estado": return ETIQUETA_ESTADO[l.estadoVenta];
+  }
+}
+
 function LotesPage() {
   const { data: perfil } = usePerfil();
   const editable = puedeEditarEstructura(perfil);
   const qc = useQueryClient();
+  const navigate = useNavigate();
 
   const [proyectoId, setProyectoId] = useState<string>("");
   const [etapaId, setEtapaId] = useState<string>("");
   const [manzanaId, setManzanaId] = useState<string>("");
   const [busqueda, setBusqueda] = useState("");
-  const [soloPendientes, setSoloPendientes] = useState(false);
+  const [filtroEstado, setFiltroEstado] = useState<string>("todos");
+  const [filtroDatos, setFiltroDatos] = useState<string>("todos");
+  const [verM2, setVerM2] = useState(true);
+  const [orden, setOrden] = useState<Orden>(null);
+  const [seleccion, setSeleccion] = useState<Set<string>>(new Set());
 
   const proyectos = useQuery({
     queryKey: ["proyectos"],
@@ -143,11 +181,7 @@ function LotesPage() {
     queryKey: ["etapas", proyectoId],
     enabled: !!proyectoId,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("etapa")
-        .select("*")
-        .eq("proyecto_id", proyectoId)
-        .order("nombre");
+      const { data, error } = await supabase.from("etapa").select("*").eq("proyecto_id", proyectoId).order("nombre");
       if (error) throw error;
       return data;
     },
@@ -158,19 +192,19 @@ function LotesPage() {
     queryFn: async () => {
       let consulta = supabase
         .from("manzana")
-        .select("id, letra, etapa_id, tipo, etapa!inner(proyecto_id)")
+        .select("id, letra, etapa_id, tipo, etapa!inner(proyecto_id, nombre)")
         .eq("tipo", "residencial");
       if (etapaId) consulta = consulta.eq("etapa_id", etapaId);
       else if (proyectoId) consulta = consulta.eq("etapa.proyecto_id", proyectoId);
       const { data, error } = await consulta.order("letra");
       if (error) throw error;
-      return data;
+      return [...data].sort((a, b) => colNat.compare(a.etapa?.nombre ?? "", b.etapa?.nombre ?? "") || colNat.compare(a.letra, b.letra));
     },
   });
 
   const idsManzana = useMemo(() => (manzanas.data ?? []).map((m) => m.id), [manzanas.data]);
   const mapaManzana = useMemo(
-    () => new Map((manzanas.data ?? []).map((m) => [m.id, m.letra])),
+    () => new Map((manzanas.data ?? []).map((m) => [m.id, { letra: m.letra, etapa: m.etapa?.nombre ?? "" }])),
     [manzanas.data],
   );
 
@@ -178,10 +212,10 @@ function LotesPage() {
     queryKey: ["lotes", manzanaId, idsManzana.join(",")],
     enabled: manzanas.isSuccess,
     queryFn: async () => {
-      let consulta = supabase.from("lote").select("*").order("numero");
+      let consulta = supabase.from("lote").select("*").eq("anulado", false).order("numero");
       if (manzanaId) consulta = consulta.eq("manzana_id", manzanaId);
       else consulta = consulta.in("manzana_id", idsManzana.length > 0 ? idsManzana : ["00000000-0000-0000-0000-000000000000"]);
-      const { data, error } = await consulta.limit(1000);
+      const { data, error } = await consulta.limit(5000);
       if (error) throw error;
       return data;
     },
@@ -189,223 +223,308 @@ function LotesPage() {
 
   const estados = useQuery({
     queryKey: ["lote-estados"],
-    enabled: lotes.isSuccess,
     queryFn: async () => {
-      const { data, error } = await supabase.from("lote_estado").select("*");
+      const { data, error } = await supabase.from("lote_estado").select("lote_id, estado");
       if (error) throw error;
       return data;
     },
   });
 
-  const mapaEstados = useMemo(
-    () =>
-      new Map(
-        (estados.data ?? []).map((e) => [
-          e.lote_id,
-          {
-            estado: e.estado ?? "disponible",
-            saldo: e.saldo_pendiente === null || e.saldo_pendiente === undefined ? null : Number(e.saldo_pendiente),
-            desist: Boolean(e.en_desistimiento),
-          },
-        ]),
-      ),
-    [estados.data],
-  );
+  const ventas = useQuery({
+    queryKey: ["lotes-ventas-vigentes"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("venta")
+        .select("id, lote_id, precio_acordado, fecha_venta")
+        .eq("anulado", false)
+        .eq("desistida", false)
+        .limit(5000);
+      if (error) throw error;
+      return data;
+    },
+  });
 
-  const lotesConEstado = useMemo(
-    () =>
-      (lotes.data ?? []).map((l) => {
-        const e = mapaEstados.get(l.id);
-        return {
-          ...l,
-          estado: e?.estado ?? "disponible",
-          saldo_pendiente: e?.saldo ?? null,
-          en_desistimiento: e?.desist ?? false,
-        };
-      }),
-    [lotes.data, mapaEstados],
-  );
+  const filas = useMemo<FilaLote[]>(() => {
+    const est = new Map((estados.data ?? []).map((e) => [e.lote_id, e.estado]));
+    const ven = new Map((ventas.data ?? []).map((v) => [v.lote_id, v]));
+    return (lotes.data ?? []).map((l) => {
+      const v = ven.get(l.id);
+      const e = est.get(l.id);
+      const estadoVenta: FilaLote["estadoVenta"] = v ? "vendido" : e === "apartado" ? "apartado" : "libre";
+      const area = l.area_m2 == null ? null : Number(l.area_m2);
+      const base = v ? Number(v.precio_acordado) : l.precio_lista == null ? null : Number(l.precio_lista);
+      const mz = mapaManzana.get(l.manzana_id);
+      return {
+        ...l,
+        estadoVenta,
+        etapaNombre: mz?.etapa ?? "",
+        manzanaLetra: mz?.letra ?? "",
+        ventaId: v?.id ?? null,
+        precioVenta: v ? Number(v.precio_acordado) : null,
+        fechaVenta: v?.fecha_venta ?? null,
+        precioM2: area && base != null ? base / area : null,
+      };
+    });
+  }, [lotes.data, estados.data, ventas.data, mapaManzana]);
 
   const filtrados = useMemo(() => {
-    let lista = lotesConEstado;
-    if (soloPendientes) lista = lista.filter(estaPendiente);
+    let lista = filas;
+    if (filtroEstado !== "todos") lista = lista.filter((l) => l.estadoVenta === filtroEstado);
+    if (filtroDatos === "pendiente") lista = lista.filter(estaPendiente);
+    if (filtroDatos === "completo") lista = lista.filter((l) => !estaPendiente(l));
     if (busqueda.trim()) {
       const b = busqueda.trim().toLowerCase();
-      lista = lista.filter(
-        (l) =>
-          String(l.numero).includes(b) ||
-          (mapaManzana.get(l.manzana_id) ?? "").toLowerCase().includes(b),
-      );
+      lista = lista.filter((l) => String(l.numero).includes(b) || l.manzanaLetra.toLowerCase().includes(b));
     }
-    return lista;
-  }, [lotesConEstado, soloPendientes, busqueda, mapaManzana]);
+    const ordenada = [...lista];
+    if (!orden) ordenada.sort(compararDefecto);
+    else {
+      ordenada.sort((a, b) => {
+        const va = valorCol(a, orden.col);
+        const vb = valorCol(b, orden.col);
+        if (va == null && vb == null) return compararDefecto(a, b);
+        if (va == null) return 1;
+        if (vb == null) return -1;
+        const c = typeof va === "number" && typeof vb === "number" ? va - vb : colNat.compare(String(va), String(vb));
+        return (orden.dir === "asc" ? c : -c) || compararDefecto(a, b);
+      });
+    }
+    return ordenada;
+  }, [filas, filtroEstado, filtroDatos, busqueda, orden]);
 
-  const pendientes = (lotes.data ?? []).filter(estaPendiente).length;
+  const resumen = useMemo(() => {
+    const r = { libre: 0, apartado: 0, vendido: 0, area: 0, valorLista: 0, valorVendido: 0 };
+    for (const l of filtrados) {
+      r[l.estadoVenta]++;
+      r.area += Number(l.area_m2 ?? 0);
+      if (l.estadoVenta === "libre") r.valorLista += Number(l.precio_lista ?? 0);
+      if (l.precioVenta != null) r.valorVendido += l.precioVenta;
+    }
+    return r;
+  }, [filtrados]);
+
+  const pendientes = filas.filter(estaPendiente).length;
+  const libresVisibles = filtrados.filter((l) => l.estadoVenta === "libre");
+  const seleccionados = libresVisibles.filter((l) => seleccion.has(l.id));
+
+  function refrescar() {
+    qc.invalidateQueries({ queryKey: ["lotes"] });
+    qc.invalidateQueries({ queryKey: ["lote-estados"] });
+  }
 
   function limpiarSeleccion(nivel: "proyecto" | "etapa") {
-    if (nivel === "proyecto") {
-      setEtapaId("");
-      setManzanaId("");
-    } else {
-      setManzanaId("");
-    }
+    if (nivel === "proyecto") { setEtapaId(""); setManzanaId(""); } else setManzanaId("");
   }
+
+  function clicOrden(col: ColId) {
+    setOrden((o) => (!o || o.col !== col ? { col, dir: "asc" } : o.dir === "asc" ? { col, dir: "desc" } : null));
+  }
+
+  function Encabezado({ col, children, derecha }: { col: ColId; children: React.ReactNode; derecha?: boolean }) {
+    const activo = orden?.col === col;
+    const Icono = !activo ? ArrowUpDown : orden!.dir === "asc" ? ArrowUp : ArrowDown;
+    return (
+      <TableHead className={derecha ? "text-right" : undefined}>
+        <button type="button" onClick={() => clicOrden(col)} className={`inline-flex items-center gap-1 ${activo ? "text-foreground" : ""}`}>
+          {children}
+          <Icono className={`h-3 w-3 ${activo ? "" : "opacity-40"}`} />
+        </button>
+      </TableHead>
+    );
+  }
+
+  function exportar() {
+    const datos = filtrados.map((l) => ({
+      Etapa: l.etapaNombre,
+      Manzana: l.manzanaLetra,
+      Lote: l.numero,
+      "Área m²": l.area_m2 == null ? null : Number(l.area_m2),
+      "Precio de lista": l.precio_lista == null ? null : Number(l.precio_lista),
+      "Precio de venta": l.precioVenta,
+      "Precio por m²": l.precioM2 == null ? null : Math.round(l.precioM2 * 100) / 100,
+      "Fecha de venta": l.fechaVenta ? fecha(l.fechaVenta) : null,
+      "Estado de venta": ETIQUETA_ESTADO[l.estadoVenta],
+      Datos: estaPendiente(l) ? "Pendiente" : "Completo",
+    }));
+    const hoja = XLSX.utils.json_to_sheet(datos);
+    const libro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(libro, hoja, "Lotes");
+    XLSX.writeFile(libro, `lotes_${hoyLima()}.xlsx`);
+  }
+
+  const columnas = verM2 ? 10 : 9;
 
   return (
     <AppShell
       titulo="Lotes"
       descripcion={`${cantidad(filtrados.length, "lotes")} · ${pendientes} con datos pendientes`}
       acciones={
-        editable ? (
-          <>
-            <AgregarLotes
-              manzanas={manzanas.data ?? []}
-              onListo={() => qc.invalidateQueries({ queryKey: ["lotes"] })}
-            />
-            {esAdmin(perfil) ? (
-              <ImportarExcel onListo={() => qc.invalidateQueries({ queryKey: ["lotes"] })} />
-            ) : null}
-          </>
-        ) : null
+        <>
+          {editable ? <AgregarLotes manzanas={manzanas.data ?? []} onListo={refrescar} /> : null}
+          {editable && esAdmin(perfil) ? <ImportarExcel onListo={refrescar} /> : null}
+          <Button variant="outline" onClick={exportar} disabled={filtrados.length === 0}>
+            <FileDown className="mr-1 h-4 w-4" /> Exportar Excel
+          </Button>
+        </>
       }
     >
-      <div className="mb-4 grid gap-3 rounded-lg border border-border bg-card p-4 md:grid-cols-5">
+      <div className="mb-4 grid gap-3 rounded-lg border border-border bg-card p-4 md:grid-cols-3 lg:grid-cols-6">
         <div className="space-y-1">
           <Label>Proyecto</Label>
-          <Select
-            value={proyectoId || "todos"}
-            onValueChange={(v) => {
-              setProyectoId(v === "todos" ? "" : v);
-              limpiarSeleccion("proyecto");
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Todos" />
-            </SelectTrigger>
+          <Select value={proyectoId || "todos"} onValueChange={(v) => { setProyectoId(v === "todos" ? "" : v); limpiarSeleccion("proyecto"); }}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos</SelectItem>
-              {proyectos.data?.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.nombre}
-                </SelectItem>
-              ))}
+              {proyectos.data?.map((p) => <SelectItem key={p.id} value={p.id}>{p.nombre}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
         <div className="space-y-1">
           <Label>Etapa</Label>
-          <Select
-            value={etapaId || "todas"}
-            onValueChange={(v) => {
-              setEtapaId(v === "todas" ? "" : v);
-              limpiarSeleccion("etapa");
-            }}
-            disabled={!proyectoId}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Todas" />
-            </SelectTrigger>
+          <Select value={etapaId || "todas"} onValueChange={(v) => { setEtapaId(v === "todas" ? "" : v); limpiarSeleccion("etapa"); }} disabled={!proyectoId}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="todas">Todas</SelectItem>
-              {etapas.data?.map((e) => (
-                <SelectItem key={e.id} value={e.id}>
-                  {e.nombre}
-                </SelectItem>
-              ))}
+              <SelectItem value="todas">Todos</SelectItem>
+              {etapas.data?.map((e) => <SelectItem key={e.id} value={e.id}>{e.nombre}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
         <div className="space-y-1">
           <Label>Manzana</Label>
-          <Select
-            value={manzanaId || "todas"}
-            onValueChange={(v) => setManzanaId(v === "todas" ? "" : v)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Todas" />
-            </SelectTrigger>
+          <Select value={manzanaId || "todas"} onValueChange={(v) => setManzanaId(v === "todas" ? "" : v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="todas">Todas</SelectItem>
-              {manzanas.data?.map((m) => (
-                <SelectItem key={m.id} value={m.id}>
-                  Mz. {m.letra}
-                </SelectItem>
-              ))}
+              <SelectItem value="todas">Todos</SelectItem>
+              {manzanas.data?.map((m) => <SelectItem key={m.id} value={m.id}>Mz. {m.letra}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label>Estado de venta</Label>
+          <Select value={filtroEstado} onValueChange={setFiltroEstado}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="libre">Libre</SelectItem>
+              <SelectItem value="apartado">Apartado</SelectItem>
+              <SelectItem value="vendido">Vendido</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label>Datos</Label>
+          <Select value={filtroDatos} onValueChange={setFiltroDatos}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos</SelectItem>
+              <SelectItem value="completo">Completo</SelectItem>
+              <SelectItem value="pendiente">Pendiente</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <div className="space-y-1">
           <Label>Buscar</Label>
-          <Input
-            placeholder="N° de lote o manzana"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-          />
+          <Input placeholder="N° de lote o manzana" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
         </div>
-        <div className="flex items-end">
-          <label className="flex items-center gap-2 text-sm">
-            <Checkbox
-              checked={soloPendientes}
-              onCheckedChange={(v) => setSoloPendientes(Boolean(v))}
-            />
-            Solo pendientes de completar
-          </label>
-        </div>
+      </div>
+
+      <div className="mb-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        {[
+          ["Libres", String(resumen.libre)],
+          ["Apartados", String(resumen.apartado)],
+          ["Vendidos", String(resumen.vendido)],
+          ["Área total", `${numero(resumen.area)} m²`],
+          ["Valor de lista (libres)", soles(resumen.valorLista)],
+          ["Valor vendido", soles(resumen.valorVendido)],
+        ].map(([t, v]) => (
+          <div key={t} className="rounded-lg border border-border bg-card p-3">
+            <p className="text-xs text-muted-foreground">{t}</p>
+            <p className="num text-lg font-semibold">{v}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+        <label className="flex items-center gap-2 text-sm">
+          <Switch checked={verM2} onCheckedChange={setVerM2} /> Mostrar precio por m²
+        </label>
+        {editable && seleccionados.length > 0 ? (
+          <div className="flex items-center gap-3 rounded-md border border-border bg-muted px-3 py-1.5 text-sm">
+            <span>{cantidad(seleccionados.length, "lotes")} seleccionados</span>
+            <AsignarPrecio ids={seleccionados.map((l) => l.id)} onListo={() => { setSeleccion(new Set()); refrescar(); }} />
+            <Button size="sm" variant="ghost" onClick={() => setSeleccion(new Set())}>Quitar selección</Button>
+          </div>
+        ) : null}
       </div>
 
       <div className="rounded-lg border border-border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Manzana</TableHead>
-              <TableHead>Lote</TableHead>
-              <TableHead className="text-right">Área m²</TableHead>
-              <TableHead className="text-right">Precio de lista</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead>Estado de venta</TableHead>
+              <TableHead className="w-8">
+                {editable ? (
+                  <Checkbox
+                    checked={libresVisibles.length > 0 && seleccionados.length === libresVisibles.length}
+                    disabled={libresVisibles.length === 0}
+                    onCheckedChange={(v) => setSeleccion(v ? new Set(libresVisibles.map((l) => l.id)) : new Set())}
+                  />
+                ) : null}
+              </TableHead>
+              <Encabezado col="manzana">Manzana</Encabezado>
+              <Encabezado col="lote">Lote</Encabezado>
+              <Encabezado col="area" derecha>Área m²</Encabezado>
+              <Encabezado col="lista" derecha>Precio de lista</Encabezado>
+              <Encabezado col="venta" derecha>Precio de venta</Encabezado>
+              {verM2 ? <Encabezado col="m2" derecha>Precio por m²</Encabezado> : null}
+              <Encabezado col="fecha">Fecha de venta</Encabezado>
+              <Encabezado col="estado">Estado de venta</Encabezado>
               <TableHead />
             </TableRow>
           </TableHeader>
           <TableBody>
-          {lotes.isLoading ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground">
-                  Cargando…
-                </TableCell>
-              </TableRow>
+            {lotes.isLoading ? (
+              <TableRow><TableCell colSpan={columnas} className="text-center text-muted-foreground">Cargando…</TableCell></TableRow>
             ) : filtrados.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground">
-                  No hay lotes con estos filtros.
-                </TableCell>
-              </TableRow>
+              <TableRow><TableCell colSpan={columnas} className="text-center text-muted-foreground">No hay lotes con estos filtros.</TableCell></TableRow>
             ) : (
               filtrados.map((l) => (
-                <TableRow key={l.id} className={l.anulado ? "opacity-50" : undefined}>
-                  <TableCell>Mz. {mapaManzana.get(l.manzana_id) ?? "—"}</TableCell>
-                  <TableCell className="num font-medium">{l.numero}</TableCell>
+                <TableRow
+                  key={l.id}
+                  className={l.ventaId ? "cursor-pointer" : undefined}
+                  onClick={() => l.ventaId && navigate({ to: "/ventas", search: { venta: l.ventaId } })}
+                >
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    {editable ? (
+                      <Checkbox
+                        disabled={l.estadoVenta !== "libre"}
+                        checked={seleccion.has(l.id)}
+                        onCheckedChange={(v) =>
+                          setSeleccion((s) => { const n = new Set(s); if (v) n.add(l.id); else n.delete(l.id); return n; })
+                        }
+                      />
+                    ) : null}
+                  </TableCell>
+                  <TableCell>Mz. {l.manzanaLetra || "—"}</TableCell>
+                  <TableCell className="num font-medium">
+                    {l.numero}
+                    {estaPendiente(l) ? (
+                      <AlertTriangle className="ml-1 inline h-3 w-3 text-accent-foreground" aria-label="Datos pendientes" />
+                    ) : null}
+                  </TableCell>
                   <TableCell className="num text-right">{numero(l.area_m2)}</TableCell>
                   <TableCell className="num text-right">{soles(l.precio_lista)}</TableCell>
+                  <TableCell className="num text-right">{l.precioVenta == null ? "–" : soles(l.precioVenta)}</TableCell>
+                  {verM2 ? (
+                    <TableCell className="num text-right">
+                      {l.precioM2 == null ? "–" : l.precioM2.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </TableCell>
+                  ) : null}
+                  <TableCell className="num">{l.fechaVenta ? fecha(l.fechaVenta) : "–"}</TableCell>
                   <TableCell>
-                    {l.anulado ? (
-                      <Badge variant="destructive">Anulado</Badge>
-                    ) : estaPendiente(l) ? (
-                      <Badge variant="outline" className="border-accent text-accent-foreground">
-                        <AlertTriangle className="mr-1 h-3 w-3" /> Datos pendientes
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary">Completo</Badge>
-                    )}
+                    <Badge variant={l.estadoVenta === "libre" ? "outline" : "secondary"}>{ETIQUETA_ESTADO[l.estadoVenta]}</Badge>
                   </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">
-                      {etiquetaEstadoLote(l.estado, l.saldo_pendiente, l.en_desistimiento)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {editable && !l.anulado ? (
-                      <EditarLote lote={l} onListo={() => qc.invalidateQueries({ queryKey: ["lotes"] })} />
-                    ) : null}
+                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                    {editable ? <EditarLote lote={l} onListo={refrescar} /> : null}
                   </TableCell>
                 </TableRow>
               ))
@@ -414,6 +533,55 @@ function LotesPage() {
         </Table>
       </div>
     </AppShell>
+  );
+}
+
+function AsignarPrecio({ ids, onListo }: { ids: string[]; onListo: () => void }) {
+  const [abierto, setAbierto] = useState(false);
+  const [monto, setMonto] = useState("");
+  const [confirmar, setConfirmar] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const valor = Number(monto);
+  const valido = monto.trim() !== "" && Number.isFinite(valor) && valor > 0;
+
+  async function aplicar() {
+    setGuardando(true);
+    const { error } = await supabase.from("lote").update({ precio_lista: valor }).in("id", ids);
+    setGuardando(false);
+    if (error) return toast.error(error.message);
+    toast.success(`Precio de lista asignado a ${cantidad(ids.length, "lotes")}`);
+    setAbierto(false); setConfirmar(false); setMonto("");
+    onListo();
+  }
+
+  return (
+    <Dialog open={abierto} onOpenChange={(o) => { setAbierto(o); if (!o) setConfirmar(false); }}>
+      <DialogTrigger asChild><Button size="sm">Asignar precio de lista</Button></DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Asignar precio de lista</DialogTitle>
+          <DialogDescription>Se aplicará el mismo precio a {cantidad(ids.length, "lotes")} libres seleccionados.</DialogDescription>
+        </DialogHeader>
+        {!confirmar ? (
+          <div className="space-y-1">
+            <Label>Precio de lista (S/)</Label>
+            <Input type="number" min="0" step="0.01" value={monto} onChange={(e) => setMonto(e.target.value)} />
+          </div>
+        ) : (
+          <p className="text-sm">¿Confirmas cambiar el precio de lista a <strong>{soles(valor)}</strong> en <strong>{cantidad(ids.length, "lotes")}</strong>?</p>
+        )}
+        <DialogFooter>
+          {!confirmar ? (
+            <Button disabled={!valido} onClick={() => setConfirmar(true)}>Continuar</Button>
+          ) : (
+            <>
+              <Button variant="outline" onClick={() => setConfirmar(false)}>Volver</Button>
+              <Button disabled={guardando} onClick={aplicar}>{guardando ? "Guardando…" : `Modificar ${cantidad(ids.length, "lotes")}`}</Button>
+            </>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
