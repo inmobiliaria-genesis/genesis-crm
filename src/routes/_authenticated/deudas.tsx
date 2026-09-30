@@ -45,7 +45,7 @@ const TIPOS: Record<string, string> = {
   otros: "Otros",
   comisiones: "Comisiones e incentivos",
 };
-const SUBTIPOS = ["CTS", "AFP", "ESSALUD", "Gratificaciones", "Otros"];
+const SUBTIPOS = ["CTS", "AFP", "ONP", "ESSALUD", "Gratificaciones", "Otros"];
 const ESTADOS: Record<string, string> = { pendiente: "Pendiente", pagada_parte: "Pagada en parte", pagada: "Pagada" };
 
 type Fila = {
