@@ -825,6 +825,7 @@ export type Database = {
           numero_operacion: string | null
           pagado_por: string | null
           persona: string | null
+          planilla_linea_id: string | null
           reembolso_estado: string | null
           reembolso_fecha: string | null
           reembolso_metodo: string | null
@@ -855,6 +856,7 @@ export type Database = {
           numero_operacion?: string | null
           pagado_por?: string | null
           persona?: string | null
+          planilla_linea_id?: string | null
           reembolso_estado?: string | null
           reembolso_fecha?: string | null
           reembolso_metodo?: string | null
@@ -885,6 +887,7 @@ export type Database = {
           numero_operacion?: string | null
           pagado_por?: string | null
           persona?: string | null
+          planilla_linea_id?: string | null
           reembolso_estado?: string | null
           reembolso_fecha?: string | null
           reembolso_metodo?: string | null
@@ -912,6 +915,13 @@ export type Database = {
             columns: ["deuda_abono_id"]
             isOneToOne: false
             referencedRelation: "deuda_abono"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gasto_planilla_linea_id_fkey"
+            columns: ["planilla_linea_id"]
+            isOneToOne: false
+            referencedRelation: "planilla_linea"
             referencedColumns: ["id"]
           },
           {
@@ -1631,6 +1641,7 @@ export type Database = {
           creado_en: string
           creado_por: string | null
           fecha_pago: string | null
+          gasto_id: string | null
           id: string
           mes: string
           metodo: string | null
@@ -1641,7 +1652,8 @@ export type Database = {
           notas: string | null
           numero_operacion: string | null
           pagado: boolean
-          personal_id: string
+          personal_id: string | null
+          tipo: string
         }
         Insert: {
           anulado?: boolean
@@ -1651,6 +1663,7 @@ export type Database = {
           creado_en?: string
           creado_por?: string | null
           fecha_pago?: string | null
+          gasto_id?: string | null
           id?: string
           mes: string
           metodo?: string | null
@@ -1661,7 +1674,8 @@ export type Database = {
           notas?: string | null
           numero_operacion?: string | null
           pagado?: boolean
-          personal_id: string
+          personal_id?: string | null
+          tipo?: string
         }
         Update: {
           anulado?: boolean
@@ -1671,6 +1685,7 @@ export type Database = {
           creado_en?: string
           creado_por?: string | null
           fecha_pago?: string | null
+          gasto_id?: string | null
           id?: string
           mes?: string
           metodo?: string | null
@@ -1681,9 +1696,17 @@ export type Database = {
           notas?: string | null
           numero_operacion?: string | null
           pagado?: boolean
-          personal_id?: string
+          personal_id?: string | null
+          tipo?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "planilla_linea_gasto_id_fkey"
+            columns: ["gasto_id"]
+            isOneToOne: false
+            referencedRelation: "gasto"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "planilla_linea_personal_id_fkey"
             columns: ["personal_id"]
