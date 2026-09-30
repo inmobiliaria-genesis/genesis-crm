@@ -491,7 +491,7 @@ function LotesPage() {
                 <TableRow
                   key={l.id}
                   className={l.ventaId ? "cursor-pointer" : undefined}
-                  onClick={() => l.ventaId && navigate({ to: "/ventas", search: { venta: l.ventaId } })}
+                  onClick={() => { if (l.ventaId) void navigate({ to: "/ventas", search: { venta: l.ventaId } }); }}
                 >
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     {editable ? (
