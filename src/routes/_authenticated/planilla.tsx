@@ -65,8 +65,11 @@ function PlanillaPage() {
   });
 
   const refrescar = () => qc.invalidateQueries({ queryKey: ["planilla"] });
-  const nombre = (id: string) => personal.data?.find((p) => p.id === id)?.nombre ?? "—";
-  const total = (lineas.data ?? []).reduce((a, l) => a + Number(l.monto), 0);
+  const nombrePersona = (id: string | null) => personal.data?.find((p) => p.id === id)?.nombre ?? "—";
+  const nombreLinea = (l: Linea) => (l.tipo === "essalud" ? "ESSALUD" : nombrePersona(l.personal_id));
+  const sueldos = (lineas.data ?? []).filter((l) => l.tipo !== "essalud").reduce((a, l) => a + Number(l.monto), 0);
+  const essalud = (lineas.data ?? []).filter((l) => l.tipo === "essalud").reduce((a, l) => a + Number(l.monto), 0);
+  const total = sueldos + essalud;
   const pagado = (lineas.data ?? []).filter((l) => l.pagado).reduce((a, l) => a + Number(l.monto), 0);
 
   async function generar() {
@@ -98,7 +101,7 @@ function PlanillaPage() {
     );
   }
 
-  const ordenadas = [...(lineas.data ?? [])].sort((a, b) => nombre(a.personal_id).localeCompare(nombre(b.personal_id)));
+  const ordenadas = [...(lineas.data ?? [])].sort((a, b) => (a.tipo === "essalud" ? 1 : 0) - (b.tipo === "essalud" ? 1 : 0) || nombreLinea(a).localeCompare(nombreLinea(b)));
 
   return (
     <AppShell
@@ -111,7 +114,9 @@ function PlanillaPage() {
           <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
             <CardTitle className="text-base">Planilla del mes</CardTitle>
             <div className="flex flex-wrap items-center gap-4 text-sm">
-              <span>Total: <b>{soles(total)}</b></span>
+              <span>Sueldos netos: <b>{soles(sueldos)}</b></span>
+              <span>ESSALUD: <b>{soles(essalud)}</b></span>
+              <span>Costo total empresa: <b>{soles(total)}</b></span>
               <span>Pagado: <b>{soles(pagado)}</b></span>
               <span>Pendiente: <b>{soles(total - pagado)}</b></span>
               {lineas.data && lineas.data.length === 0 ? <Button onClick={generar}>Generar planilla del mes</Button> : null}
@@ -134,7 +139,7 @@ function PlanillaPage() {
                 ) : null}
                 {ordenadas.map((l) => (
                   <TableRow key={l.id}>
-                    <TableCell>{nombre(l.personal_id)}</TableCell>
+                    <TableCell className={l.tipo === "essalud" ? "font-medium" : ""}>{nombreLinea(l)}</TableCell>
                     <TableCell>
                       {l.pagado ? soles(l.monto) : (
                         <Input type="number" step="0.01" defaultValue={String(l.monto)} onBlur={(e) => cambiarMonto(l, e.target.value)} />
@@ -197,7 +202,7 @@ function PlanillaPage() {
         </Card>
       </div>
       {persona ? <DialogoPersona persona={persona === "nuevo" ? null : persona} onCerrar={() => setPersona(null)} /> : null}
-      {pagar ? <DialogoPago linea={pagar} nombre={nombre(pagar.personal_id)} onCerrar={() => { setPagar(null); refrescar(); }} /> : null}
+      {pagar ? <DialogoPago linea={pagar} nombre={nombreLinea(pagar)} onCerrar={() => { setPagar(null); refrescar(); }} /> : null}
     </AppShell>
   );
 }
