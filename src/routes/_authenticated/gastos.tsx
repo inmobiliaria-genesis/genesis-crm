@@ -241,7 +241,9 @@ function GastosPage() {
                           <Paperclip className="h-4 w-4" />
                         </Button>
                       ) : null}
-                      {g.deuda_abono_id ? (
+                      {g.planilla_linea_id ? (
+                        <span className="text-xs text-muted-foreground">Automático · se modifica en Planilla</span>
+                      ) : g.deuda_abono_id ? (
                         <span className="text-xs text-muted-foreground">Automático · se modifica en Deudas</span>
                       ) : (g as { comision_id?: string | null }).comision_id ? (
                         <span className="text-xs text-muted-foreground">Automático · se modifica en Comisiones</span>
@@ -359,6 +361,21 @@ function DialogoGasto({ gasto, onCerrar }: { gasto: Gasto | null; onCerrar: () =
 
   const exceso = tope?.tope != null ? tope.llevas + Number(f.monto || 0) - tope.tope : 0;
 
+  const esEssalud = cat?.nombre.toLowerCase() === "obligaciones laborales" && sub?.nombre.toLowerCase() === "essalud";
+  const [essaludPagado, setEssaludPagado] = useState(false);
+  useEffect(() => {
+    if (!esEssalud || !f.fecha) { setEssaludPagado(false); return; }
+    supabase
+      .from("planilla_linea")
+      .select("id")
+      .eq("tipo", "essalud")
+      .eq("anulado", false)
+      .eq("pagado", true)
+      .eq("mes", `${f.fecha.slice(0, 7)}-01`)
+      .limit(1)
+      .then(({ data }) => setEssaludPagado(!!data?.length));
+  }, [esEssalud, f.fecha]);
+
   async function guardar() {
     if (!f.categoria_id) { toast.error("Elige la categoría"); return; }
     if (!(Number(f.monto) > 0)) { toast.error("Indica el monto"); return; }
@@ -433,6 +450,11 @@ function DialogoGasto({ gasto, onCerrar }: { gasto: Gasto | null; onCerrar: () =
             <p className="text-sm text-muted-foreground">
               Llevas {soles(tope.llevas)} de {soles(tope.tope)} este mes.
               {exceso > 0.005 ? <span className="block font-medium text-destructive">Este pago supera el tope mensual por {soles(exceso)}</span> : null}
+            </p>
+          ) : null}
+          {essaludPagado ? (
+            <p className="rounded-md border border-border bg-muted p-2 text-xs font-medium">
+              El ESSALUD de este mes ya se pagó desde Planilla. Registra este gasto solo si corresponde a un mes atrasado.
             </p>
           ) : null}
           {esJornales ? (
