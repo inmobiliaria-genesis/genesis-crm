@@ -548,7 +548,7 @@ function AsignarPrecio({ ids, onListo }: { ids: string[]; onListo: () => void })
     setGuardando(true);
     const { error } = await supabase.from("lote").update({ precio_lista: valor }).in("id", ids);
     setGuardando(false);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success(`Precio de lista asignado a ${cantidad(ids.length, "lotes")}`);
     setAbierto(false); setConfirmar(false); setMonto("");
     onListo();
