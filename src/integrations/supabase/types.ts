@@ -2296,6 +2296,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      crear_venta_historica: {
+        Args: { _titulares: string[]; _total_abonado: number; _venta: Json }
+        Returns: string
+      }
       eliminar_cliente: {
         Args: { _cliente_id: string; _motivo: string }
         Returns: undefined
