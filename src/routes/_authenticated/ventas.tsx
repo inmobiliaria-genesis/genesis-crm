@@ -498,9 +498,9 @@ function DialogoVenta({
 
   async function guardarHistorica() {
     const errO = leadOrigen ? null : validarOrigen(origenVenta, true);
-    if (errO) return toast.error(errO);
+    if (errO) { toast.error(errO); return; }
     const abonado = Number(totalAbonado || 0);
-    if (abonado > precioNum + 0.005) return toast.error(`El total abonado supera el precio acordado (${soles(precioNum)})`);
+    if (abonado > precioNum + 0.005) { toast.error(`El total abonado supera el precio acordado (${soles(precioNum)})`); return; }
     setGuardando(true);
     const o = leadOrigen ?? origenVenta;
     const rpc = supabase.rpc.bind(supabase) as unknown as (f: string, a: Record<string, unknown>) => Promise<{ error: { message: string } | null }>;
@@ -515,7 +515,7 @@ function DialogoVenta({
       _total_abonado: abonado > 0 ? abonado : 0,
     });
     setGuardando(false);
-    if (error) return toast.error("No se pudo registrar la venta", { description: error.message });
+    if (error) { toast.error("No se pudo registrar la venta", { description: error.message }); return; }
     toast.success("Venta histórica registrada");
     qc.invalidateQueries();
     onCerrar();
@@ -526,7 +526,7 @@ function DialogoVenta({
       toast.error("Elige lote, cliente principal y encargado");
       return;
     }
-    if (hist) return guardarHistorica();
+    if (hist) { await guardarHistorica(); return; }
     if (condicion === "financiado" && inicialMinima.data != null && inicialNum < inicialMinima.data) {
       toast.error(`La cuota inicial mínima es ${soles(inicialMinima.data)}.`);
       return;
