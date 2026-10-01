@@ -362,8 +362,12 @@ function DialogoVenta({
   const [primeraCuota, setPrimeraCuota] = useState("");
   const [notas, setNotas] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [historica, setHistorica] = useState(false);
+  const [totalAbonado, setTotalAbonado] = useState("");
+  const esAdminVenta = perfil?.rol === "admin";
+  const hist = historica && esAdminVenta;
 
-  const activos = (vendedores.data ?? []).filter((x) => x.estado === "activo");
+  const activos = (vendedores.data ?? []).filter((x) => hist || x.estado === "activo");
   const encargadosElegibles = activos.filter(
     (x) => x.tipo === "encargado" && (puedeElegirVendedor(perfil) || (!!perfil && x.usuario_id === perfil.user_id)),
   );
@@ -492,11 +496,37 @@ function DialogoVenta({
 
   const total = (cronograma.data ?? []).reduce((t, c) => t + Number(c.monto), 0);
 
+  async function guardarHistorica() {
+    const errO = leadOrigen ? null : validarOrigen(origenVenta, true);
+    if (errO) { toast.error(errO); return; }
+    const abonado = Number(totalAbonado || 0);
+    if (abonado > precioNum + 0.005) { toast.error(`El total abonado supera el precio acordado (${soles(precioNum)})`); return; }
+    setGuardando(true);
+    const o = leadOrigen ?? origenVenta;
+    const rpc = supabase.rpc.bind(supabase) as unknown as (f: string, a: Record<string, unknown>) => Promise<{ error: { message: string } | null }>;
+    const { error } = await rpc("crear_venta_historica", {
+      _venta: {
+        lote_id: loteId, fecha_venta: fechaVenta, fecha_firma: fechaFirma || null, encargado_id: encargadoId,
+        ...origenAColumnas(o), origen: o.origen, condicion, precio_acordado: precioNum,
+        motivo_diferencia_precio: motivo.trim() || null, inicial: condicion === "contado" ? precioNum : inicialNum,
+        plazo_meses: plazoNum, fecha_primera_cuota: primeraCuota, notas: notas.trim() || null,
+      },
+      _titulares: [principal!.id, ...adicionales.map((c) => c.id)],
+      _total_abonado: abonado > 0 ? abonado : 0,
+    });
+    setGuardando(false);
+    if (error) { toast.error("No se pudo registrar la venta", { description: error.message }); return; }
+    toast.success("Venta histórica registrada");
+    qc.invalidateQueries();
+    onCerrar();
+  }
+
   async function guardar() {
     if (!loteId || !principal || !encargadoId) {
       toast.error("Elige lote, cliente principal y encargado");
       return;
     }
+    if (hist) { await guardarHistorica(); return; }
     if (condicion === "financiado" && inicialMinima.data != null && inicialNum < inicialMinima.data) {
       toast.error(`La cuota inicial mínima es ${soles(inicialMinima.data)}.`);
       return;
@@ -590,6 +620,20 @@ function DialogoVenta({
           <DialogTitle>Nueva venta</DialogTitle>
         </DialogHeader>
         <div className="grid gap-3 sm:grid-cols-2">
+          {esAdminVenta ? (
+            <label className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm sm:col-span-2">
+              <input
+                type="checkbox"
+                checked={historica}
+                onChange={(e) => {
+                  setHistorica(e.target.checked);
+                  setEncargadoId("");
+                  setOrigenVenta(ORIGEN_VACIO);
+                }}
+              />
+              Venta histórica (anterior al CRM)
+            </label>
+          ) : null}
           <div className="sm:col-span-2">
             <Label>Lote</Label>
             <Select value={loteId} onValueChange={setLoteId}>
@@ -659,6 +703,7 @@ function DialogoVenta({
               onCambio={setOrigenVenta}
               promotores={promotores.map((p) => ({ id: p.id, nombre: nombreVendedor(p) }))}
               onPromotor={elegirPromotor}
+              sinDato={hist}
             />
           )}
           <div>
@@ -740,6 +785,19 @@ function DialogoVenta({
               </div>
             </>
           ) : null}
+          {hist ? (
+            <div className="sm:col-span-2">
+              <Label>Total abonado hasta hoy (opcional)</Label>
+              <Input value={totalAbonado} onChange={(e) => setTotalAbonado(e.target.value)} inputMode="decimal" />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Se reparte primero en la inicial y luego en las cuotas 1, 2, 3…, con un pago por cuota (recibido por la inmobiliaria, método «Sin dato»).
+              </p>
+              {Number(totalAbonado || 0) > precioNum + 0.005 && precioNum > 0 ? (
+                <p className="mt-1 text-xs text-destructive">El total abonado supera el precio acordado ({soles(precioNum)})</p>
+              ) : null}
+            </div>
+          ) : null}
+          {!hist ? (<>
           <div className="rounded-md border border-border p-3 sm:col-span-2">
             <p className="text-sm font-medium">
               1. Comisión al vendedor — <span className="num">{soles(comisionInicial)}</span>
@@ -770,6 +828,7 @@ function DialogoVenta({
               </div>
             </div>
           ) : null}
+          </>) : null}
           <div className="sm:col-span-2">
             <Label>Notas</Label>
             <Textarea rows={2} value={notas} onChange={(e) => setNotas(e.target.value)} />

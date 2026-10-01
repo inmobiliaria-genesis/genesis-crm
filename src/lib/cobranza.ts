@@ -28,6 +28,7 @@ export const ETIQUETA_METODO: Record<string, string> = {
   efectivo: "Efectivo",
   yape: "Yape",
   plin: "Plin",
+  sin_dato: "Sin dato",
 };
 
 /** Etiqueta del método; "Sin dato" si el registro no lo tiene. */
