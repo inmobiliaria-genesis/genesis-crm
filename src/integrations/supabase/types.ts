@@ -2300,6 +2300,15 @@ export type Database = {
         Args: { _titulares: string[]; _total_abonado: number; _venta: Json }
         Returns: string
       }
+      editar_venta: {
+        Args: {
+          _cambios: Json
+          _motivo: string
+          _titulares: string[]
+          _venta_id: string
+        }
+        Returns: Json
+      }
       eliminar_cliente: {
         Args: { _cliente_id: string; _motivo: string }
         Returns: undefined
@@ -2438,6 +2447,25 @@ export type Database = {
           monto_retiene_empresa: number
           porcentaje_devolucion: number
           total_abonado: number
+        }[]
+      }
+      simular_edicion_venta: {
+        Args: {
+          _condicion: string
+          _fecha_primera_cuota: string
+          _fecha_venta: string
+          _inicial: number
+          _plazo_meses: number
+          _precio_acordado: number
+          _venta_id: string
+        }
+        Returns: {
+          estado: string
+          fecha_vencimiento: string
+          monto: number
+          numero: number
+          pagado: number
+          saldo: number
         }[]
       }
       tope_gasto: {
