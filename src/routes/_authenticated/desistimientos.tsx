@@ -4,14 +4,13 @@ import { useMemo, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DetalleDesistimiento, ETIQUETA_DESISTIMIENTO } from "@/components/Desistimiento";
 import { fecha, hoyLima, soles } from "@/lib/format";
+import { BarraFiltros, Buscador, ColOrden, FiltroMulti, FiltroRango, RANGO_VACIO, coincide, enLista, enRango, useOrden } from "@/components/ListaControles";
 
 export const Route = createFileRoute("/_authenticated/desistimientos")({
   head: () => ({
@@ -26,9 +25,8 @@ export const Route = createFileRoute("/_authenticated/desistimientos")({
 });
 
 function DesistimientosPage() {
-  const [estado, setEstado] = useState("todos");
-  const [desde, setDesde] = useState("");
-  const [hasta, setHasta] = useState("");
+  const [estados, setEstados] = useState<string[]>([]);
+  const [rango, setRango] = useState(RANGO_VACIO);
   const [buscar, setBuscar] = useState("");
   const [abierto, setAbierto] = useState<string | null>(null);
 
@@ -62,15 +60,20 @@ function DesistimientosPage() {
   });
 
   const filtrados = useMemo(() => {
-    const b = buscar.trim().toLowerCase();
-    return (lista.data ?? []).filter((d) => {
-      if (estado !== "todos" && d.estado !== estado) return false;
-      if (desde && d.fecha_inicio < desde) return false;
-      if (hasta && d.fecha_inicio > hasta) return false;
-      if (b && !`${d.cliente} ${d.documento} ${d.lote}`.toLowerCase().includes(b)) return false;
-      return true;
-    });
-  }, [lista.data, estado, desde, hasta, buscar]);
+    return (lista.data ?? []).filter(
+      (d) => enLista(d.estado, estados) && enRango(d.fecha_inicio, rango, "date") && coincide(buscar, d.cliente, d.documento),
+    );
+  }, [lista.data, estados, rango, buscar]);
+  const { ordenadas, orden, alternar } = useOrden(filtrados, {
+    fecha: (d) => d.fecha_inicio,
+    lote: (d) => d.lote,
+    cliente: (d) => d.cliente,
+    estado: (d) => ETIQUETA_DESISTIMIENTO[d.estado] ?? d.estado,
+    devolver: (d) => Number(d.monto_devolver),
+    devuelto: (d) => d.devuelto,
+    pendiente: (d) => d.pendiente,
+    limite: (d) => d.fecha_limite_devolucion,
+  });
 
   const vigentes = filtrados.filter((d) => d.estado !== "anulado");
   const tot = {
@@ -82,33 +85,20 @@ function DesistimientosPage() {
 
   return (
     <AppShell titulo="Desistimientos" descripcion="Ventas reales que terminan con devolución parcial y lote liberado">
-      <div className="mb-4 flex flex-wrap items-end gap-3">
-        <div className="space-y-1">
-          <Label>Estado</Label>
-          <select
-            className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-            value={estado}
-            onChange={(e) => setEstado(e.target.value)}
-          >
-            <option value="todos">Todos</option>
-            {Object.entries(ETIQUETA_DESISTIMIENTO).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
-            ))}
-          </select>
-        </div>
-        <div className="space-y-1">
-          <Label>Desde</Label>
-          <Input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} />
-        </div>
-        <div className="space-y-1">
-          <Label>Hasta</Label>
-          <Input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} />
-        </div>
-        <div className="space-y-1">
-          <Label>Buscar</Label>
-          <Input placeholder="Cliente, documento o lote" value={buscar} onChange={(e) => setBuscar(e.target.value)} />
-        </div>
-      </div>
+      <BarraFiltros
+        onLimpiar={() => { setEstados([]); setRango(RANGO_VACIO); setBuscar(""); }}
+        mostrando={filtrados.length}
+        total={lista.data?.length ?? 0}
+      >
+        <Buscador placeholder="Cliente o DNI" valor={buscar} onCambio={setBuscar} />
+        <FiltroMulti
+          label="Estado"
+          opciones={Object.entries(ETIQUETA_DESISTIMIENTO).map(([k, v]) => ({ valor: k, etiqueta: v }))}
+          valor={estados}
+          onCambio={setEstados}
+        />
+        <FiltroRango label="Fecha de inicio" tipo="date" valor={rango} onCambio={setRango} />
+      </BarraFiltros>
 
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
         {[
@@ -129,14 +119,14 @@ function DesistimientosPage() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Inicio</TableHead>
-            <TableHead>Lote</TableHead>
-            <TableHead>Cliente</TableHead>
-            <TableHead>Estado</TableHead>
-            <TableHead className="text-right">A devolver</TableHead>
-            <TableHead className="text-right">Devuelto</TableHead>
-            <TableHead className="text-right">Pendiente</TableHead>
-            <TableHead>Fecha límite</TableHead>
+            <ColOrden clave="fecha" orden={orden} onOrden={alternar}>Inicio</ColOrden>
+            <ColOrden clave="lote" orden={orden} onOrden={alternar}>Lote</ColOrden>
+            <ColOrden clave="cliente" orden={orden} onOrden={alternar}>Cliente</ColOrden>
+            <ColOrden clave="estado" orden={orden} onOrden={alternar}>Estado</ColOrden>
+            <ColOrden clave="devolver" orden={orden} onOrden={alternar} className="text-right">A devolver</ColOrden>
+            <ColOrden clave="devuelto" orden={orden} onOrden={alternar} className="text-right">Devuelto</ColOrden>
+            <ColOrden clave="pendiente" orden={orden} onOrden={alternar} className="text-right">Pendiente</ColOrden>
+            <ColOrden clave="limite" orden={orden} onOrden={alternar}>Fecha límite</ColOrden>
             <TableHead />
           </TableRow>
         </TableHeader>
@@ -146,7 +136,7 @@ function DesistimientosPage() {
               <TableCell colSpan={9} className="text-center text-muted-foreground">No hay desistimientos.</TableCell>
             </TableRow>
           ) : null}
-          {filtrados.map((d) => (
+          {ordenadas.map((d) => (
             <TableRow key={d.id} className={d.estado === "anulado" ? "opacity-50" : ""}>
               <TableCell>{fecha(d.fecha_inicio)}</TableCell>
               <TableCell>{d.lote}</TableCell>
