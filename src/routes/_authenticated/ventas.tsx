@@ -48,6 +48,8 @@ import { DialogoPago, DialogoRegularizar } from "@/components/PagoForm";
 import { ETIQUETA_CUOTA, useCuotasDeVenta, usePagosDeVenta, llevaOperacion, valorConfig, ETIQUETA_RECIBIDO } from "@/lib/cobranza";
 import { MostrarMetodo, DialogoEditarMetodo, CamposMetodo } from "@/components/MetodoPago";
 import { DialogoEliminar } from "@/components/DialogoEliminar";
+import { DialogoEditarVenta } from "@/components/EditarVenta";
+import { CampoSoles } from "@/components/CampoSoles";
 import { BotonHistorica } from "@/components/DialogoHistorica";
 import { DialogoIniciarDesistimiento, DetalleDesistimiento, useDesistimientoDeVenta, ETIQUETA_DESISTIMIENTO } from "@/components/Desistimiento";
 
@@ -761,7 +763,7 @@ function DialogoVenta({
           </div>
           <div>
             <Label>Precio acordado</Label>
-            <Input value={precio} onChange={(e) => setPrecio(e.target.value)} inputMode="decimal" />
+            <CampoSoles valor={precio} onCambio={setPrecio} />
           </div>
           {lote && precioNum !== Number(lote.precio_lista) ? (
             <div className="sm:col-span-2">
@@ -773,7 +775,10 @@ function DialogoVenta({
             <>
               <div>
                 <Label>Inicial</Label>
-                <Input value={inicial} onChange={(e) => setInicial(e.target.value)} inputMode="decimal" />
+                <CampoSoles valor={inicial} onCambio={setInicial} />
+                {hist && inicialMinima.data != null && inicialNum < inicialMinima.data ? (
+                  <p className="mt-1 text-xs text-destructive">La inicial es menor a {soles(inicialMinima.data)}</p>
+                ) : null}
               </div>
               <div>
                 <Label>Plazo (meses)</Label>
@@ -910,6 +915,7 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
 
   const [editInicial, setEditInicial] = useState(false);
   const [eliminando, setEliminando] = useState(false);
+  const [editando, setEditando] = useState(false);
   const v = venta.data;
   const cuotas = cronograma.data ?? [];
   const total = cuotas.reduce((t, c) => t + Number(c.monto_vigente), 0);
@@ -1057,7 +1063,8 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
               <D k="Primera cuota" v={fecha(v.fecha_primera_cuota)} />
             </div>
             {perfil?.rol === "admin" ? (
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-2">
+                {!v.anulado ? <Button size="sm" variant="outline" onClick={() => setEditando(true)}>Editar venta</Button> : null}
                 <Button size="sm" variant="destructive" onClick={() => setEliminando(true)}>Eliminar venta</Button>
               </div>
             ) : null}
@@ -1229,6 +1236,13 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
 
         {v && ventaId ? (
           <>
+            {editando ? (
+              <DialogoEditarVenta
+                venta={v as never}
+                bloqueadoDesistimiento={v.desistida || (!!desist.data && ["en_proceso", "aceptado", "devuelto"].includes(desist.data.estado))}
+                onCerrar={() => setEditando(false)}
+              />
+            ) : null}
             <DialogoEditarMetodo
               abierto={editInicial}
               inicial={{ metodo: v.forma_pago_inicial, operacion: (v as { operacion_inicial?: string | null }).operacion_inicial ?? null }}
