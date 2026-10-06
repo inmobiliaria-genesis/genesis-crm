@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/table";
 import { usePerfil } from "@/lib/sesion";
 import { fechaHora } from "@/lib/format";
+import { BarraFiltros, Buscador, ColOrden, FiltroMulti, FiltroRango, RANGO_VACIO, coincide, enLista, useOrden } from "@/components/ListaControles";
 
 const TABLAS = ["proyecto", "etapa", "manzana", "lote", "perfil", "config", "vendedor", "venta", "pago"];
 
@@ -43,10 +44,12 @@ function BitacoraPage() {
   const { data: perfil, isLoading } = usePerfil();
   const permitido = perfil?.rol === "admin" || perfil?.rol === "socio";
 
-  const [usuarioId, setUsuarioId] = useState("");
-  const [tabla, setTabla] = useState("");
-  const [desde, setDesde] = useState("");
-  const [hasta, setHasta] = useState("");
+  const [usuarios, setUsuarios] = useState<string[]>([]);
+  const [tablas, setTablas] = useState<string[]>([]);
+  const [rango, setRango] = useState(RANGO_VACIO);
+  const [buscar, setBuscar] = useState("");
+  const desde = rango.min;
+  const hasta = rango.max;
 
   const perfiles = useQuery({
     queryKey: ["perfiles-bitacora"],
@@ -64,7 +67,7 @@ function BitacoraPage() {
   );
 
   const registros = useQuery({
-    queryKey: ["bitacora", usuarioId, tabla, desde, hasta],
+    queryKey: ["bitacora", usuarios, tablas, desde, hasta],
     enabled: permitido,
     queryFn: async () => {
       let consulta = supabase
@@ -72,14 +75,31 @@ function BitacoraPage() {
         .select("*")
         .order("fecha_hora", { ascending: false })
         .limit(500);
-      if (usuarioId) consulta = consulta.eq("usuario_id", usuarioId);
-      if (tabla) consulta = consulta.eq("tabla", tabla);
+      if (usuarios.length) consulta = consulta.in("usuario_id", usuarios);
+      if (tablas.length) consulta = consulta.in("tabla", tablas);
       if (desde) consulta = consulta.gte("fecha_hora", `${desde}T00:00:00-05:00`);
       if (hasta) consulta = consulta.lte("fecha_hora", `${hasta}T23:59:59-05:00`);
       const { data, error } = await consulta;
       if (error) throw error;
       return data;
     },
+  });
+
+  const filtrados = useMemo(
+    () =>
+      (registros.data ?? []).filter((r) =>
+        enLista(r.tabla, tablas) &&
+        coincide(buscar, r.tabla, r.accion, r.registro_id, mapaUsuarios.get(r.usuario_id ?? "") ?? "Sistema",
+          JSON.stringify(r.valores_antes ?? ""), JSON.stringify(r.valores_despues ?? "")),
+      ),
+    [registros.data, tablas, buscar, mapaUsuarios],
+  );
+  const { ordenadas, orden, alternar } = useOrden(filtrados, {
+    fecha: (r) => r.fecha_hora,
+    usuario: (r) => mapaUsuarios.get(r.usuario_id ?? "") ?? "Sistema",
+    tabla: (r) => r.tabla,
+    accion: (r) => r.accion,
+    registro: (r) => r.registro_id,
   });
 
   if (!isLoading && !permitido) {
@@ -94,74 +114,27 @@ function BitacoraPage() {
 
   return (
     <AppShell titulo="Bitácora" descripcion="Historial de cambios del sistema">
-      <div className="mb-4 grid gap-3 rounded-lg border border-border bg-card p-4 md:grid-cols-5">
-        <div className="space-y-1">
-          <Label>Usuario</Label>
-          <Select
-            value={usuarioId || "todos"}
-            onValueChange={(v) => setUsuarioId(v === "todos" ? "" : v)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Todos" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos</SelectItem>
-              {perfiles.data?.map((p) => (
-                <SelectItem key={p.user_id} value={p.user_id}>
-                  {p.nombre}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <Label>Tabla</Label>
-          <Select value={tabla || "todas"} onValueChange={(v) => setTabla(v === "todas" ? "" : v)}>
-            <SelectTrigger>
-              <SelectValue placeholder="Todas" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todas">Todas</SelectItem>
-              {TABLAS.map((t) => (
-                <SelectItem key={t} value={t}>
-                  {t}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <Label>Desde</Label>
-          <Input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} />
-        </div>
-        <div className="space-y-1">
-          <Label>Hasta</Label>
-          <Input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} />
-        </div>
-        <div className="flex items-end">
-          <Button
-            variant="outline"
-            onClick={() => {
-              setUsuarioId("");
-              setTabla("");
-              setDesde("");
-              setHasta("");
-            }}
-          >
-            Limpiar filtros
-          </Button>
-        </div>
-      </div>
+      <BarraFiltros
+        onLimpiar={() => { setUsuarios([]); setTablas([]); setRango(RANGO_VACIO); setBuscar(""); }}
+        mostrando={filtrados.length}
+        total={registros.data?.length ?? 0}
+      >
+        <Buscador placeholder="Texto en cualquier campo" valor={buscar} onCambio={setBuscar} />
+        <FiltroMulti label="Usuario" opciones={(perfiles.data ?? []).map((p) => ({ valor: p.user_id, etiqueta: p.nombre }))} valor={usuarios} onCambio={setUsuarios} />
+        <FiltroMulti label="Módulo" opciones={TABLAS.map((t) => ({ valor: t, etiqueta: t }))} valor={tablas} onCambio={setTablas} />
+        <FiltroRango label="Fecha" tipo="date" valor={rango} onCambio={setRango} />
+      </BarraFiltros>
+      <p className="mb-2 text-xs text-muted-foreground">Se cargan los 500 movimientos más recientes que cumplen los filtros de usuario, módulo y fecha.</p>
 
       <div className="rounded-lg border border-border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Fecha y hora</TableHead>
-              <TableHead>Usuario</TableHead>
-              <TableHead>Tabla</TableHead>
-              <TableHead>Acción</TableHead>
-              <TableHead>Registro</TableHead>
+              <ColOrden clave="fecha" orden={orden} onOrden={alternar}>Fecha y hora</ColOrden>
+              <ColOrden clave="usuario" orden={orden} onOrden={alternar}>Usuario</ColOrden>
+              <ColOrden clave="tabla" orden={orden} onOrden={alternar}>Tabla</ColOrden>
+              <ColOrden clave="accion" orden={orden} onOrden={alternar}>Acción</ColOrden>
+              <ColOrden clave="registro" orden={orden} onOrden={alternar}>Registro</ColOrden>
               <TableHead>Cambios</TableHead>
             </TableRow>
           </TableHeader>
@@ -172,14 +145,14 @@ function BitacoraPage() {
                   Cargando…
                 </TableCell>
               </TableRow>
-            ) : registros.data?.length === 0 ? (
+            ) : filtrados.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center text-muted-foreground">
                   Sin movimientos con estos filtros.
                 </TableCell>
               </TableRow>
             ) : (
-              registros.data?.map((r) => (
+              ordenadas.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell className="num whitespace-nowrap">{fechaHora(r.fecha_hora)}</TableCell>
                   <TableCell>{mapaUsuarios.get(r.usuario_id ?? "") ?? "Sistema"}</TableCell>
