@@ -3,11 +3,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DialogoEliminar } from "@/components/DialogoEliminar";
 import { EstadoAprobacion } from "@/components/EstadoAprobacion";
 import { usePerfil, esAdmin, esAsesor } from "@/lib/sesion";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { BarraFiltros, Buscador, ColOrden, FiltroMulti, coincide, enLista, useOrden } from "@/components/ListaControles";
+import { ETIQUETA_FUENTE, ETIQUETA_ORIGEN } from "@/lib/leads";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -20,7 +21,7 @@ import {
 } from "@/components/ui/table";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { DialogoCliente } from "@/components/ClienteForm";
-import { useClientes, nombreCliente, documentoCliente, type Cliente } from "@/lib/ventas";
+import { nombreCliente, documentoCliente, ETIQUETA_APROBACION, type Cliente } from "@/lib/ventas";
 import { fecha, soles } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/clientes")({
@@ -42,7 +43,42 @@ function ClientesPage() {
   const [nuevo, setNuevo] = useState(false);
   const [editar, setEditar] = useState<Cliente | null>(null);
   const [ficha, setFicha] = useState<Cliente | null>(null);
-  const clientes = useClientes(busqueda, "todos");
+  const [aprob, setAprob] = useState<string[]>([]);
+  const [origenes, setOrigenes] = useState<string[]>([]);
+  const [fuentes, setFuentes] = useState<string[]>([]);
+  const [conVenta, setConVenta] = useState<string[]>([]);
+  const clientes = useQuery({
+    queryKey: ["clientes-lista"],
+    queryFn: async () => {
+      const [c, t] = await Promise.all([
+        supabase.from("cliente").select("*").eq("anulado", false).order("apellidos"),
+        supabase.from("venta_titular").select("cliente_id, venta:venta_id(anulado)").eq("anulado", false),
+      ]);
+      if (c.error) throw c.error;
+      const conV = new Set((t.data ?? []).filter((x) => x.venta && !x.venta.anulado).map((x) => x.cliente_id));
+      return (c.data ?? []).map((x) => ({ ...x, tieneVenta: conV.has(x.id) }));
+    },
+  });
+  const filtrados = useMemo(
+    () =>
+      (clientes.data ?? []).filter(
+        (c) =>
+          enLista(c.estado_aprobacion, aprob) &&
+          enLista(c.origen, origenes) &&
+          enLista(c.fuente, fuentes) &&
+          enLista(c.tieneVenta ? "si" : "no", conVenta) &&
+          coincide(busqueda, `${c.nombres} ${c.apellidos}`, `${c.apellidos} ${c.nombres}`, c.numero_documento),
+      ),
+    [clientes.data, aprob, origenes, fuentes, conVenta, busqueda],
+  );
+  const { ordenadas, orden, alternar } = useOrden(filtrados, {
+    nombre: (c) => nombreCliente(c),
+    documento: (c) => c.numero_documento,
+    telefono: (c) => c.telefono1,
+    distrito: (c) => c.distrito,
+    aprobacion: (c) => c.estado_aprobacion,
+    registro: (c) => c.creado_en,
+  });
   const { data: perfil } = usePerfil();
   const asesor = esAsesor(perfil);
 
@@ -55,34 +91,40 @@ function ClientesPage() {
       <Card>
         <CardHeader className="gap-3">
           <CardTitle className="text-base">Listado</CardTitle>
-          <Input
-            className="max-w-sm"
-            placeholder="Buscar por documento o nombre"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-          />
+          <BarraFiltros
+            onLimpiar={() => { setBusqueda(""); setAprob([]); setOrigenes([]); setFuentes([]); setConVenta([]); }}
+            mostrando={filtrados.length}
+            total={clientes.data?.length ?? 0}
+          >
+            <Buscador placeholder="Nombre o DNI" valor={busqueda} onCambio={setBusqueda} />
+            <FiltroMulti label="Aprobación" opciones={Object.entries(ETIQUETA_APROBACION).map(([k, v]) => ({ valor: k, etiqueta: v }))} valor={aprob} onCambio={setAprob} />
+            <FiltroMulti label="Origen" opciones={Object.entries(ETIQUETA_ORIGEN).map(([k, v]) => ({ valor: k, etiqueta: v }))} valor={origenes} onCambio={setOrigenes} />
+            <FiltroMulti label="Fuente" opciones={Object.entries(ETIQUETA_FUENTE).map(([k, v]) => ({ valor: k, etiqueta: v }))} valor={fuentes} onCambio={setFuentes} />
+            <FiltroMulti label="¿Tiene venta?" opciones={[{ valor: "si", etiqueta: "Sí" }, { valor: "no", etiqueta: "No" }]} valor={conVenta} onCambio={setConVenta} />
+          </BarraFiltros>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Documento</TableHead>
-                <TableHead>Teléfono</TableHead>
-                <TableHead>Distrito</TableHead>
-                <TableHead>Aprobación</TableHead>
+                <ColOrden clave="nombre" orden={orden} onOrden={alternar}>Cliente</ColOrden>
+                <ColOrden clave="documento" orden={orden} onOrden={alternar}>Documento</ColOrden>
+                <ColOrden clave="telefono" orden={orden} onOrden={alternar}>Teléfono</ColOrden>
+                <ColOrden clave="distrito" orden={orden} onOrden={alternar}>Distrito</ColOrden>
+                <ColOrden clave="aprobacion" orden={orden} onOrden={alternar}>Aprobación</ColOrden>
+                <ColOrden clave="registro" orden={orden} onOrden={alternar}>Registro</ColOrden>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {clientes.data?.length === 0 ? (
+              {filtrados.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center text-sm text-muted-foreground">
                     No hay clientes que coincidan.
                   </TableCell>
                 </TableRow>
               ) : null}
-              {clientes.data?.map((c) => (
+              {ordenadas.map((c) => (
                 <TableRow key={c.id}>
                   <TableCell>{nombreCliente(c)}</TableCell>
                   <TableCell className="num">{documentoCliente(c)}</TableCell>
@@ -91,6 +133,7 @@ function ClientesPage() {
                   <TableCell>
                     <EstadoAprobacion estado={c.estado_aprobacion} motivo={c.motivo_rechazo} />
                   </TableCell>
+                  <TableCell>{fecha(c.creado_en)}</TableCell>
                   <TableCell className="space-x-2 text-right">
                     <Button size="sm" variant="ghost" onClick={() => setFicha(c)}>
                       Ficha

@@ -50,6 +50,8 @@ import { MostrarMetodo, DialogoEditarMetodo, CamposMetodo } from "@/components/M
 import { DialogoEliminar } from "@/components/DialogoEliminar";
 import { DialogoEditarVenta } from "@/components/EditarVenta";
 import { CampoSoles } from "@/components/CampoSoles";
+import { BarraFiltros, Buscador, ColOrden, FiltroMulti, FiltroRango, RANGO_VACIO, coincide, enLista, enRango, useOrden } from "@/components/ListaControles";
+import { ETIQUETA_FUENTE, ETIQUETA_ORIGEN } from "@/lib/leads";
 import { BotonHistorica } from "@/components/DialogoHistorica";
 import { DialogoIniciarDesistimiento, DetalleDesistimiento, useDesistimientoDeVenta, ETIQUETA_DESISTIMIENTO } from "@/components/Desistimiento";
 
@@ -103,25 +105,29 @@ function MisVentas() {
       }[];
     },
   });
+  const mv = useOrden(q.data ?? [], {
+    lote: (v) => v.lote, titular: (v) => v.titular, fecha: (v) => v.fecha_venta,
+    precio: (v) => Number(v.precio_acordado), estado: (v) => v.estado, cuotas: (v) => v.cuotas_pagadas,
+  });
   return (
     <AppShell titulo="Mis ventas" descripcion="Ventas donde eres el encargado (solo lectura)">
       <div className="rounded-lg border border-border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Lote</TableHead>
-              <TableHead>Titular principal</TableHead>
-              <TableHead>Fecha de venta</TableHead>
-              <TableHead className="text-right">Precio acordado</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead className="text-right">Cuotas pagadas</TableHead>
+              <ColOrden clave="lote" orden={mv.orden} onOrden={mv.alternar}>Lote</ColOrden>
+              <ColOrden clave="titular" orden={mv.orden} onOrden={mv.alternar}>Titular principal</ColOrden>
+              <ColOrden clave="fecha" orden={mv.orden} onOrden={mv.alternar}>Fecha de venta</ColOrden>
+              <ColOrden clave="precio" orden={mv.orden} onOrden={mv.alternar} className="text-right">Precio acordado</ColOrden>
+              <ColOrden clave="estado" orden={mv.orden} onOrden={mv.alternar}>Estado</ColOrden>
+              <ColOrden clave="cuotas" orden={mv.orden} onOrden={mv.alternar} className="text-right">Cuotas pagadas</ColOrden>
             </TableRow>
           </TableHeader>
           <TableBody>
             {q.data?.length === 0 ? (
               <TableRow><TableCell colSpan={6} className="text-center text-sm text-muted-foreground">Todavía no tienes ventas.</TableCell></TableRow>
             ) : null}
-            {q.data?.map((v) => (
+            {mv.ordenadas.map((v) => (
               <TableRow key={v.venta_id}>
                 <TableCell>{v.lote}</TableCell>
                 <TableCell>{v.titular ?? "—"}</TableCell>
@@ -142,9 +148,16 @@ function VentasPage() {
   const busqueda = Route.useSearch();
   const navigate = useNavigate();
   const [alta, setAlta] = useState(false);
-  const [vendedor, setVendedor] = useState("todos");
-  const [manzana, setManzana] = useState("todas");
-  const [estado, setEstado] = useState("activas");
+  const ESTADOS_DEFECTO = ["activa", "en_desistimiento"];
+  const [encargados, setEncargados] = useState<string[]>([]);
+  const [manzanasSel, setManzanasSel] = useState<string[]>([]);
+  const [estados, setEstados] = useState<string[]>(ESTADOS_DEFECTO);
+  const [rangoFecha, setRangoFecha] = useState(RANGO_VACIO);
+  const [historicas, setHistoricas] = useState<string[]>([]);
+  const [origenes, setOrigenes] = useState<string[]>([]);
+  const [fuentes, setFuentes] = useState<string[]>([]);
+  const [condiciones, setCondiciones] = useState<string[]>([]);
+  const [buscar, setBuscar] = useState("");
   const vendedores = useVendedores();
   const { data: perfilSesion } = usePerfil();
 
@@ -166,15 +179,36 @@ function VentasPage() {
     },
   });
 
+  const estadoVenta = (v: NonNullable<typeof ventas.data>[number]) =>
+    v.anulado ? "anulada" : v.desistida ? "desistida"
+      : v.desistimientos?.some((d) => !d.anulado && d.estado === "en_proceso") ? "en_desistimiento" : "activa";
   const filtradas = useMemo(() => {
     return (ventas.data ?? []).filter((v) => {
-      if (vendedor !== "todos" && v.encargado_id !== vendedor) return false;
-      if (manzana !== "todas" && v.lote?.manzana?.id !== manzana) return false;
-      if (estado === "activas" && (v.anulado || v.desistida)) return false;
-      if (estado === "anuladas" && !v.anulado) return false;
-      return true;
+      const p = v.titulares?.find((t) => t.es_principal && !t.anulado)?.cliente;
+      const docs = (v.titulares ?? []).filter((t) => !t.anulado).map((t) => `${t.cliente?.nombres ?? ""} ${t.cliente?.apellidos ?? ""} ${t.cliente?.numero_documento ?? ""}`).join(" ");
+      return (
+        enLista(v.encargado_id, encargados) &&
+        enLista(v.lote?.manzana?.id, manzanasSel) &&
+        enLista(estadoVenta(v), estados) &&
+        enRango(v.fecha_venta, rangoFecha, "date") &&
+        enLista(v.es_historica ? "si" : "no", historicas) &&
+        enLista(v.origen, origenes) &&
+        enLista(v.fuente, fuentes) &&
+        enLista(v.condicion, condiciones) &&
+        coincide(buscar, p ? nombreCliente(p) : "", docs)
+      );
     });
-  }, [ventas.data, vendedor, manzana, estado]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ventas.data, encargados, manzanasSel, estados, rangoFecha, historicas, origenes, fuentes, condiciones, buscar]);
+  const { ordenadas, orden, alternar } = useOrden(filtradas, {
+    lote: (v) => `${v.lote?.manzana?.letra ?? ""}-${String(v.lote?.numero ?? 0).padStart(5, "0")}`,
+    manzana: (v) => v.lote?.manzana?.letra,
+    titular: (v) => nombreCliente(v.titulares?.find((t) => t.es_principal && !t.anulado)?.cliente),
+    fecha: (v) => v.fecha_venta,
+    condicion: (v) => v.condicion,
+    precio: (v) => Number(v.precio_acordado),
+    vendedor: (v) => (v.encargado ? nombreVendedor(v.encargado) : null),
+  });
 
   const manzanas = useMemo(() => {
     const m = new Map<string, string>();
@@ -197,31 +231,40 @@ function VentasPage() {
       }
     >
       <Card>
-        <CardHeader className="flex flex-row flex-wrap items-end gap-3">
-          <CardTitle className="mr-auto text-base">Listado</CardTitle>
-          <Filtro label="Encargado" value={vendedor} onChange={setVendedor} opciones={[["todos", "Todos"], ...(vendedores.data ?? []).filter((x) => x.tipo === "encargado").map((x) => [x.id, nombreVendedor(x)] as [string, string])]} />
-          <Filtro label="Manzana" value={manzana} onChange={setManzana} opciones={[["todas", "Todas"], ...manzanas.map(([id, l]) => [id, `Mz ${l}`] as [string, string])]} />
-          <Filtro
-            label="Estado"
-            value={estado}
-            onChange={setEstado}
-            opciones={[
-              ["activas", "Activas"],
-              ["anuladas", "Anuladas"],
-              ["todas", "Todas"],
-            ]}
-          />
+        <CardHeader className="gap-3">
+          <CardTitle className="text-base">Listado</CardTitle>
+          <BarraFiltros
+            onLimpiar={() => {
+              setEncargados([]); setManzanasSel([]); setEstados([]); setRangoFecha(RANGO_VACIO); setHistoricas([]);
+              setOrigenes([]); setFuentes([]); setCondiciones([]); setBuscar("");
+            }}
+            mostrando={filtradas.length}
+            total={ventas.data?.length ?? 0}
+          >
+            <Buscador placeholder="Titular o DNI" valor={buscar} onCambio={setBuscar} />
+            <FiltroMulti label="Encargado" opciones={(vendedores.data ?? []).filter((x) => x.tipo === "encargado").map((x) => ({ valor: x.id, etiqueta: nombreVendedor(x) }))} valor={encargados} onCambio={setEncargados} />
+            <FiltroMulti label="Manzana" opciones={manzanas.map(([id, l]) => ({ valor: id, etiqueta: `Mz ${l}` }))} valor={manzanasSel} onCambio={setManzanasSel} />
+            <FiltroMulti label="Estado" opciones={[
+              { valor: "activa", etiqueta: "Activa" }, { valor: "en_desistimiento", etiqueta: "En desistimiento" },
+              { valor: "desistida", etiqueta: "Desistida" }, { valor: "anulada", etiqueta: "Anulada" },
+            ]} valor={estados} onCambio={setEstados} />
+            <FiltroRango label="Fecha de venta" tipo="date" valor={rangoFecha} onCambio={setRangoFecha} />
+            <FiltroMulti label="Histórica" opciones={[{ valor: "si", etiqueta: "Sí" }, { valor: "no", etiqueta: "No" }]} valor={historicas} onCambio={setHistoricas} />
+            <FiltroMulti label="Origen" opciones={Object.entries(ETIQUETA_ORIGEN).map(([k, v]) => ({ valor: k, etiqueta: v }))} valor={origenes} onCambio={setOrigenes} />
+            <FiltroMulti label="Fuente" opciones={Object.entries(ETIQUETA_FUENTE).map(([k, v]) => ({ valor: k, etiqueta: v }))} valor={fuentes} onCambio={setFuentes} />
+            <FiltroMulti label="Condición" opciones={[{ valor: "contado", etiqueta: "Contado" }, { valor: "financiado", etiqueta: "Financiado" }]} valor={condiciones} onCambio={setCondiciones} />
+          </BarraFiltros>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Lote</TableHead>
-                <TableHead>Titular principal</TableHead>
-                <TableHead>Fecha</TableHead>
-                <TableHead>Condición</TableHead>
-                <TableHead className="text-right">Precio</TableHead>
-                <TableHead>Vendedor</TableHead>
+                <ColOrden clave="lote" orden={orden} onOrden={alternar}>Lote</ColOrden>
+                <ColOrden clave="titular" orden={orden} onOrden={alternar}>Titular principal</ColOrden>
+                <ColOrden clave="fecha" orden={orden} onOrden={alternar}>Fecha</ColOrden>
+                <ColOrden clave="condicion" orden={orden} onOrden={alternar}>Condición</ColOrden>
+                <ColOrden clave="precio" orden={orden} onOrden={alternar} className="text-right">Precio</ColOrden>
+                <ColOrden clave="vendedor" orden={orden} onOrden={alternar}>Vendedor</ColOrden>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -233,7 +276,7 @@ function VentasPage() {
                   </TableCell>
                 </TableRow>
               ) : null}
-              {filtradas.map((v) => {
+              {ordenadas.map((v) => {
                 const principal = v.titulares?.find((t) => t.es_principal && !t.anulado);
                 return (
                   <TableRow key={v.id}>

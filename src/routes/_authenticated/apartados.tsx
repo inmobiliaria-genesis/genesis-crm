@@ -1,6 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { BarraFiltros, Buscador, ColOrden, FiltroMulti, FiltroRango, RANGO_VACIO, coincide, enLista, enRango, useOrden } from "@/components/ListaControles";
+import { ETIQUETA_APROBACION } from "@/lib/ventas";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
@@ -93,6 +95,39 @@ function ApartadosPage() {
   });
 
   const hoy = hoyLima();
+  const [buscar, setBuscar] = useState("");
+  const [estados, setEstados] = useState<string[]>([]);
+  const [aprob, setAprob] = useState<string[]>([]);
+  const [manzanas, setManzanas] = useState<string[]>([]);
+  const [rango, setRango] = useState(RANGO_VACIO);
+  const filas = useMemo(
+    () =>
+      (reservas.data ?? []).map((r) => {
+        const et = etiquetas.data?.get(r.lote_id);
+        const manzana = r.lote?.manzana?.letra ?? et?.manzana ?? "";
+        const numero = r.lote?.numero ?? et?.numero ?? null;
+        const aprobado = r.estado_aprobacion === "aprobado";
+        const vigente = aprobado && !r.anulado && !r.convertida_a_venta_id && (r.fecha_limite ?? "") >= hoy;
+        const estado = !aprobado ? "sin_aprobar" : r.anulado ? "anulado" : r.convertida_a_venta_id ? "convertido" : vigente ? "vigente" : "vencido";
+        return { r, manzana, numero, estado, clienteTxt: r.cliente ? nombreCliente(r.cliente) : "" };
+      }),
+    [reservas.data, etiquetas.data, hoy],
+  );
+  const filtrados = filas.filter(
+    (f) =>
+      enLista(f.estado, estados) && enLista(f.r.estado_aprobacion, aprob) && enLista(f.manzana, manzanas) &&
+      enRango(f.r.fecha, rango, "date") && coincide(buscar, f.clienteTxt, f.r.cliente?.numero_documento),
+  );
+  const { ordenadas, orden, alternar } = useOrden(filtrados, {
+    lote: (f) => (f.numero == null ? null : `${f.manzana}-${String(f.numero).padStart(5, "0")}`),
+    cliente: (f) => f.clienteTxt,
+    fecha: (f) => f.r.fecha,
+    vence: (f) => f.r.fecha_limite,
+    anticipo: (f) => (f.r.monto_anticipo == null ? null : Number(f.r.monto_anticipo)),
+    aprobacion: (f) => f.r.estado_aprobacion,
+    estado: (f) => f.estado,
+  });
+  const letras = [...new Set(filas.map((f) => f.manzana).filter(Boolean))].sort();
 
   return (
     <AppShell
@@ -105,30 +140,45 @@ function ApartadosPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Listado</CardTitle>
+          <BarraFiltros
+            onLimpiar={() => { setBuscar(""); setEstados([]); setAprob([]); setManzanas([]); setRango(RANGO_VACIO); }}
+            mostrando={filtrados.length}
+            total={filas.length}
+          >
+            <Buscador placeholder="Cliente o DNI" valor={buscar} onCambio={setBuscar} />
+            <FiltroMulti label="Estado" opciones={[
+              { valor: "vigente", etiqueta: "Vigente" }, { valor: "vencido", etiqueta: "Vencido" },
+              { valor: "convertido", etiqueta: "Convertido a venta" }, { valor: "anulado", etiqueta: "Anulado" },
+              { valor: "sin_aprobar", etiqueta: "Sin aprobar" },
+            ]} valor={estados} onCambio={setEstados} />
+            <FiltroMulti label="Aprobación" opciones={Object.entries(ETIQUETA_APROBACION).map(([k, v]) => ({ valor: k, etiqueta: v }))} valor={aprob} onCambio={setAprob} />
+            <FiltroMulti label="Manzana" opciones={letras.map((l) => ({ valor: l, etiqueta: l }))} valor={manzanas} onCambio={setManzanas} />
+            <FiltroRango label="Fecha" tipo="date" valor={rango} onCambio={setRango} />
+          </BarraFiltros>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Lote</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Fecha</TableHead>
-                <TableHead>Vence</TableHead>
-                <TableHead className="text-right">Anticipo</TableHead>
-                <TableHead>Aprobación</TableHead>
-                <TableHead>Estado</TableHead>
+                <ColOrden clave="lote" orden={orden} onOrden={alternar}>Lote</ColOrden>
+                <ColOrden clave="cliente" orden={orden} onOrden={alternar}>Cliente</ColOrden>
+                <ColOrden clave="fecha" orden={orden} onOrden={alternar}>Fecha</ColOrden>
+                <ColOrden clave="vence" orden={orden} onOrden={alternar}>Vence</ColOrden>
+                <ColOrden clave="anticipo" orden={orden} onOrden={alternar} className="text-right">Anticipo</ColOrden>
+                <ColOrden clave="aprobacion" orden={orden} onOrden={alternar}>Aprobación</ColOrden>
+                <ColOrden clave="estado" orden={orden} onOrden={alternar}>Estado</ColOrden>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {reservas.data?.length === 0 ? (
+              {filtrados.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center text-sm text-muted-foreground">
-                    Todavía no hay apartados.
+                    No hay apartados que coincidan.
                   </TableCell>
                 </TableRow>
               ) : null}
-              {reservas.data?.map((r) => {
+              {ordenadas.map(({ r }) => {
                 const aprobado = r.estado_aprobacion === "aprobado";
                 const vigente = aprobado && !r.anulado && !r.convertida_a_venta_id && (r.fecha_limite ?? "") >= hoy;
                 return (
