@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { usePerfil, esAdmin } from "@/lib/sesion";
+import { BarraFiltros, Buscador, ColOrden, FiltroMulti, coincide, enLista, useOrden } from "@/components/ListaControles";
 import {
   ETIQUETA_ESTADO_VENDEDOR,
   ETIQUETA_TIPO,
@@ -49,8 +50,8 @@ function VendedoresPage() {
   const { data: perfil } = usePerfil();
   const admin = esAdmin(perfil);
   const vendedores = useVendedores();
-  const [tipo, setTipo] = useState("todos");
-  const [estado, setEstado] = useState("todos");
+  const [tipos, setTipos] = useState<string[]>([]);
+  const [estados, setEstados] = useState<string[]>([]);
   const [buscar, setBuscar] = useState("");
   const [editando, setEditando] = useState<Vendedor | "nuevo" | null>(null);
   const [ficha, setFicha] = useState<string | null>(null);
@@ -59,12 +60,17 @@ function VendedoresPage() {
   const lista = vendedores.data ?? [];
   const porId = useMemo(() => new Map(lista.map((v) => [v.id, v])), [lista]);
 
-  const filtrados = lista.filter((v) => {
-    if (tipo !== "todos" && v.tipo !== tipo) return false;
-    if (estado !== "todos" && v.estado !== estado) return false;
-    const t = buscar.trim().toLowerCase();
-    if (t && ![v.nombre, v.apodo ?? "", v.dni ?? ""].some((x) => x.toLowerCase().includes(t))) return false;
-    return true;
+  const filtrados = lista.filter(
+    (v) => enLista(v.tipo, tipos) && enLista(v.estado, estados) && coincide(buscar, v.nombre, v.apodo, v.dni),
+  );
+  const { ordenadas, orden, alternar } = useOrden(filtrados, {
+    nombre: (v) => nombreVendedor(v),
+    tipo: (v) => ETIQUETA_TIPO[v.tipo],
+    dni: (v) => v.dni,
+    telefono: (v) => v.telefono,
+    encargado: (v) => (v.encargado_id ? nombreVendedor(porId.get(v.encargado_id)) : null),
+    estado: (v) => v.estado,
+    cuenta: (v) => (v.usuario_id ? "Vinculada" : null),
   });
 
   const vFicha = ficha ? porId.get(ficha) : null;
@@ -84,46 +90,27 @@ function VendedoresPage() {
         ) : null
       }
     >
-      <div className="mb-4 grid gap-3 rounded-lg border border-border bg-card p-4 md:grid-cols-3">
-        <div className="space-y-1">
-          <Label>Tipo</Label>
-          <Select value={tipo} onValueChange={setTipo}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos</SelectItem>
-              <SelectItem value="encargado">Encargado</SelectItem>
-              <SelectItem value="promotor">Promotor</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <Label>Estado</Label>
-          <Select value={estado} onValueChange={setEstado}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos</SelectItem>
-              <SelectItem value="activo">Activo</SelectItem>
-              <SelectItem value="salio">Salió</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <Label>Buscar</Label>
-          <Input placeholder="Nombre, apodo o DNI" value={buscar} onChange={(e) => setBuscar(e.target.value)} />
-        </div>
-      </div>
+      <BarraFiltros
+        onLimpiar={() => { setTipos([]); setEstados([]); setBuscar(""); }}
+        mostrando={filtrados.length}
+        total={lista.length}
+      >
+        <Buscador placeholder="Nombre o apodo" valor={buscar} onCambio={setBuscar} />
+        <FiltroMulti label="Tipo" opciones={[{ valor: "encargado", etiqueta: "Encargado" }, { valor: "promotor", etiqueta: "Promotor" }]} valor={tipos} onCambio={setTipos} />
+        <FiltroMulti label="Estado" opciones={[{ valor: "activo", etiqueta: "Activo" }, { valor: "salio", etiqueta: "Salió" }]} valor={estados} onCambio={setEstados} />
+      </BarraFiltros>
 
       <div className="rounded-lg border border-border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nombre</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>DNI</TableHead>
-              <TableHead>Teléfono</TableHead>
-              <TableHead>Encargado</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead>Cuenta</TableHead>
+              <ColOrden clave="nombre" orden={orden} onOrden={alternar}>Nombre</ColOrden>
+              <ColOrden clave="tipo" orden={orden} onOrden={alternar}>Tipo</ColOrden>
+              <ColOrden clave="dni" orden={orden} onOrden={alternar}>DNI</ColOrden>
+              <ColOrden clave="telefono" orden={orden} onOrden={alternar}>Teléfono</ColOrden>
+              <ColOrden clave="encargado" orden={orden} onOrden={alternar}>Encargado</ColOrden>
+              <ColOrden clave="estado" orden={orden} onOrden={alternar}>Estado</ColOrden>
+              <ColOrden clave="cuenta" orden={orden} onOrden={alternar}>Cuenta</ColOrden>
               <TableHead />
             </TableRow>
           </TableHeader>
@@ -133,7 +120,7 @@ function VendedoresPage() {
             ) : filtrados.length === 0 ? (
               <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground">Sin vendedores.</TableCell></TableRow>
             ) : (
-              filtrados.map((v) => (
+              ordenadas.map((v) => (
                 <TableRow key={v.id}>
                   <TableCell>{nombreVendedor(v)}</TableCell>
                   <TableCell>{ETIQUETA_TIPO[v.tipo]}</TableCell>
