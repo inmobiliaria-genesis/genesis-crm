@@ -26,7 +26,7 @@ import { usePerfil } from "@/lib/sesion";
 import { fechaHora } from "@/lib/format";
 import { BarraFiltros, Buscador, ColOrden, FiltroMulti, FiltroRango, RANGO_VACIO, coincide, enLista, useOrden } from "@/components/ListaControles";
 
-const TABLAS = ["proyecto", "etapa", "manzana", "lote", "perfil", "config", "vendedor", "venta", "pago"];
+const TABLAS = ["proyecto", "etapa", "manzana", "lote", "plano", "lote_ubicacion", "perfil", "config", "vendedor", "cliente", "lead", "reserva", "venta", "venta_titular", "cuota", "pago", "pago_aplicacion", "comision", "desistimiento", "desistimiento_devolucion", "gasto", "gasto_categoria", "gasto_subcategoria", "personal", "planilla_linea", "deuda", "deuda_abono"];
 
 export const Route = createFileRoute("/_authenticated/bitacora")({
   head: () => ({
