@@ -29,6 +29,8 @@ import { ETIQUETA_CUOTA } from "@/lib/cobranza";
 import { nombreCliente, documentoCliente } from "@/lib/ventas";
 import { fecha, soles } from "@/lib/format";
 import { usePerfil, puedeCobrar } from "@/lib/sesion";
+import { nombreVendedor, useVendedores } from "@/lib/vendedores";
+import { BarraFiltros, Buscador, ColOrden, FiltroMulti, FiltroRango, RANGO_VACIO, coincide, enLista, enRango, useOrden } from "@/components/ListaControles";
 
 export const Route = createFileRoute("/_authenticated/cobranza")({
   head: () => ({
@@ -55,8 +57,13 @@ function CobranzaPage() {
   const navigate = useNavigate();
   const { data: perfil } = usePerfil();
   const [busqueda, setBusqueda] = useState("");
-  const [estado, setEstado] = useState("todas");
-  const [soloVencidas, setSoloVencidas] = useState("no");
+  const [estados, setEstados] = useState<string[]>([]);
+  const [plazos, setPlazos] = useState<string[]>([]);
+  const [encargados, setEncargados] = useState<string[]>([]);
+  const [manzanas, setManzanas] = useState<string[]>([]);
+  const [rango, setRango] = useState(RANGO_VACIO);
+  const [recibido, setRecibido] = useState<string[]>([]);
+  const vendedores = useVendedores();
   const [pagoVenta, setPagoVenta] = useState<{ ventaId: string; cuotaId: string } | null>(null);
 
   const cuotas = useQuery({
@@ -65,7 +72,7 @@ function CobranzaPage() {
       const { data, error } = await supabase
         .from("cuota")
         .select(
-          "id, numero, fecha_vencimiento, monto_vigente, venta_id, venta:venta_id(id, anulado, lote:lote_id(numero, manzana:manzana_id(letra)), titulares:venta_titular(es_principal, anulado, cliente:cliente_id(nombres, apellidos, tipo_documento, numero_documento))), aplicaciones:pago_aplicacion(monto_aplicado, anulado, pago:pago_id(anulado, recibido_por))",
+          "id, numero, fecha_vencimiento, monto_vigente, venta_id, venta:venta_id(id, anulado, encargado_id, lote:lote_id(numero, manzana:manzana_id(letra)), titulares:venta_titular(es_principal, anulado, cliente:cliente_id(nombres, apellidos, tipo_documento, numero_documento))), aplicaciones:pago_aplicacion(monto_aplicado, anulado, pago:pago_id(anulado, recibido_por))",
         )
         .eq("anulado", false)
         .order("fecha_vencimiento")
@@ -98,6 +105,8 @@ function CobranzaPage() {
             vencida: Boolean(e?.vencida),
             lote: `Mz ${c.venta?.lote?.manzana?.letra ?? "?"} · Lote ${c.venta?.lote?.numero ?? "?"}`,
             numeroLote: String(c.venta?.lote?.numero ?? ""),
+            manzana: c.venta?.lote?.manzana?.letra ?? "",
+            encargado_id: (c.venta as { encargado_id?: string | null } | null)?.encargado_id ?? null,
             cliente: nombreCliente(principal?.cliente),
             documento: documentoCliente(principal?.cliente),
           };
@@ -106,19 +115,31 @@ function CobranzaPage() {
   });
 
   const filtradas = useMemo(() => {
-    const b = busqueda.trim().toLowerCase();
     return (cuotas.data ?? []).filter((c) => {
-      if (estado !== "todas" && c.estado !== estado) return false;
-      if (soloVencidas === "si" && !c.vencida) return false;
-      if (!b) return true;
+      const plazo = c.vencida ? "vencida" : c.saldo > 0.005 ? "por_vencer" : "pagada";
+      const rec = [c.pagado_vendedor > 0.005 ? "vendedor" : "", c.monto_pagado - c.pagado_vendedor > 0.005 ? "inmobiliaria" : ""];
       return (
-        c.cliente.toLowerCase().includes(b) ||
-        c.documento.toLowerCase().includes(b) ||
-        c.numeroLote.includes(b) ||
-        c.lote.toLowerCase().includes(b)
+        enLista(c.estado, estados) &&
+        enLista(plazo, plazos) &&
+        enLista(c.encargado_id, encargados) &&
+        enLista(c.manzana, manzanas) &&
+        enRango(c.fecha_vencimiento, rango, "date") &&
+        (recibido.length === 0 || rec.some((r) => r && recibido.includes(r))) &&
+        coincide(busqueda, c.cliente, c.documento)
       );
     });
-  }, [cuotas.data, busqueda, estado, soloVencidas]);
+  }, [cuotas.data, busqueda, estados, plazos, encargados, manzanas, rango, recibido]);
+  const { ordenadas, orden, alternar } = useOrden(filtradas, {
+    lote: (c) => `${c.manzana}-${c.numeroLote.padStart(5, "0")}`,
+    cliente: (c) => c.cliente,
+    cuota: (c) => c.numero,
+    vencimiento: (c) => c.fecha_vencimiento,
+    monto: (c) => c.monto_vigente,
+    pagado: (c) => c.monto_pagado,
+    saldo: (c) => Math.max(c.saldo, 0),
+    estado: (c) => c.estado,
+  });
+  const letras = [...new Set((cuotas.data ?? []).map((c) => c.manzana).filter(Boolean))].sort();
 
   const totalSaldo = filtradas.reduce((t, c) => t + Math.max(c.saldo, 0), 0);
   const totalInmobiliaria = filtradas.reduce((t, c) => t + c.monto_pagado - c.pagado_vendedor, 0);
@@ -127,55 +148,34 @@ function CobranzaPage() {
   return (
     <AppShell titulo="Cobranza" descripcion="Cuotas, pagos y saldos por cobrar">
       <Card>
-        <CardHeader className="flex flex-row flex-wrap items-end gap-3">
-          <CardTitle className="mr-auto text-base">Cuotas</CardTitle>
-          <div className="w-64">
-            <Label className="text-xs">Buscar</Label>
-            <Input
-              placeholder="Cliente, documento o número de lote"
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-            />
-          </div>
-          <div className="w-40">
-            <Label className="text-xs">Estado</Label>
-            <Select value={estado} onValueChange={setEstado}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todas">Todas</SelectItem>
-                <SelectItem value="pendiente">Pendiente</SelectItem>
-                <SelectItem value="parcial">Parcial</SelectItem>
-                <SelectItem value="pagada">Pagada</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="w-40">
-            <Label className="text-xs">Vencidas</Label>
-            <Select value={soloVencidas} onValueChange={setSoloVencidas}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="no">Todas</SelectItem>
-                <SelectItem value="si">Solo vencidas</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <CardHeader className="gap-3">
+          <CardTitle className="text-base">Cuotas</CardTitle>
+          <BarraFiltros
+            onLimpiar={() => { setBusqueda(""); setEstados([]); setPlazos([]); setEncargados([]); setManzanas([]); setRango(RANGO_VACIO); setRecibido([]); }}
+            mostrando={filtradas.length}
+            total={cuotas.data?.length ?? 0}
+          >
+            <Buscador placeholder="Cliente o DNI" valor={busqueda} onCambio={setBusqueda} />
+            <FiltroMulti label="Vencimiento" opciones={[{ valor: "vencida", etiqueta: "Vencidas" }, { valor: "por_vencer", etiqueta: "Por vencer" }, { valor: "pagada", etiqueta: "Sin saldo" }]} valor={plazos} onCambio={setPlazos} />
+            <FiltroMulti label="Estado" opciones={[{ valor: "pendiente", etiqueta: "Pendiente" }, { valor: "parcial", etiqueta: "Parcial" }, { valor: "pagada", etiqueta: "Pagada" }]} valor={estados} onCambio={setEstados} />
+            <FiltroMulti label="Encargado" opciones={(vendedores.data ?? []).filter((x) => x.tipo === "encargado").map((x) => ({ valor: x.id, etiqueta: nombreVendedor(x) }))} valor={encargados} onCambio={setEncargados} />
+            <FiltroMulti label="Manzana" opciones={letras.map((l) => ({ valor: l, etiqueta: `Mz ${l}` }))} valor={manzanas} onCambio={setManzanas} />
+            <FiltroRango label="Fecha de vencimiento" tipo="date" valor={rango} onCambio={setRango} />
+            <FiltroMulti label="Recibido por" opciones={[{ valor: "vendedor", etiqueta: "Vendedor" }, { valor: "inmobiliaria", etiqueta: "Inmobiliaria" }]} valor={recibido} onCambio={setRecibido} />
+          </BarraFiltros>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Lote</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Cuota</TableHead>
-                <TableHead>Vencimiento</TableHead>
-                <TableHead className="text-right">Monto</TableHead>
-                <TableHead className="text-right">Pagado</TableHead>
-                <TableHead className="text-right">Saldo</TableHead>
-                <TableHead>Estado</TableHead>
+                <ColOrden clave="lote" orden={orden} onOrden={alternar}>Lote</ColOrden>
+                <ColOrden clave="cliente" orden={orden} onOrden={alternar}>Cliente</ColOrden>
+                <ColOrden clave="cuota" orden={orden} onOrden={alternar}>Cuota</ColOrden>
+                <ColOrden clave="vencimiento" orden={orden} onOrden={alternar}>Vencimiento</ColOrden>
+                <ColOrden clave="monto" orden={orden} onOrden={alternar} className="text-right">Monto</ColOrden>
+                <ColOrden clave="pagado" orden={orden} onOrden={alternar} className="text-right">Pagado</ColOrden>
+                <ColOrden clave="saldo" orden={orden} onOrden={alternar} className="text-right">Saldo</ColOrden>
+                <ColOrden clave="estado" orden={orden} onOrden={alternar}>Estado</ColOrden>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
@@ -193,7 +193,7 @@ function CobranzaPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filtradas.map((c) => (
+                ordenadas.map((c) => (
                   <TableRow key={c.id}>
                     <TableCell>{c.lote}</TableCell>
                     <TableCell>
