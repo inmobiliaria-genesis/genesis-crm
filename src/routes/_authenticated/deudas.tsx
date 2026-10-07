@@ -1,3 +1,4 @@
+import { ColOrden, coincide, useOrden } from "@/components/ListaControles";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -87,6 +88,7 @@ function DeudasPage() {
   const [fEst, setFEst] = useState("con_saldo");
   const [fDesde, setFDesde] = useState("");
   const [fHasta, setFHasta] = useState("");
+  const [buscar, setBuscar] = useState("");
   const [editando, setEditando] = useState<Deuda | "nueva" | null>(null);
   const [detalle, setDetalle] = useState<Deuda | null>(null);
   const [eliminar, setEliminar] = useState<Deuda | null>(null);
@@ -151,14 +153,24 @@ function DeudasPage() {
   const hoy = hoyLima();
   const en7 = sumarDias(hoy, 7);
 
-  const visibles = filas.filter((f) => {
+  const visiblesBase = filas.filter((f) => {
     if (fTipo && f.tipo !== fTipo) return false;
     if (fAcr && f.acreedor !== fAcr) return false;
     if (fEst === "con_saldo" && f.saldo <= 0) return false;
     if (fEst && fEst !== "con_saldo" && fEst !== "todas" && f.estado !== fEst) return false;
     if (fDesde && (!f.vencimiento || f.vencimiento < fDesde)) return false;
     if (fHasta && (!f.vencimiento || f.vencimiento > fHasta)) return false;
-    return true;
+    return coincide(buscar, f.acreedor, f.concepto);
+  });
+  const { ordenadas: visibles, orden, alternar } = useOrden(visiblesBase, {
+    tipo: (f) => TIPOS[f.tipo] ?? f.tipo,
+    acreedor: (f) => f.acreedor,
+    concepto: (f) => f.concepto,
+    total: (f) => f.total,
+    abonado: (f) => f.abonado,
+    saldo: (f) => f.saldo,
+    vence: (f) => f.vencimiento,
+    estado: (f) => f.estado,
   });
 
   const conSaldo = filas.filter((f) => f.saldo > 0);
@@ -207,7 +219,8 @@ function DeudasPage() {
         </Card>
       </div>
 
-      <div className="mt-6 grid gap-3 md:grid-cols-5">
+      <div className="mt-6 grid gap-3 md:grid-cols-4">
+        <div className="space-y-1"><Label>Buscar</Label><Input placeholder="Acreedor o concepto" value={buscar} onChange={(e) => setBuscar(e.target.value)} /></div>
         <div className="space-y-1"><Label>Tipo</Label>
           <select className={CLASE_SELECT} value={fTipo} onChange={(e) => setFTipo(e.target.value)}>
             <option value="">Todos</option>
@@ -231,15 +244,23 @@ function DeudasPage() {
         </div>
         <div className="space-y-1"><Label>Vence desde</Label><Input type="date" value={fDesde} onChange={(e) => setFDesde(e.target.value)} /></div>
         <div className="space-y-1"><Label>Vence hasta</Label><Input type="date" value={fHasta} onChange={(e) => setFHasta(e.target.value)} /></div>
+        <div className="flex items-end"><Button variant="outline" onClick={() => { setBuscar(""); setFTipo(""); setFAcr(""); setFEst("con_saldo"); setFDesde(""); setFHasta(""); }}>Limpiar filtros</Button></div>
       </div>
+      <p className="mt-2 text-sm text-muted-foreground">Mostrando <span className="num">{visibles.length}</span> de <span className="num">{filas.length}</span></p>
 
       <div className="mt-4 rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Tipo</TableHead><TableHead>Acreedor</TableHead><TableHead>Concepto</TableHead>
-              <TableHead className="text-right">Monto total</TableHead><TableHead className="text-right">Abonado</TableHead>
-              <TableHead className="text-right">Saldo</TableHead><TableHead>Vencimiento</TableHead><TableHead>Estado</TableHead><TableHead />
+              <ColOrden clave="tipo" orden={orden} onOrden={alternar}>Tipo</ColOrden>
+              <ColOrden clave="acreedor" orden={orden} onOrden={alternar}>Acreedor</ColOrden>
+              <ColOrden clave="concepto" orden={orden} onOrden={alternar}>Concepto</ColOrden>
+              <ColOrden clave="total" orden={orden} onOrden={alternar} className="text-right">Monto total</ColOrden>
+              <ColOrden clave="abonado" orden={orden} onOrden={alternar} className="text-right">Abonado</ColOrden>
+              <ColOrden clave="saldo" orden={orden} onOrden={alternar} className="text-right">Saldo</ColOrden>
+              <ColOrden clave="vence" orden={orden} onOrden={alternar}>Vencimiento</ColOrden>
+              <ColOrden clave="estado" orden={orden} onOrden={alternar}>Estado</ColOrden>
+              <TableHead />
             </TableRow>
           </TableHeader>
           <TableBody>

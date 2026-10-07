@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { BarraFiltros, ColOrden, FiltroMulti, enLista, useOrden } from "@/components/ListaControles";
 import { toast } from "sonner";
 import { AlertTriangle, Plus, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -91,9 +92,9 @@ function ComisionesPage() {
   const puedeVer = !!perfil;
   const qc = useQueryClient();
   const vendedores = useVendedores();
-  const [fEnc, setFEnc] = useState(TODOS);
-  const [fTipo, setFTipo] = useState(TODOS);
-  const [fEstado, setFEstado] = useState(TODOS);
+  const [fEnc, setFEnc] = useState<string[]>([]);
+  const [fTipo, setFTipo] = useState<string[]>([]);
+  const [fEstado, setFEstado] = useState<string[]>([]);
   const [fMes, setFMes] = useState("");
   const [pagando, setPagando] = useState<string | null>(null);
   const [cambiando, setCambiando] = useState<{ id: string; estado: "anulada" | "perdida" | "pendiente" | "por_pagar" } | null>(null);
@@ -164,13 +165,22 @@ function ComisionesPage() {
     () =>
       (comisiones.data ?? []).filter(
         (c) =>
-          (fEnc === TODOS || c.encargado_id === fEnc) &&
-          (fTipo === TODOS || c.tipo === fTipo) &&
-          (fEstado === TODOS || c.estado === fEstado) &&
+          enLista(c.encargado_id, fEnc) &&
+          enLista(c.tipo, fTipo) &&
+          enLista(c.estado, fEstado) &&
           (!fMes || mesDe(c) === fMes),
       ),
     [comisiones.data, fEnc, fTipo, fEstado, fMes],
   );
+  const { ordenadas, orden, alternar } = useOrden(filtradas, {
+    generada: (c) => c.fecha_generada,
+    encargado: (c) => nombreVendedor(c.encargado),
+    tipo: (c) => tipoDe(c as { tipo: string; modalidad?: string | null }),
+    venta: (c) => (c.venta?.lote ? `${c.venta.lote.manzana?.letra ?? ""}-${String(c.venta.lote.numero).padStart(5, "0")}` : null),
+    mes: (c) => mesDe(c),
+    monto: (c) => Number(c.monto),
+    estado: (c) => ETQ_ESTADO[c.estado] ?? c.estado,
+  });
   const totales = useMemo(() => {
     const t: Record<string, number> = {};
     filtradas.forEach((c) => (t[c.estado] = (t[c.estado] ?? 0) + Number(c.monto)));
@@ -228,7 +238,7 @@ function ComisionesPage() {
                     <TableRow>
                       <TableHead>Lote</TableHead>
                       <TableHead>Fecha de venta</TableHead>
-                      <TableHead>Encargado</TableHead>
+                      <ColOrden clave="encargado" orden={orden} onOrden={alternar}>Encargado</ColOrden>
                       <TableHead />
                     </TableRow>
                   </TableHeader>
@@ -289,16 +299,19 @@ function ComisionesPage() {
           </CardContent>
         </Card>
 
-        <div className="flex flex-wrap items-end gap-3">
-          <Filtro label="Encargado" valor={fEnc} onChange={setFEnc}
-            opciones={encargados.map((e) => [e.id, nombreVendedor(e)])} />
-          <Filtro label="Tipo" valor={fTipo} onChange={setFTipo} opciones={Object.entries(ETQ_TIPO)} />
-          <Filtro label="Estado" valor={fEstado} onChange={setFEstado} opciones={Object.entries(ETQ_ESTADO)} />
+        <BarraFiltros
+          onLimpiar={() => { setFEnc([]); setFTipo([]); setFEstado([]); setFMes(""); }}
+          mostrando={filtradas.length}
+          total={comisiones.data?.length ?? 0}
+        >
+          <FiltroMulti label="Encargado" opciones={encargados.map((e) => ({ valor: e.id, etiqueta: nombreVendedor(e) }))} valor={fEnc} onCambio={setFEnc} />
+          <FiltroMulti label="Tipo" opciones={Object.entries(ETQ_TIPO).map(([k, v]) => ({ valor: k, etiqueta: v }))} valor={fTipo} onCambio={setFTipo} />
+          <FiltroMulti label="Estado" opciones={Object.entries(ETQ_ESTADO).map(([k, v]) => ({ valor: k, etiqueta: v }))} valor={fEstado} onCambio={setFEstado} />
           <div className="space-y-1">
-            <Label className="text-xs">Mes</Label>
-            <Input type="month" className="w-40" value={fMes} onChange={(e) => setFMes(e.target.value)} />
+            <Label>Mes</Label>
+            <Input type="month" value={fMes} onChange={(e) => setFMes(e.target.value)} />
           </div>
-        </div>
+        </BarraFiltros>
 
         <div className="flex flex-wrap gap-2">
           {ESTADOS.map((e) => (
@@ -311,19 +324,19 @@ function ComisionesPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Generada</TableHead>
+              <ColOrden clave="generada" orden={orden} onOrden={alternar}>Generada</ColOrden>
               <TableHead>Encargado</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Venta</TableHead>
-              <TableHead>Mes</TableHead>
-              <TableHead className="text-right">Monto</TableHead>
-              <TableHead>Estado</TableHead>
+              <ColOrden clave="tipo" orden={orden} onOrden={alternar}>Tipo</ColOrden>
+              <ColOrden clave="venta" orden={orden} onOrden={alternar}>Venta</ColOrden>
+              <ColOrden clave="mes" orden={orden} onOrden={alternar}>Mes</ColOrden>
+              <ColOrden clave="monto" orden={orden} onOrden={alternar} className="text-right">Monto</ColOrden>
+              <ColOrden clave="estado" orden={orden} onOrden={alternar}>Estado</ColOrden>
               <TableHead>Detalle</TableHead>
               {admin ? <TableHead /> : null}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtradas.map((c) => (
+            {ordenadas.map((c) => (
               <TableRow key={c.id} className={c.estado === "anulada" ? "opacity-50" : ""}>
                 <TableCell>{fecha(c.fecha_generada)}</TableCell>
                 <TableCell>{nombreVendedor(c.encargado)}</TableCell>

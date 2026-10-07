@@ -1,3 +1,4 @@
+import { ColOrden, coincide, useOrden } from "@/components/ListaControles";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
@@ -78,6 +79,7 @@ function LeadsPage() {
   const [fVendedor, setFVendedor] = useState("todos");
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
+  const [buscar, setBuscar] = useState("");
   const [nuevo, setNuevo] = useState(false);
   const [detalle, setDetalle] = useState<string | null>(null);
   const [ofrecerApartado, setOfrecerApartado] = useState<LeadFila | null>(null);
@@ -104,6 +106,7 @@ function LeadsPage() {
       .filter((l) => fVendedor === "todos" || l.vendedor_id === fVendedor)
       .filter((l) => !desde || l.fecha_contacto >= desde)
       .filter((l) => !hasta || l.fecha_contacto <= hasta)
+      .filter((l) => coincide(buscar, l.nombre, l.telefono))
       .sort((a, b) => {
         const ga = grupoAccion(a, hoy);
         const gb = grupoAccion(b, hoy);
@@ -112,7 +115,16 @@ function LeadsPage() {
           return a.proxima_fecha.localeCompare(b.proxima_fecha);
         return b.fecha_contacto.localeCompare(a.fecha_contacto);
       });
-  }, [leads.data, fEtapa, fOrigen, fVendedor, desde, hasta, hoy]);
+  }, [leads.data, fEtapa, fOrigen, fVendedor, desde, hasta, hoy, buscar]);
+  const { ordenadas, orden, alternar } = useOrden(filas, {
+    nombre: (l) => l.nombre,
+    telefono: (l) => l.telefono,
+    origen: (l) => l.origen ?? null,
+    vendedor: (l) => (l.vendedor ? nombreVendedor(l.vendedor) : null),
+    etapa: (l) => ETIQUETA_ETAPA[l.etapa] ?? l.etapa,
+    proxima: (l) => l.proxima_fecha,
+    dias: (l) => l.fecha_contacto,
+  });
 
   async function actualizar(id: string, cambios: Partial<Lead>) {
     const { error } = await supabase.from("lead").update(cambios).eq("id", id);
@@ -139,7 +151,11 @@ function LeadsPage() {
       acciones={<Button onClick={() => setNuevo(true)}>+ Nuevo lead</Button>}
     >
       <Card className="mb-4">
-        <CardContent className="grid gap-3 pt-6 sm:grid-cols-2 lg:grid-cols-5">
+        <CardContent className="grid gap-3 pt-6 sm:grid-cols-2 lg:grid-cols-6">
+          <div>
+            <Label>Buscar</Label>
+            <Input placeholder="Nombre o teléfono" value={buscar} onChange={(e) => setBuscar(e.target.value)} />
+          </div>
           <div>
             <Label>Etapa</Label>
             <Select value={fEtapa} onValueChange={setFEtapa}>
@@ -180,6 +196,10 @@ function LeadsPage() {
             <Label>Hasta</Label>
             <Input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} />
           </div>
+          <div className="flex items-end">
+            <Button variant="outline" onClick={() => { setFEtapa("todas"); setFOrigen("todos"); setFVendedor("todos"); setDesde(""); setHasta(""); setBuscar(""); }}>Limpiar filtros</Button>
+          </div>
+          <p className="text-sm text-muted-foreground sm:col-span-2 lg:col-span-6">Mostrando <span className="num">{filas.length}</span> de <span className="num">{leads.data?.length ?? 0}</span></p>
         </CardContent>
       </Card>
 
@@ -188,17 +208,17 @@ function LeadsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Teléfono</TableHead>
-                <TableHead>Origen</TableHead>
-                <TableHead>Vendedor</TableHead>
-                <TableHead>Etapa</TableHead>
-                <TableHead>Próxima acción</TableHead>
-                <TableHead className="text-right">Días</TableHead>
+                <ColOrden clave="nombre" orden={orden} onOrden={alternar}>Nombre</ColOrden>
+                <ColOrden clave="telefono" orden={orden} onOrden={alternar}>Teléfono</ColOrden>
+                <ColOrden clave="origen" orden={orden} onOrden={alternar}>Origen</ColOrden>
+                <ColOrden clave="vendedor" orden={orden} onOrden={alternar}>Vendedor</ColOrden>
+                <ColOrden clave="etapa" orden={orden} onOrden={alternar}>Etapa</ColOrden>
+                <ColOrden clave="proxima" orden={orden} onOrden={alternar}>Próxima acción</ColOrden>
+                <ColOrden clave="dias" orden={orden} onOrden={alternar} className="text-right">Días</ColOrden>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filas.map((l) => {
+              {ordenadas.map((l) => {
                 const g = grupoAccion(l, hoy);
                 return (
                   <TableRow key={l.id} className={cn(g === 0 && "bg-destructive/10")}>

@@ -1,3 +1,4 @@
+import { ColOrden, coincide, useOrden } from "@/components/ListaControles";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -71,6 +72,13 @@ function PlanillaPage() {
   const essalud = (lineas.data ?? []).filter((l) => l.tipo === "essalud").reduce((a, l) => a + Number(l.monto), 0);
   const total = sueldos + essalud;
   const pagado = (lineas.data ?? []).filter((l) => l.pagado).reduce((a, l) => a + Number(l.monto), 0);
+  const base = [...(lineas.data ?? [])].sort((a, b) => (a.tipo === "essalud" ? 1 : 0) - (b.tipo === "essalud" ? 1 : 0) || nombreLinea(a).localeCompare(nombreLinea(b)));
+  const { ordenadas, orden, alternar } = useOrden(base, {
+    nombre: (l) => nombreLinea(l), monto: (l) => Number(l.monto), estado: (l) => (l.pagado ? "Pagado" : "Pendiente"), pago: (l) => l.fecha_pago,
+  });
+  const ordPer = useOrden(personal.data ?? [], {
+    nombre: (p) => p.nombre, dni: (p) => p.dni, cargo: (p) => p.cargo, monto: (p) => Number(p.monto_mensual), estado: (p) => (p.activo ? "Activo" : "Inactivo"),
+  });
 
   async function generar() {
     const { data, error } = await supabase.rpc("generar_planilla", { _mes: inicioMes(mes) });
@@ -101,7 +109,6 @@ function PlanillaPage() {
     );
   }
 
-  const ordenadas = [...(lineas.data ?? [])].sort((a, b) => (a.tipo === "essalud" ? 1 : 0) - (b.tipo === "essalud" ? 1 : 0) || nombreLinea(a).localeCompare(nombreLinea(b)));
 
   return (
     <AppShell
@@ -126,10 +133,10 @@ function PlanillaPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Persona</TableHead>
-                  <TableHead className="w-40">Monto</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Pago</TableHead>
+                  <ColOrden clave="nombre" orden={orden} onOrden={alternar}>Persona</ColOrden>
+                  <ColOrden clave="monto" orden={orden} onOrden={alternar} className="w-40">Monto</ColOrden>
+                  <ColOrden clave="estado" orden={orden} onOrden={alternar}>Estado</ColOrden>
+                  <ColOrden clave="pago" orden={orden} onOrden={alternar}>Pago</ColOrden>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -177,16 +184,16 @@ function PlanillaPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>DNI</TableHead>
-                  <TableHead>Cargo</TableHead>
-                  <TableHead className="text-right">Monto mensual neto</TableHead>
-                  <TableHead>Estado</TableHead>
+                  <ColOrden clave="nombre" orden={ordPer.orden} onOrden={ordPer.alternar}>Nombre</ColOrden>
+                  <ColOrden clave="dni" orden={ordPer.orden} onOrden={ordPer.alternar}>DNI</ColOrden>
+                  <ColOrden clave="cargo" orden={ordPer.orden} onOrden={ordPer.alternar}>Cargo</ColOrden>
+                  <ColOrden clave="monto" orden={ordPer.orden} onOrden={ordPer.alternar} className="text-right">Monto mensual neto</ColOrden>
+                  <ColOrden clave="estado" orden={ordPer.orden} onOrden={ordPer.alternar}>Estado</ColOrden>
                   <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(personal.data ?? []).map((p) => (
+                {ordPer.ordenadas.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell>{p.nombre}</TableCell>
                     <TableCell>{p.dni ?? "—"}</TableCell>
