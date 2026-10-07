@@ -88,6 +88,7 @@ function DeudasPage() {
   const [fEst, setFEst] = useState("con_saldo");
   const [fDesde, setFDesde] = useState("");
   const [fHasta, setFHasta] = useState("");
+  const [buscar, setBuscar] = useState("");
   const [editando, setEditando] = useState<Deuda | "nueva" | null>(null);
   const [detalle, setDetalle] = useState<Deuda | null>(null);
   const [eliminar, setEliminar] = useState<Deuda | null>(null);
@@ -165,7 +166,7 @@ function DeudasPage() {
     tipo: (f) => TIPOS[f.tipo] ?? f.tipo,
     acreedor: (f) => f.acreedor,
     concepto: (f) => f.concepto,
-    total: (f) => Number(f.monto_total),
+    total: (f) => f.total,
     abonado: (f) => f.abonado,
     saldo: (f) => f.saldo,
     vence: (f) => f.vencimiento,
