@@ -1,6 +1,7 @@
 import { useNavigate, createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { BarraFiltros, Buscador, ColOrden, FiltroMulti, FiltroRango, RANGO_VACIO, enLista, enRango, useOrden } from "@/components/ListaControles";
 import { Plus, Upload, Pencil, AlertTriangle, Download, FileDown, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
@@ -80,21 +81,46 @@ function LotesRuta() {
 function LotesAsesor() {
   const navigate = useNavigate();
   const lotes = useLotesConEstado(true);
+  const [manzanas, setManzanas] = useState<string[]>([]);
+  const [rangoPrecio, setRangoPrecio] = useState(RANGO_VACIO);
+  const [rangoArea, setRangoArea] = useState(RANGO_VACIO);
   const [texto, setTexto] = useState("");
-  const filas = (lotes.data ?? []).filter((l) => !texto.trim() || l.etiqueta.toLowerCase().includes(texto.trim().toLowerCase()));
+  const todos = lotes.data ?? [];
+  const filtradas = todos.filter(
+    (l) =>
+      enLista(l.manzana_letra, manzanas) && enRango(l.precio_lista, rangoPrecio) && enRango(l.area_m2, rangoArea) &&
+      (!texto.trim() || String(l.numero).includes(texto.trim())),
+  );
+  const { ordenadas: filas, orden, alternar } = useOrden(
+    [...filtradas].sort((a, b) => a.manzana_letra.localeCompare(b.manzana_letra, "es", { numeric: true }) || a.numero - b.numero),
+    {
+      manzana: (l) => `${l.manzana_letra}-${String(l.numero).padStart(5, "0")}`,
+      lote: (l) => l.numero,
+      area: (l) => (l.area_m2 == null ? null : Number(l.area_m2)),
+      precio: (l) => (l.precio_lista == null ? null : Number(l.precio_lista)),
+    },
+  );
+  const letras = [...new Set(todos.map((l) => l.manzana_letra))].sort();
   return (
     <AppShell titulo="Lotes" descripcion="Lotes libres disponibles para apartar">
-      <div className="mb-3 max-w-xs">
-        <Input placeholder="Buscar manzana o lote" value={texto} onChange={(e) => setTexto(e.target.value)} />
-      </div>
+      <BarraFiltros
+        onLimpiar={() => { setManzanas([]); setRangoPrecio(RANGO_VACIO); setRangoArea(RANGO_VACIO); setTexto(""); }}
+        mostrando={filtradas.length}
+        total={todos.length}
+      >
+        <Buscador placeholder="N° de lote" valor={texto} onCambio={setTexto} />
+        <FiltroMulti label="Manzana" opciones={letras.map((l) => ({ valor: l, etiqueta: `Mz ${l}` }))} valor={manzanas} onCambio={setManzanas} />
+        <FiltroRango label="Precio de lista (S/)" valor={rangoPrecio} onCambio={setRangoPrecio} />
+        <FiltroRango label="Área (m²)" valor={rangoArea} onCambio={setRangoArea} />
+      </BarraFiltros>
       <div className="rounded-lg border border-border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Manzana</TableHead>
-              <TableHead>Lote</TableHead>
-              <TableHead className="text-right">Área (m²)</TableHead>
-              <TableHead className="text-right">Precio de lista</TableHead>
+              <ColOrden clave="manzana" orden={orden} onOrden={alternar}>Manzana</ColOrden>
+              <ColOrden clave="lote" orden={orden} onOrden={alternar}>Lote</ColOrden>
+              <ColOrden clave="area" orden={orden} onOrden={alternar} className="text-right">Área (m²)</ColOrden>
+              <ColOrden clave="precio" orden={orden} onOrden={alternar} className="text-right">Precio de lista</ColOrden>
               <TableHead className="text-right"></TableHead>
             </TableRow>
           </TableHeader>
@@ -162,8 +188,10 @@ function LotesPage() {
   const [etapaId, setEtapaId] = useState<string>("");
   const [manzanaId, setManzanaId] = useState<string>("");
   const [busqueda, setBusqueda] = useState("");
-  const [filtroEstado, setFiltroEstado] = useState<string>("todos");
-  const [filtroDatos, setFiltroDatos] = useState<string>("todos");
+  const [filtroEstado, setFiltroEstado] = useState<string[]>([]);
+  const [filtroDatos, setFiltroDatos] = useState<string[]>([]);
+  const [rangoPrecio, setRangoPrecio] = useState(RANGO_VACIO);
+  const [rangoArea, setRangoArea] = useState(RANGO_VACIO);
   const [verM2, setVerM2] = useState(true);
   const [orden, setOrden] = useState<Orden>(null);
   const [seleccion, setSeleccion] = useState<Set<string>>(new Set());
@@ -269,12 +297,16 @@ function LotesPage() {
 
   const filtrados = useMemo(() => {
     let lista = filas;
-    if (filtroEstado !== "todos") lista = lista.filter((l) => l.estadoVenta === filtroEstado);
-    if (filtroDatos === "pendiente") lista = lista.filter(estaPendiente);
-    if (filtroDatos === "completo") lista = lista.filter((l) => !estaPendiente(l));
+    lista = lista.filter(
+      (l) =>
+        enLista(l.estadoVenta, filtroEstado) &&
+        enLista(estaPendiente(l) ? "pendiente" : "completo", filtroDatos) &&
+        enRango(l.precio_lista, rangoPrecio) &&
+        enRango(l.area_m2, rangoArea),
+    );
     if (busqueda.trim()) {
-      const b = busqueda.trim().toLowerCase();
-      lista = lista.filter((l) => String(l.numero).includes(b) || l.manzanaLetra.toLowerCase().includes(b));
+      const b = busqueda.trim();
+      lista = lista.filter((l) => String(l.numero).includes(b));
     }
     const ordenada = [...lista];
     if (!orden) ordenada.sort(compararDefecto);
@@ -290,13 +322,14 @@ function LotesPage() {
       });
     }
     return ordenada;
-  }, [filas, filtroEstado, filtroDatos, busqueda, orden]);
+  }, [filas, filtroEstado, filtroDatos, rangoPrecio, rangoArea, busqueda, orden]);
 
   const resumen = useMemo(() => {
-    const r = { libre: 0, apartado: 0, vendido: 0, area: 0, valorLista: 0, valorVendido: 0 };
+    const r = { libre: 0, apartado: 0, vendido: 0, area: 0, valorLista: 0, valorVendido: 0, listaTodos: 0 };
     for (const l of filtrados) {
       r[l.estadoVenta]++;
       r.area += Number(l.area_m2 ?? 0);
+      r.listaTodos += Number(l.precio_lista ?? 0);
       if (l.estadoVenta === "libre") r.valorLista += Number(l.precio_lista ?? 0);
       if (l.precioVenta != null) r.valorVendido += l.precioVenta;
     }
@@ -368,7 +401,21 @@ function LotesPage() {
         </>
       }
     >
-      <div className="mb-4 grid gap-3 rounded-lg border border-border bg-card p-4 md:grid-cols-3 lg:grid-cols-6">
+      <BarraFiltros
+        onLimpiar={() => {
+          setProyectoId(""); setEtapaId(""); setManzanaId(""); setFiltroEstado([]); setFiltroDatos([]);
+          setRangoPrecio(RANGO_VACIO); setRangoArea(RANGO_VACIO); setBusqueda("");
+        }}
+        mostrando={filtrados.length}
+        total={filas.length}
+        extra={
+          <p className="text-sm text-muted-foreground">
+            Área total: <span className="num">{numero(resumen.area)} m²</span> · Precio de lista total:{" "}
+            <span className="num">{soles(resumen.listaTodos)}</span>
+          </p>
+        }
+      >
+        <Buscador placeholder="N° de lote" valor={busqueda} onCambio={setBusqueda} />
         <div className="space-y-1">
           <Label>Proyecto</Label>
           <Select value={proyectoId || "todos"} onValueChange={(v) => { setProyectoId(v === "todos" ? "" : v); limpiarSeleccion("proyecto"); }}>
@@ -399,34 +446,11 @@ function LotesPage() {
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-1">
-          <Label>Estado de venta</Label>
-          <Select value={filtroEstado} onValueChange={setFiltroEstado}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos</SelectItem>
-              <SelectItem value="libre">Libre</SelectItem>
-              <SelectItem value="apartado">Apartado</SelectItem>
-              <SelectItem value="vendido">Vendido</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <Label>Datos</Label>
-          <Select value={filtroDatos} onValueChange={setFiltroDatos}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos</SelectItem>
-              <SelectItem value="completo">Completo</SelectItem>
-              <SelectItem value="pendiente">Pendiente</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <Label>Buscar</Label>
-          <Input placeholder="N° de lote o manzana" value={busqueda} onChange={(e) => setBusqueda(e.target.value)} />
-        </div>
-      </div>
+        <FiltroMulti label="Estado de venta" opciones={[{ valor: "libre", etiqueta: "Libre" }, { valor: "apartado", etiqueta: "Apartado" }, { valor: "vendido", etiqueta: "Vendido" }]} valor={filtroEstado} onCambio={setFiltroEstado} />
+        <FiltroMulti label="Datos" opciones={[{ valor: "completo", etiqueta: "Completos" }, { valor: "pendiente", etiqueta: "Pendientes" }]} valor={filtroDatos} onCambio={setFiltroDatos} />
+        <FiltroRango label="Precio de lista (S/)" valor={rangoPrecio} onCambio={setRangoPrecio} />
+        <FiltroRango label="Área (m²)" valor={rangoArea} onCambio={setRangoArea} />
+      </BarraFiltros>
 
       <div className="mb-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {[
