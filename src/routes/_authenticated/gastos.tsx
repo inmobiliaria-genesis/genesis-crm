@@ -1,3 +1,4 @@
+import { ColOrden, coincide, useOrden } from "@/components/ListaControles";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
@@ -100,13 +101,22 @@ function GastosPage() {
   const nombreCat = (id: string | null) => cats.data?.categorias.find((c) => c.id === id)?.nombre ?? "—";
   const nombreSub = (id: string | null) => cats.data?.subcategorias.find((s) => s.id === id)?.nombre ?? "";
 
+  const [buscar, setBuscar] = useState("");
   const filtrados = useMemo(
     () =>
       (pagos.data ?? []).filter(
-        (g) => (!fCat || g.categoria_id === fCat) && (!fSub || g.subcategoria_id === fSub) && (!fMet || g.metodo === fMet),
+        (g) => (!fCat || g.categoria_id === fCat) && (!fSub || g.subcategoria_id === fSub) && (!fMet || g.metodo === fMet) &&
+          coincide(buscar, g.descripcion, g.notas),
       ),
-    [pagos.data, fCat, fSub, fMet],
+    [pagos.data, fCat, fSub, fMet, buscar],
   );
+  const { ordenadas, orden, alternar } = useOrden(filtrados, {
+    fecha: (g) => g.fecha,
+    categoria: (g) => `${nombreCat(g.categoria_id)} ${nombreSub(g.subcategoria_id)}`,
+    detalle: (g) => g.descripcion ?? g.notas ?? g.persona ?? g.trabajador,
+    metodo: (g) => etiquetaMetodo(g.metodo),
+    monto: (g) => Number(g.monto),
+  });
 
   const totalMes = (resumen.data ?? []).filter((r) => r.orden_sub === -1).reduce((a, r) => a + Number(r.pagado ?? 0), 0);
 
@@ -180,7 +190,8 @@ function GastosPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Pagos del mes</CardTitle>
-            <div className="grid gap-2 sm:grid-cols-3">
+            <div className="grid gap-2 sm:grid-cols-5">
+              <Input placeholder="Buscar en descripción o notas" value={buscar} onChange={(e) => setBuscar(e.target.value)} />
               <select className={CLASE_SELECT} value={fCat} onChange={(e) => { setFCat(e.target.value); setFSub(TODOS); }}>
                 <option value="">Todas las categorías</option>
                 {cats.data?.categorias.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
@@ -195,17 +206,19 @@ function GastosPage() {
                 <option value="">Todos los métodos</option>
                 {METODOS_PAGO.map((m) => <option key={m} value={m}>{ETIQUETA_METODO[m]}</option>)}
               </select>
+              <Button variant="outline" onClick={() => { setBuscar(""); setFCat(TODOS); setFSub(TODOS); setFMet(TODOS); }}>Limpiar filtros</Button>
             </div>
+            <p className="text-sm text-muted-foreground">Mostrando <span className="num">{filtrados.length}</span> de <span className="num">{pagos.data?.length ?? 0}</span></p>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Categoría</TableHead>
-                  <TableHead>Detalle</TableHead>
-                  <TableHead>Método</TableHead>
-                  <TableHead className="text-right">Monto</TableHead>
+                  <ColOrden clave="fecha" orden={orden} onOrden={alternar}>Fecha</ColOrden>
+                  <ColOrden clave="categoria" orden={orden} onOrden={alternar}>Categoría</ColOrden>
+                  <ColOrden clave="detalle" orden={orden} onOrden={alternar}>Detalle</ColOrden>
+                  <ColOrden clave="metodo" orden={orden} onOrden={alternar}>Método</ColOrden>
+                  <ColOrden clave="monto" orden={orden} onOrden={alternar} className="text-right">Monto</ColOrden>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -213,7 +226,7 @@ function GastosPage() {
                 {filtrados.length === 0 ? (
                   <TableRow><TableCell colSpan={6} className="text-center text-sm text-muted-foreground">Sin pagos</TableCell></TableRow>
                 ) : null}
-                {filtrados.map((g) => (
+                {ordenadas.map((g) => (
                   <TableRow key={g.id}>
                     <TableCell>{fecha(g.fecha)}</TableCell>
                     <TableCell>
