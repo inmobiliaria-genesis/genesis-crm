@@ -2296,19 +2296,40 @@ export type Database = {
         }
         Returns: undefined
       }
-      crear_venta_historica: {
-        Args: { _titulares: string[]; _total_abonado: number; _venta: Json }
-        Returns: string
-      }
-      editar_venta: {
-        Args: {
-          _cambios: Json
-          _motivo: string
-          _titulares: string[]
-          _venta_id: string
-        }
-        Returns: Json
-      }
+      crear_venta_historica:
+        | {
+            Args: { _titulares: string[]; _total_abonado: number; _venta: Json }
+            Returns: string
+          }
+        | {
+            Args: {
+              _cuotas: Json
+              _titulares: string[]
+              _total_abonado: number
+              _venta: Json
+            }
+            Returns: string
+          }
+      editar_venta:
+        | {
+            Args: {
+              _cambios: Json
+              _motivo: string
+              _titulares: string[]
+              _venta_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              _cambios: Json
+              _cuotas: Json
+              _motivo: string
+              _titulares: string[]
+              _venta_id: string
+            }
+            Returns: Json
+          }
       eliminar_cliente: {
         Args: { _cliente_id: string; _motivo: string }
         Returns: undefined
@@ -2363,7 +2384,12 @@ export type Database = {
           venta_id: string
         }[]
       }
+      monto_exigible: { Args: { _venta_id: string }; Returns: number }
       motivo_no_revertir: { Args: { _id: string }; Returns: string }
+      personalizar_cuotas: {
+        Args: { _cuotas: Json; _motivo: string; _venta_id: string }
+        Returns: undefined
+      }
       plano_asesor: {
         Args: { _plano_id: string }
         Returns: {
@@ -2395,6 +2421,20 @@ export type Database = {
         }
         Returns: undefined
       }
+      registrar_pago_excedente: {
+        Args: {
+          _fecha: string
+          _metodo: string
+          _modo: string
+          _monto: number
+          _motivo: string
+          _notas: string
+          _operacion: string
+          _recibido_por: string
+          _venta_id: string
+        }
+        Returns: string
+      }
       regularizar_venta: {
         Args: {
           _fecha: string
@@ -2404,6 +2444,15 @@ export type Database = {
           _venta_id: string
         }
         Returns: string
+      }
+      reprogramar_cronograma: {
+        Args: {
+          _modo: string
+          _motivo: string
+          _params: Json
+          _venta_id: string
+        }
+        Returns: undefined
       }
       resumen_gastos: {
         Args: { _mes: string }
@@ -2438,6 +2487,22 @@ export type Database = {
           numero: number
         }[]
       }
+      simular_cuotas_personalizadas: {
+        Args: {
+          _cuotas: Json
+          _fecha_venta: string
+          _inicial: number
+          _venta_id: string
+        }
+        Returns: {
+          estado: string
+          fecha_vencimiento: string
+          monto: number
+          numero: number
+          pagado: number
+          saldo: number
+        }[]
+      }
       simular_desistimiento: {
         Args: { _fecha: string; _monto_descontar?: number; _venta_id: string }
         Returns: {
@@ -2463,6 +2528,35 @@ export type Database = {
           estado: string
           fecha_vencimiento: string
           monto: number
+          numero: number
+          pagado: number
+          saldo: number
+        }[]
+      }
+      simular_pago_excedente: {
+        Args: {
+          _fecha: string
+          _modo: string
+          _monto: number
+          _venta_id: string
+        }
+        Returns: {
+          estado: string
+          fecha_vencimiento: string
+          monto: number
+          nueva: boolean
+          numero: number
+          pagado: number
+          saldo: number
+        }[]
+      }
+      simular_reprogramacion: {
+        Args: { _modo: string; _params: Json; _venta_id: string }
+        Returns: {
+          estado: string
+          fecha_vencimiento: string
+          monto: number
+          nueva: boolean
           numero: number
           pagado: number
           saldo: number
