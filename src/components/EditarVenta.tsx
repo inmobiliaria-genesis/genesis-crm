@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { SelectorCliente } from "@/components/SelectorCliente";
 import { CampoSoles } from "@/components/CampoSoles";
+import { EditorCuotas, TablaVista, aJson, type FilaCuota, type FilaVista } from "@/components/Reprogramar";
 import { CamposMetodo } from "@/components/MetodoPago";
 import { CampoOrigen, origenAColumnas, origenDeFila, validarOrigen, type Origen } from "@/lib/leads";
 import { nombreCliente, documentoCliente, useLotesConEstado, type Cliente, type Venta } from "@/lib/ventas";
@@ -130,6 +131,32 @@ export function DialogoEditarVenta({
     },
   });
 
+  const [personalizar, setPersonalizar] = useState(false);
+  const [filasCuotas, setFilasCuotas] = useState<FilaCuota[]>([]);
+  const usaPersonal = personalizar && condicion === "financiado" && !bloqueadoDesistimiento;
+  const saldoCuotas = Math.round((precioNum - inicialNum) * 100) / 100;
+  async function abrirPersonalizar(on: boolean) {
+    setPersonalizar(on);
+    if (!on) return;
+    const { data } = await rpc("simular_cronograma", {
+      _precio_acordado: precioNum, _inicial: inicialNum, _plazo_meses: plazoNum,
+      _fecha_venta: fechaVenta, _fecha_primera_cuota: primeraCuota || fechaVenta, _condicion: condicion,
+    });
+    setFilasCuotas(((data ?? []) as { numero: number; fecha_vencimiento: string; monto: number }[])
+      .filter((c) => c.numero >= 1).map((c) => ({ fecha: c.fecha_vencimiento, monto: String(c.monto), editado: false })));
+  }
+  const vistaPersonal = useQuery({
+    queryKey: ["simular-personal", venta.id, inicialNum, fechaVenta, JSON.stringify(filasCuotas)],
+    enabled: usaPersonal,
+    queryFn: async () => {
+      const { data, error } = await rpc("simular_cuotas_personalizadas", {
+        _venta_id: venta.id, _inicial: inicialNum, _fecha_venta: fechaVenta, _cuotas: aJson(filasCuotas),
+      });
+      if (error) throw new Error(error.message);
+      return data as FilaVista[];
+    },
+  });
+
   const pagosTotal = useQuery({
     queryKey: ["pagos-total-venta", venta.id],
     queryFn: async () => {
@@ -151,6 +178,10 @@ export function DialogoEditarVenta({
     }
     if (excede) { toast.error(`Los pagos registrados (${soles(pagosTotal.data)}) superan el nuevo precio acordado`); return; }
     if (inicialBaja && !hist) { toast.error(`La cuota inicial mínima es ${soles(inicialMinima.data)}.`); return; }
+    if (usaPersonal) {
+      const suma = filasCuotas.reduce((t, f) => t + Number(f.monto || 0), 0);
+      if (Math.abs(suma - saldoCuotas) > 0.005) { toast.error(`La suma de las cuotas no coincide con el precio menos la inicial. Diferencia: ${soles(suma - saldoCuotas)}`); return; }
+    }
     const titulares = [principal.id, ...adicionales.map((c) => c.id)];
     setGuardando(true);
     const { data, error } = await rpc("editar_venta", {
@@ -171,6 +202,7 @@ export function DialogoEditarVenta({
       },
       _titulares: titulares.join() === titOriginal.join() ? null : titulares,
       _motivo: motivo.trim(),
+      _cuotas: usaPersonal ? aJson(filasCuotas) : null,
     });
     setGuardando(false);
     if (error) { toast.error("No se pudo guardar", { description: error.message }); return; }
@@ -304,7 +336,22 @@ export function DialogoEditarVenta({
             <Input type="date" value={primeraCuota} onChange={(e) => setPrimeraCuota(e.target.value)} disabled={bloqueadoDesistimiento} />
           </div>
 
-          {cambiaCrono && !bloqueadoDesistimiento ? (
+          {condicion === "financiado" && !bloqueadoDesistimiento ? (
+            <div className="sm:col-span-2 space-y-2">
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={personalizar} onChange={(e) => abrirPersonalizar(e.target.checked)} />
+                Personalizar cuotas
+              </label>
+              {usaPersonal ? (
+                <>
+                  <EditorCuotas filas={filasCuotas} onCambio={setFilasCuotas} total={saldoCuotas} etiquetaTotal="Precio menos inicial" />
+                  <p className="text-sm font-medium">Vista previa con los pagos aplicados</p>
+                  <TablaVista filas={vistaPersonal.data ?? []} />
+                </>
+              ) : null}
+            </div>
+          ) : null}
+          {cambiaCrono && !bloqueadoDesistimiento && !usaPersonal ? (
             <div className="sm:col-span-2">
               <p className="mb-2 text-sm font-medium">Vista previa del cronograma nuevo con los pagos aplicados</p>
               {excede ? (

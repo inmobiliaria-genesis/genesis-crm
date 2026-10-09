@@ -49,6 +49,7 @@ import { ETIQUETA_CUOTA, useCuotasDeVenta, usePagosDeVenta, llevaOperacion, valo
 import { MostrarMetodo, DialogoEditarMetodo, CamposMetodo } from "@/components/MetodoPago";
 import { DialogoEliminar } from "@/components/DialogoEliminar";
 import { DialogoEditarVenta } from "@/components/EditarVenta";
+import { DialogoReprogramar, EditorCuotas, aJson, rpcSb, type FilaCuota } from "@/components/Reprogramar";
 import { CampoSoles } from "@/components/CampoSoles";
 import { BarraFiltros, Buscador, ColOrden, FiltroMulti, FiltroRango, RANGO_VACIO, coincide, enLista, enRango, useOrden } from "@/components/ListaControles";
 import { ETIQUETA_FUENTE, ETIQUETA_ORIGEN } from "@/lib/leads";
@@ -540,6 +541,22 @@ function DialogoVenta({
   });
 
   const total = (cronograma.data ?? []).reduce((t, c) => t + Number(c.monto), 0);
+  const [personalizar, setPersonalizar] = useState(false);
+  const [filasCuotas, setFilasCuotas] = useState<FilaCuota[]>([]);
+  const usaPersonal = personalizar && esAdminVenta && condicion === "financiado";
+  const saldoCuotas = Math.round((precioNum - inicialNum) * 100) / 100;
+  function abrirPersonalizar(on: boolean) {
+    setPersonalizar(on);
+    if (on) setFilasCuotas((cronograma.data ?? []).filter((c) => c.numero >= 1).map((c) => ({ fecha: c.fecha_vencimiento, monto: String(c.monto), editado: false })));
+  }
+  function cuotasValidas() {
+    const suma = filasCuotas.reduce((t, f) => t + Number(f.monto || 0), 0);
+    if (Math.abs(suma - saldoCuotas) > 0.005) {
+      toast.error(`La suma de las cuotas (${soles(suma)}) debe ser igual al precio menos la inicial (${soles(saldoCuotas)}). Diferencia: ${soles(suma - saldoCuotas)}`);
+      return false;
+    }
+    return true;
+  }
 
   async function guardarHistorica() {
     const errO = leadOrigen ? null : validarOrigen(origenVenta, true);
@@ -558,6 +575,7 @@ function DialogoVenta({
       },
       _titulares: [principal!.id, ...adicionales.map((c) => c.id)],
       _total_abonado: abonado > 0 ? abonado : 0,
+      _cuotas: usaPersonal ? aJson(filasCuotas) : null,
     });
     setGuardando(false);
     if (error) { toast.error("No se pudo registrar la venta", { description: error.message }); return; }
@@ -571,6 +589,7 @@ function DialogoVenta({
       toast.error("Elige lote, cliente principal y encargado");
       return;
     }
+    if (usaPersonal && !cuotasValidas()) return;
     if (hist) { await guardarHistorica(); return; }
     if (condicion === "financiado" && inicialMinima.data != null && inicialNum < inicialMinima.data) {
       toast.error(`La cuota inicial mínima es ${soles(inicialMinima.data)}.`);
@@ -652,6 +671,12 @@ function DialogoVenta({
       qc.invalidateQueries();
       onCerrar();
       return;
+    }
+    if (usaPersonal) {
+      const { error: e4 } = await rpcSb()("personalizar_cuotas", {
+        _venta_id: data.id, _cuotas: aJson(filasCuotas), _motivo: "Cuotas personalizadas al crear la venta",
+      });
+      if (e4) toast.error("La venta se creó con cuotas iguales; no se pudieron personalizar", { description: e4.message });
     }
     toast.success("Venta registrada");
     qc.invalidateQueries();
@@ -882,7 +907,18 @@ function DialogoVenta({
             <Textarea rows={2} value={notas} onChange={(e) => setNotas(e.target.value)} />
           </div>
 
-          <div className="sm:col-span-2">
+          {esAdminVenta && condicion === "financiado" ? (
+            <div className="sm:col-span-2 space-y-2">
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={personalizar} onChange={(e) => abrirPersonalizar(e.target.checked)} />
+                Personalizar cuotas
+              </label>
+              {usaPersonal ? (
+                <EditorCuotas filas={filasCuotas} onCambio={setFilasCuotas} total={saldoCuotas} etiquetaTotal="Precio menos inicial" />
+              ) : null}
+            </div>
+          ) : null}
+          <div className={usaPersonal ? "hidden" : "sm:col-span-2"}>
             <p className="mb-2 text-sm font-medium">Cronograma que se generará</p>
             <div className="max-h-56 overflow-y-auto rounded-md border border-border">
               <Table>
@@ -948,6 +984,7 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
   const pagos = usePagosDeVenta(ventaId);
   const [registrando, setRegistrando] = useState(false);
   const [regularizando, setRegularizando] = useState(false);
+  const [reprogramando, setReprogramando] = useState(false);
   const desist = useDesistimientoDeVenta(ventaId);
   const [iniciando, setIniciando] = useState(false);
   const [verDesist, setVerDesist] = useState<string | null>(null);
@@ -1165,6 +1202,11 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
                       Marcar como pagada
                     </Button>
                   ) : null}
+                  {regulariza && !v.anulado && !v.desistida && !desist.data && cuotas.some((c) => c.numero >= 1 && c.saldo > 0.005) ? (
+                    <Button size="sm" variant="outline" onClick={() => setReprogramando(true)}>
+                      Reprogramar cronograma
+                    </Button>
+                  ) : null}
                 </div>
               </div>
               <Table>
@@ -1334,6 +1376,7 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
           <DialogoIniciarDesistimiento ventaId={ventaId} abierto={iniciando} onCambio={setIniciando} />
         ) : null}
         <DetalleDesistimiento id={verDesist} onCerrar={() => setVerDesist(null)} />
+        {reprogramando && ventaId ? <DialogoReprogramar ventaId={ventaId} onCerrar={() => setReprogramando(false)} /> : null}
         {regularizando && ventaId && v ? (
           <DialogoRegularizar
             ventaId={ventaId}

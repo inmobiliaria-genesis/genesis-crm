@@ -32,6 +32,9 @@ import {
 import { fecha, hoyLima, soles, cantidad } from "@/lib/format";
 import { METODOS_PAGO, ETIQUETA_METODO, ETIQUETA_RECIBIDO, useCuotasDeVenta } from "@/lib/cobranza";
 import { CamposMetodo } from "@/components/MetodoPago";
+import { useQuery } from "@tanstack/react-query";
+import { usePerfil } from "@/lib/sesion";
+import { TablaVista, rpcSb, type FilaVista } from "@/components/Reprogramar";
 
 function redondear(n: number) {
   return Math.round(n * 100) / 100;
@@ -57,6 +60,18 @@ export function DialogoPago({
   const [manual, setManual] = useState(false);
   const [aplicaciones, setAplicaciones] = useState<Record<string, string>>({});
   const [guardando, setGuardando] = useState(false);
+  const { data: perfil } = usePerfil();
+  const admin = perfil?.rol === "admin";
+  const [excedente, setExcedente] = useState<"adelantar" | "bajar_monto" | "reducir_cuotas">("adelantar");
+  const [motivoExc, setMotivoExc] = useState("Pago adelantado");
+  const exigible = useQuery({
+    queryKey: ["monto-exigible", ventaId],
+    queryFn: async () => {
+      const { data, error } = await rpcSb()("monto_exigible", { _venta_id: ventaId });
+      if (error) throw new Error(error.message);
+      return Number(data ?? 0);
+    },
+  });
 
   const pendientes = useMemo(
     () => (cuotas.data ?? []).filter((c) => c.saldo > 0.005),
@@ -88,6 +103,18 @@ export function DialogoPago({
     Object.values(aplicaciones).reduce((t, v) => t + Number(v || 0), 0),
   );
   const sinAsignar = redondear(montoNum - totalAplicado);
+  const supera = exigible.data != null && montoNum > exigible.data + 0.005;
+  const reprograma = admin && supera && excedente !== "adelantar";
+  const vistaExc = useQuery({
+    queryKey: ["simular-excedente", ventaId, montoNum, fechaPago, excedente],
+    enabled: reprograma,
+    retry: false,
+    queryFn: async () => {
+      const { data, error } = await rpcSb()("simular_pago_excedente", { _venta_id: ventaId, _monto: montoNum, _fecha: fechaPago, _modo: excedente });
+      if (error) throw new Error(error.message);
+      return data as FilaVista[];
+    },
+  });
 
   async function guardar() {
     if (montoNum <= 0) {
@@ -96,6 +123,21 @@ export function DialogoPago({
     }
     if (!metodo) {
       toast.error("Elige el método de pago");
+      return;
+    }
+    if (reprograma) {
+      if (!motivoExc.trim()) { toast.error("Indica el motivo"); return; }
+      setGuardando(true);
+      const { error } = await rpcSb()("registrar_pago_excedente", {
+        _venta_id: ventaId, _fecha: fechaPago, _monto: montoNum, _metodo: metodo,
+        _operacion: operacion.trim() || null, _notas: notas.trim() || null, _recibido_por: recibidoPor,
+        _modo: excedente, _motivo: motivoExc.trim(),
+      });
+      setGuardando(false);
+      if (error) { toast.error("No se pudo registrar el pago", { description: error.message }); return; }
+      toast.success("Pago registrado y cronograma reprogramado");
+      qc.invalidateQueries();
+      onCerrar();
       return;
     }
     const detalle = Object.entries(aplicaciones)
@@ -187,7 +229,39 @@ export function DialogoPago({
             <Textarea rows={2} value={notas} onChange={(e) => setNotas(e.target.value)} />
           </div>
 
-          <div className="sm:col-span-2">
+          {supera ? (
+            <div className="sm:col-span-2 space-y-2 rounded-md border border-border p-3">
+              <p className="text-sm">
+                Lo que se debe hoy (cuotas vencidas + la siguiente): <span className="num font-semibold">{soles(exigible.data)}</span>.
+                El pago lo supera en <span className="num font-semibold">{soles(montoNum - (exigible.data ?? 0))}</span>.
+              </p>
+              {admin ? (
+                <>
+                  <Label>¿Qué hacer con el excedente?</Label>
+                  <Select value={excedente} onValueChange={(v) => setExcedente(v as typeof excedente)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="adelantar">Adelantar las cuotas siguientes</SelectItem>
+                      <SelectItem value="bajar_monto">Bajar el monto de las cuotas restantes</SelectItem>
+                      <SelectItem value="reducir_cuotas">Reducir el número de cuotas</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {reprograma ? (
+                    <>
+                      <Label>Motivo</Label>
+                      <Input value={motivoExc} onChange={(e) => setMotivoExc(e.target.value)} />
+                      <p className="text-sm font-medium">Vista previa del cronograma nuevo</p>
+                      {vistaExc.error ? <p className="text-xs text-destructive">{(vistaExc.error as Error).message}</p> : null}
+                      <TablaVista filas={vistaExc.data ?? []} />
+                    </>
+                  ) : null}
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground">El excedente adelanta las cuotas siguientes.</p>
+              )}
+            </div>
+          ) : null}
+          <div className={reprograma ? "hidden" : "sm:col-span-2"}>
             <div className="mb-2 flex items-center justify-between">
               <p className="text-sm font-medium">Aplicar a cuotas</p>
               {manual ? (
