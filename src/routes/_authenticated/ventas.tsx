@@ -49,7 +49,7 @@ import { ETIQUETA_CUOTA, useCuotasDeVenta, usePagosDeVenta, llevaOperacion, valo
 import { MostrarMetodo, DialogoEditarMetodo, CamposMetodo } from "@/components/MetodoPago";
 import { DialogoEliminar } from "@/components/DialogoEliminar";
 import { DialogoEditarVenta } from "@/components/EditarVenta";
-import { DialogoReprogramar, EditorCuotas, TablaVista, aJson, rpcSb, type FilaCuota, type FilaVista } from "@/components/Reprogramar";
+import { DialogoReprogramar, EditorCuotas, aJson, rpcSb, type FilaCuota } from "@/components/Reprogramar";
 import { CampoSoles } from "@/components/CampoSoles";
 import { BarraFiltros, Buscador, ColOrden, FiltroMulti, FiltroRango, RANGO_VACIO, coincide, enLista, enRango, useOrden } from "@/components/ListaControles";
 import { ETIQUETA_FUENTE, ETIQUETA_ORIGEN } from "@/lib/leads";
