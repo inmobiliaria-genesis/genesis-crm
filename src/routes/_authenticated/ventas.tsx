@@ -1341,8 +1341,8 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
           <DialogoIniciarDesistimiento ventaId={ventaId} abierto={iniciando} onCambio={setIniciando} />
         ) : null}
         <DetalleDesistimiento id={verDesist} onCerrar={() => setVerDesist(null)} />
+        {reprogramando && ventaId ? <DialogoReprogramar ventaId={ventaId} onCerrar={() => setReprogramando(false)} /> : null}
         {regularizando && ventaId && v ? (
-          {reprogramando ? <DialogoReprogramar ventaId={ventaId} onCerrar={() => setReprogramando(false)} /> : null}
           <DialogoRegularizar
             ventaId={ventaId}
             fechaVenta={v.fecha_venta}
