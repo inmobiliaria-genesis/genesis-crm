@@ -2354,6 +2354,7 @@ export type Database = {
       hay_solicitud_pendiente: { Args: { _lote_id: string }; Returns: boolean }
       importar_lotes: { Args: { p_filas: Json }; Returns: Json }
       importar_vendedores: { Args: { p_filas: Json }; Returns: Json }
+      importar_ventas_historicas: { Args: { _filas: Json }; Returns: Json }
       inicial_minima: { Args: never; Returns: number }
       lead_por_telefono: {
         Args: { _excluir?: string; _telefono: string }
