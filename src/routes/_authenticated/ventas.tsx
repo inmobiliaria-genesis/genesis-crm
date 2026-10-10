@@ -54,6 +54,7 @@ import { CampoSoles } from "@/components/CampoSoles";
 import { BarraFiltros, Buscador, ColOrden, FiltroMulti, FiltroRango, RANGO_VACIO, coincide, enLista, enRango, useOrden } from "@/components/ListaControles";
 import { ETIQUETA_FUENTE, ETIQUETA_ORIGEN } from "@/lib/leads";
 import { BotonHistorica } from "@/components/DialogoHistorica";
+import { ImportarVentas } from "@/components/ImportarVentas";
 import { DialogoIniciarDesistimiento, DetalleDesistimiento, useDesistimientoDeVenta, ETIQUETA_DESISTIMIENTO } from "@/components/Desistimiento";
 
 type Busqueda = {
@@ -227,7 +228,10 @@ function VentasPage() {
       descripcion="Contratos de venta y su cronograma de cuotas"
       acciones={
         puedeComercial(perfilSesion) ? (
-          <Button onClick={() => setAlta(true)}>+ Nueva venta</Button>
+          <div className="flex gap-2">
+            {perfilSesion?.rol === "admin" ? <ImportarVentas /> : null}
+            <Button onClick={() => setAlta(true)}>+ Nueva venta</Button>
+          </div>
         ) : null
       }
     >
