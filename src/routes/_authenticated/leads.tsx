@@ -1,3 +1,4 @@
+import { todas } from "@/lib/todas";
 import { ColOrden, coincide, useOrden } from "@/components/ListaControles";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -87,12 +88,11 @@ function LeadsPage() {
   const leads = useQuery({
     queryKey: ["leads"],
     queryFn: async (): Promise<LeadFila[]> => {
-      const { data, error } = await supabase
+      const { data, error } = await todas(() => supabase
         .from("lead")
         .select("*, vendedor:vendedor!lead_vendedor_id_fkey(nombre, apodo, estado)")
         .eq("anulado", false)
-        .order("creado_en", { ascending: false })
-        .limit(1000);
+        .order("creado_en", { ascending: false }));
       if (error) throw error;
       return (data ?? []) as unknown as LeadFila[];
     },

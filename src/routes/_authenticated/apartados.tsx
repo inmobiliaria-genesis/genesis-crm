@@ -1,3 +1,4 @@
+import { todas } from "@/lib/todas";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -73,12 +74,12 @@ function ApartadosPage() {
   const reservas = useQuery({
     queryKey: ["reservas"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await todas(() => supabase
         .from("reserva")
         .select(
           "*, cliente:cliente_id(id, nombres, apellidos, tipo_documento, numero_documento), lote:lote_id(id, numero, manzana:manzana_id(letra))",
         )
-        .order("fecha", { ascending: false });
+        .order("fecha", { ascending: false }));
       if (error) throw error;
       return data;
     },

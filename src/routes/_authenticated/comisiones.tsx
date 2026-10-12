@@ -1,3 +1,4 @@
+import { todas } from "@/lib/todas";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -105,12 +106,12 @@ function ComisionesPage() {
     queryKey: ["comisiones"],
     enabled: !!puedeVer,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await todas(() => supabase
         .from("comision")
         .select(
           "*, encargado:encargado_id(nombre, apodo, estado), venta:venta_id(fecha_venta, anulado, lote:lote_id(numero, manzana:manzana_id(letra)))",
         )
-        .order("fecha_generada", { ascending: false });
+        .order("fecha_generada", { ascending: false }));
       if (error) throw error;
       const filas = data ?? [];
       // El asesor no lee la tabla de lotes: completamos manzana y número con la función segura
@@ -134,7 +135,7 @@ function ComisionesPage() {
     queryKey: ["comision-resumen"],
     enabled: !!puedeVer,
     queryFn: async () => {
-      const { data, error } = await supabase.from("comision_resumen").select("*");
+      const { data, error } = await todas(() => supabase.from("comision_resumen").select("*"));
       if (error) throw error;
       return data ?? [];
     },

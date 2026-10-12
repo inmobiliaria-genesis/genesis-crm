@@ -1,3 +1,4 @@
+import { todas } from "@/lib/todas";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
@@ -170,12 +171,12 @@ function VentasPage() {
   const ventas = useQuery({
     queryKey: ["ventas"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await todas(() => supabase
         .from("venta")
         .select(
           "*, lote:lote_id(numero, manzana:manzana_id(id, letra)), encargado:vendedor!venta_encargado_id_fkey(nombre, apodo, estado), promotor:vendedor!venta_promotor_id_fkey(nombre, apodo, estado), titulares:venta_titular(id, es_principal, anulado, cliente:cliente_id(id, nombres, apellidos, tipo_documento, numero_documento)), desistimientos:desistimiento(estado, anulado)",
         )
-        .order("fecha_venta", { ascending: false });
+        .order("fecha_venta", { ascending: false }));
       if (error) throw error;
       return data;
     },

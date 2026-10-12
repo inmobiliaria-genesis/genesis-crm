@@ -1,3 +1,4 @@
+import { todas } from "@/lib/todas";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -173,14 +174,14 @@ function PlanoPage() {
     queryKey: ["lotes-plano", etapaId],
     enabled: !!etapaId,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await todas(() => supabase
         .from("lote")
         .select("id, numero, area_m2, precio_lista, manzana_id, manzana!inner(id, letra, tipo, etapa_id, anulado)")
         .eq("manzana.etapa_id", etapaId)
         .eq("manzana.tipo", "residencial")
         .eq("manzana.anulado", false)
         .eq("anulado", false)
-        .order("numero");
+        .order("numero"));
       if (error) throw error;
       return data as unknown as LoteFila[];
     },
@@ -190,12 +191,12 @@ function PlanoPage() {
     queryKey: ["ubicaciones", planoId],
     enabled: !!planoId,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await todas(() => supabase
         .from("lote_ubicacion")
         .select("id, lote_id, forma")
         .eq("plano_id", planoId)
         .eq("vigente", true)
-        .eq("anulado", false);
+        .eq("anulado", false));
       if (error) throw error;
       return data;
     },
@@ -204,7 +205,7 @@ function PlanoPage() {
   const estados = useQuery({
     queryKey: ["lote-estado"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("lote_estado").select("lote_id, estado, saldo_pendiente, en_desistimiento");
+      const { data, error } = await todas(() => supabase.from("lote_estado").select("lote_id, estado, saldo_pendiente, en_desistimiento"));
       if (error) throw error;
       return data;
     },

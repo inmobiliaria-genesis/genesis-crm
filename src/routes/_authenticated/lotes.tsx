@@ -1,3 +1,4 @@
+import { todas } from "@/lib/todas";
 import { useNavigate, createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -252,7 +253,7 @@ function LotesPage() {
   const estados = useQuery({
     queryKey: ["lote-estados"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("lote_estado").select("lote_id, estado");
+      const { data, error } = await todas(() => supabase.from("lote_estado").select("lote_id, estado"));
       if (error) throw error;
       return data;
     },
@@ -261,12 +262,11 @@ function LotesPage() {
   const ventas = useQuery({
     queryKey: ["lotes-ventas-vigentes"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await todas(() => supabase
         .from("venta")
         .select("id, lote_id, precio_acordado, fecha_venta")
         .eq("anulado", false)
-        .eq("desistida", false)
-        .limit(5000);
+        .eq("desistida", false));
       if (error) throw error;
       return data;
     },

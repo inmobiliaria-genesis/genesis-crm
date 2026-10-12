@@ -1,3 +1,4 @@
+import { todas } from "@/lib/todas";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -82,15 +83,15 @@ export function useLotesConEstado(asesor = false) {
           estado: "disponible", etiqueta: `Mz ${l.manzana} · Lote ${l.numero}`,
         }));
       }
-      const { data, error } = await supabase
+      const { data, error } = await todas(() => supabase
         .from("lote")
         .select(
           "id, numero, area_m2, precio_lista, manzana_id, manzana:manzana_id(letra, tipo, etapa:etapa_id(nombre, proyecto:proyecto_id(nombre)))",
         )
         .eq("anulado", false)
-        .order("numero");
+        .order("numero"));
       if (error) throw error;
-      const { data: estados, error: e2 } = await supabase.from("lote_estado").select("*");
+      const { data: estados, error: e2 } = await todas(() => supabase.from("lote_estado").select("*"));
       if (e2) throw e2;
       const mapa = new Map((estados ?? []).map((e) => [e.lote_id, e.estado ?? "disponible"]));
       return (data ?? [])
