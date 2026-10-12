@@ -1,3 +1,4 @@
+import { todas } from "@/lib/todas";
 import { ColOrden, coincide, useOrden } from "@/components/ListaControles";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -71,13 +72,13 @@ function GastosPage() {
     queryKey: ["gastos", mes],
     enabled: permitido,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await todas(() => supabase
         .from("gasto")
         .select("*")
         .eq("anulado", false)
         .gte("fecha", inicioMes(mes))
         .lt("fecha", finMes(mes))
-        .order("fecha", { ascending: false });
+        .order("fecha", { ascending: false }));
       if (error) throw error;
       return data;
     },
@@ -87,12 +88,12 @@ function GastosPage() {
     queryKey: ["gastos-por-reembolsar"],
     enabled: permitido,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await todas(() => supabase
         .from("gasto")
         .select("*")
         .eq("anulado", false)
         .eq("reembolso_estado", "por_reembolsar")
-        .order("fecha");
+        .order("fecha"));
       if (error) throw error;
       return data;
     },

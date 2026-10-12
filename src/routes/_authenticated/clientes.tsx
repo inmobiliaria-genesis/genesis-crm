@@ -1,3 +1,4 @@
+import { todas } from "@/lib/todas";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DialogoEliminar } from "@/components/DialogoEliminar";
@@ -51,8 +52,8 @@ function ClientesPage() {
     queryKey: ["clientes-lista"],
     queryFn: async () => {
       const [c, t] = await Promise.all([
-        supabase.from("cliente").select("*").eq("anulado", false).order("apellidos"),
-        supabase.from("venta_titular").select("cliente_id, venta:venta_id(anulado)").eq("anulado", false),
+        todas(() => supabase.from("cliente").select("*").eq("anulado", false).order("apellidos")),
+        todas(() => supabase.from("venta_titular").select("cliente_id, venta:venta_id(anulado)").eq("anulado", false)),
       ]);
       if (c.error) throw c.error;
       const conV = new Set((t.data ?? []).filter((x) => x.venta && !x.venta.anulado).map((x) => x.cliente_id));

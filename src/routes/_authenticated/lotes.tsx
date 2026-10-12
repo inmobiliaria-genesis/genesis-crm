@@ -1,3 +1,4 @@
+import { todas } from "@/lib/todas";
 import { useNavigate, createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
@@ -240,10 +241,11 @@ function LotesPage() {
     queryKey: ["lotes", manzanaId, idsManzana.join(",")],
     enabled: manzanas.isSuccess,
     queryFn: async () => {
-      let consulta = supabase.from("lote").select("*").eq("anulado", false).order("numero");
-      if (manzanaId) consulta = consulta.eq("manzana_id", manzanaId);
-      else consulta = consulta.in("manzana_id", idsManzana.length > 0 ? idsManzana : ["00000000-0000-0000-0000-000000000000"]);
-      const { data, error } = await consulta.limit(5000);
+      const consulta = () => {
+        const q = supabase.from("lote").select("*").eq("anulado", false).order("numero");
+        return manzanaId ? q.eq("manzana_id", manzanaId) : q.in("manzana_id", idsManzana.length > 0 ? idsManzana : ["00000000-0000-0000-0000-000000000000"]);
+      };
+      const { data, error } = await todas(consulta);
       if (error) throw error;
       return data;
     },
@@ -252,7 +254,7 @@ function LotesPage() {
   const estados = useQuery({
     queryKey: ["lote-estados"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("lote_estado").select("lote_id, estado");
+      const { data, error } = await todas(() => supabase.from("lote_estado").select("lote_id, estado"), "lote_id");
       if (error) throw error;
       return data;
     },
@@ -261,12 +263,11 @@ function LotesPage() {
   const ventas = useQuery({
     queryKey: ["lotes-ventas-vigentes"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await todas(() => supabase
         .from("venta")
         .select("id, lote_id, precio_acordado, fecha_venta")
         .eq("anulado", false)
-        .eq("desistida", false)
-        .limit(5000);
+        .eq("desistida", false));
       if (error) throw error;
       return data;
     },
