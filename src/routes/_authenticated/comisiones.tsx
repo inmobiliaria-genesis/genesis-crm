@@ -135,7 +135,7 @@ function ComisionesPage() {
     queryKey: ["comision-resumen"],
     enabled: !!puedeVer,
     queryFn: async () => {
-      const { data, error } = await todas(() => supabase.from("comision_resumen").select("*"));
+      const { data, error } = await supabase.from("comision_resumen").select("*");
       if (error) throw error;
       return data ?? [];
     },

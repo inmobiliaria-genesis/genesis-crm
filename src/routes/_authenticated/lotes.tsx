@@ -241,10 +241,11 @@ function LotesPage() {
     queryKey: ["lotes", manzanaId, idsManzana.join(",")],
     enabled: manzanas.isSuccess,
     queryFn: async () => {
-      let consulta = supabase.from("lote").select("*").eq("anulado", false).order("numero");
-      if (manzanaId) consulta = consulta.eq("manzana_id", manzanaId);
-      else consulta = consulta.in("manzana_id", idsManzana.length > 0 ? idsManzana : ["00000000-0000-0000-0000-000000000000"]);
-      const { data, error } = await consulta.limit(5000);
+      const consulta = () => {
+        const q = supabase.from("lote").select("*").eq("anulado", false).order("numero");
+        return manzanaId ? q.eq("manzana_id", manzanaId) : q.in("manzana_id", idsManzana.length > 0 ? idsManzana : ["00000000-0000-0000-0000-000000000000"]);
+      };
+      const { data, error } = await todas(consulta);
       if (error) throw error;
       return data;
     },
@@ -253,7 +254,7 @@ function LotesPage() {
   const estados = useQuery({
     queryKey: ["lote-estados"],
     queryFn: async () => {
-      const { data, error } = await todas(() => supabase.from("lote_estado").select("lote_id, estado"));
+      const { data, error } = await todas(() => supabase.from("lote_estado").select("lote_id, estado"), "lote_id");
       if (error) throw error;
       return data;
     },

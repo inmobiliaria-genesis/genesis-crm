@@ -91,7 +91,7 @@ export function useLotesConEstado(asesor = false) {
         .eq("anulado", false)
         .order("numero"));
       if (error) throw error;
-      const { data: estados, error: e2 } = await todas(() => supabase.from("lote_estado").select("*"));
+      const { data: estados, error: e2 } = await todas(() => supabase.from("lote_estado").select("*"), "lote_id");
       if (e2) throw e2;
       const mapa = new Map((estados ?? []).map((e) => [e.lote_id, e.estado ?? "disponible"]));
       return (data ?? [])

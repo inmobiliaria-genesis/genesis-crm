@@ -205,7 +205,7 @@ function PlanoPage() {
   const estados = useQuery({
     queryKey: ["lote-estado"],
     queryFn: async () => {
-      const { data, error } = await todas(() => supabase.from("lote_estado").select("lote_id, estado, saldo_pendiente, en_desistimiento"));
+      const { data, error } = await todas(() => supabase.from("lote_estado").select("lote_id, estado, saldo_pendiente, en_desistimiento"), "lote_id");
       if (error) throw error;
       return data;
     },
