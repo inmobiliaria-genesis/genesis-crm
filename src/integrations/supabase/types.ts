@@ -2296,6 +2296,22 @@ export type Database = {
         }
         Returns: undefined
       }
+      cobranza_cuotas: {
+        Args: {
+          _busqueda?: string
+          _desde?: string
+          _dir?: string
+          _encargados?: string[]
+          _estados?: string[]
+          _hasta?: string
+          _manzanas?: string[]
+          _orden?: string
+          _pagina?: number
+          _recibido?: string[]
+          _tamano?: number
+        }
+        Returns: Json
+      }
       crear_venta_historica:
         | {
             Args: { _titulares: string[]; _total_abonado: number; _venta: Json }
