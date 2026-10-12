@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
@@ -25,12 +25,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DialogoPago } from "@/components/PagoForm";
-import { ETIQUETA_CUOTA } from "@/lib/cobranza";
-import { nombreCliente, documentoCliente } from "@/lib/ventas";
 import { fecha, soles } from "@/lib/format";
 import { usePerfil, puedeCobrar } from "@/lib/sesion";
 import { nombreVendedor, useVendedores } from "@/lib/vendedores";
-import { BarraFiltros, Buscador, ColOrden, FiltroMulti, FiltroRango, RANGO_VACIO, coincide, enLista, enRango, useOrden } from "@/components/ListaControles";
+import { Buscador, ColOrden, FiltroMulti, FiltroRango, RANGO_VACIO, type Orden } from "@/components/ListaControles";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/cobranza")({
   head: () => ({
@@ -52,117 +52,174 @@ export const Route = createFileRoute("/_authenticated/cobranza")({
   component: CobranzaPage,
 });
 
+const TAM = 50;
+
+const ESTADO_FILTRO: { valor: string; etiqueta: string; estados: string[] | null }[] = [
+  { valor: "pv_v", etiqueta: "Por vencer y vencidas", estados: ["por_vencer", "vencida"] },
+  { valor: "por_vencer", etiqueta: "Por vencer", estados: ["por_vencer"] },
+  { valor: "vencida", etiqueta: "Vencida", estados: ["vencida"] },
+  { valor: "morosa", etiqueta: "Morosa", estados: ["morosa"] },
+  { valor: "pendiente", etiqueta: "Pendiente", estados: ["pendiente"] },
+  { valor: "pagada", etiqueta: "Pagada", estados: ["pagada"] },
+  { valor: "todas", etiqueta: "Todas", estados: null },
+];
+
+const ESTILO_ESTADO: Record<string, { etiqueta: string; clase: string }> = {
+  pagada: { etiqueta: "Pagada", clase: "border-transparent bg-secondary text-secondary-foreground" },
+  morosa: { etiqueta: "Morosa", clase: "border-transparent bg-destructive text-destructive-foreground" },
+  vencida: { etiqueta: "Vencida", clase: "border-destructive text-destructive" },
+  por_vencer: { etiqueta: "Por vencer", clase: "border-primary text-primary" },
+  pendiente: { etiqueta: "Pendiente", clase: "text-muted-foreground" },
+};
+
+type FilaCuota = {
+  id: string;
+  venta_id: string;
+  numero: number;
+  fecha_vencimiento: string;
+  monto_vigente: number;
+  monto_pagado: number;
+  saldo: number;
+  pagado_vendedor: number;
+  lote_numero: number;
+  manzana: string;
+  cliente: string;
+  documento: string | null;
+  estado: string;
+};
+type Respuesta = {
+  total: number;
+  filas: FilaCuota[];
+  totales: { saldo: number; inmobiliaria: number; vendedor: number };
+  resumen: { por_vencer: number; vencida: number; morosa: number; clientes_atraso: number };
+};
+
 function CobranzaPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { data: perfil } = usePerfil();
   const [busqueda, setBusqueda] = useState("");
-  const [estados, setEstados] = useState<string[]>([]);
-  const [plazos, setPlazos] = useState<string[]>([]);
+  const [buscar, setBuscar] = useState("");
+  const [filtroEstado, setFiltroEstado] = useState("pv_v");
   const [encargados, setEncargados] = useState<string[]>([]);
   const [manzanas, setManzanas] = useState<string[]>([]);
   const [rango, setRango] = useState(RANGO_VACIO);
   const [recibido, setRecibido] = useState<string[]>([]);
+  const [orden, setOrden] = useState<Orden>(null);
+  const [pagina, setPagina] = useState(1);
   const vendedores = useVendedores();
   const [pagoVenta, setPagoVenta] = useState<{ ventaId: string; cuotaId: string } | null>(null);
 
-  const cuotas = useQuery({
-    queryKey: ["cobranza-cuotas"],
+  useEffect(() => {
+    const t = setTimeout(() => setBuscar(busqueda), 350);
+    return () => clearTimeout(t);
+  }, [busqueda]);
+  useEffect(() => setPagina(1), [buscar, filtroEstado, encargados, manzanas, rango, recibido, orden]);
+
+  const letrasQ = useQuery({
+    queryKey: ["cobranza-manzanas"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("cuota")
-        .select(
-          "id, numero, fecha_vencimiento, monto_vigente, venta_id, venta:venta_id(id, anulado, encargado_id, lote:lote_id(numero, manzana:manzana_id(letra)), titulares:venta_titular(es_principal, anulado, cliente:cliente_id(nombres, apellidos, tipo_documento, numero_documento))), aplicaciones:pago_aplicacion(monto_aplicado, anulado, pago:pago_id(anulado, recibido_por))",
-        )
-        .eq("anulado", false)
-        .order("fecha_vencimiento")
-        .limit(1000);
-      if (error) throw error;
-      const { data: estados, error: e2 } = await supabase
-        .from("cuota_estado")
-        .select("cuota_id, monto_pagado, saldo, estado, vencida, exigible");
-      if (e2) throw e2;
-      const mapa = new Map((estados ?? []).map((e) => [e.cuota_id, e]));
-      return (data ?? [])
-        .filter((c) => c.venta && !c.venta.anulado && mapa.get(c.id)?.exigible !== false)
-        .map((c) => {
-          const e = mapa.get(c.id);
-          const principal = c.venta?.titulares?.find((t) => t.es_principal && !t.anulado);
-          const apls = ((c as unknown as { aplicaciones?: { monto_aplicado: number; anulado: boolean; pago: { anulado: boolean; recibido_por: string } | null }[] }).aplicaciones ?? []);
-          const vendedor = apls
-            .filter((a) => !a.anulado && a.pago && !a.pago.anulado && a.pago.recibido_por === "vendedor")
-            .reduce((t, a) => t + Number(a.monto_aplicado), 0);
-          return {
-            id: c.id,
-            venta_id: c.venta_id,
-            numero: c.numero,
-            fecha_vencimiento: c.fecha_vencimiento,
-            monto_vigente: Number(c.monto_vigente),
-            monto_pagado: Number(e?.monto_pagado ?? 0),
-            pagado_vendedor: vendedor,
-            saldo: Number(e?.saldo ?? c.monto_vigente),
-            estado: e?.estado ?? "pendiente",
-            vencida: Boolean(e?.vencida),
-            lote: `Mz ${c.venta?.lote?.manzana?.letra ?? "?"} · Lote ${c.venta?.lote?.numero ?? "?"}`,
-            numeroLote: String(c.venta?.lote?.numero ?? ""),
-            manzana: c.venta?.lote?.manzana?.letra ?? "",
-            encargado_id: (c.venta as { encargado_id?: string | null } | null)?.encargado_id ?? null,
-            cliente: nombreCliente(principal?.cliente),
-            documento: documentoCliente(principal?.cliente),
-          };
-        });
+      const { data } = await supabase.from("manzana").select("letra").eq("anulado", false).eq("tipo", "residencial");
+      return [...new Set((data ?? []).map((m) => m.letra))].sort((a, b) => a.localeCompare(b, "es"));
     },
   });
 
-  const filtradas = useMemo(() => {
-    return (cuotas.data ?? []).filter((c) => {
-      const plazo = c.vencida ? "vencida" : c.saldo > 0.005 ? "por_vencer" : "pagada";
-      const rec = [c.pagado_vendedor > 0.005 ? "vendedor" : "", c.monto_pagado - c.pagado_vendedor > 0.005 ? "inmobiliaria" : ""];
-      return (
-        enLista(c.estado, estados) &&
-        enLista(plazo, plazos) &&
-        enLista(c.encargado_id, encargados) &&
-        enLista(c.manzana, manzanas) &&
-        enRango(c.fecha_vencimiento, rango, "date") &&
-        (recibido.length === 0 || rec.some((r) => r && recibido.includes(r))) &&
-        coincide(busqueda, c.cliente, c.documento)
-      );
-    });
-  }, [cuotas.data, busqueda, estados, plazos, encargados, manzanas, rango, recibido]);
-  const { ordenadas, orden, alternar } = useOrden(filtradas, {
-    lote: (c) => `${c.manzana}-${c.numeroLote.padStart(5, "0")}`,
-    cliente: (c) => c.cliente,
-    cuota: (c) => c.numero,
-    vencimiento: (c) => c.fecha_vencimiento,
-    monto: (c) => c.monto_vigente,
-    pagado: (c) => c.monto_pagado,
-    saldo: (c) => Math.max(c.saldo, 0),
-    estado: (c) => c.estado,
+  const estadosSel = ESTADO_FILTRO.find((e) => e.valor === filtroEstado)?.estados ?? null;
+  const cuotas = useQuery({
+    queryKey: ["cobranza-cuotas", buscar, filtroEstado, encargados, manzanas, rango, recibido, orden, pagina],
+    placeholderData: (prev) => prev,
+    queryFn: async (): Promise<Respuesta> => {
+      const rpc = supabase.rpc.bind(supabase);
+      const { data, error } = await rpc("cobranza_cuotas" as never, {
+        _estados: estadosSel,
+        _busqueda: buscar || null,
+        _encargados: encargados.length ? encargados : null,
+        _manzanas: manzanas.length ? manzanas : null,
+        _desde: rango.min || null,
+        _hasta: rango.max || null,
+        _recibido: recibido.length ? recibido : null,
+        _orden: orden?.clave ?? null,
+        _dir: orden?.dir ?? "asc",
+        _pagina: pagina,
+        _tamano: TAM,
+      } as never);
+      if (error) throw error;
+      return data as unknown as Respuesta;
+    },
   });
-  const letras = [...new Set((cuotas.data ?? []).map((c) => c.manzana).filter(Boolean))].sort();
 
-  const totalSaldo = filtradas.reduce((t, c) => t + Math.max(c.saldo, 0), 0);
-  const totalInmobiliaria = filtradas.reduce((t, c) => t + c.monto_pagado - c.pagado_vendedor, 0);
-  const totalVendedor = filtradas.reduce((t, c) => t + c.pagado_vendedor, 0);
+  function alternar(clave: string) {
+    setOrden((o) => (!o || o.clave !== clave ? { clave, dir: "asc" } : o.dir === "asc" ? { clave, dir: "desc" } : null));
+  }
+  function limpiar() {
+    setBusqueda(""); setBuscar(""); setFiltroEstado("pv_v"); setEncargados([]); setManzanas([]);
+    setRango(RANGO_VACIO); setRecibido([]); setOrden(null); setPagina(1);
+  }
+
+  const total = Number(cuotas.data?.total ?? 0);
+  const paginas = Math.max(1, Math.ceil(total / TAM));
+  const filas = cuotas.data?.filas ?? [];
+  const res = cuotas.data?.resumen;
+  const tot = cuotas.data?.totales;
+  const desde = total === 0 ? 0 : (pagina - 1) * TAM + 1;
+  const hasta = Math.min(pagina * TAM, total);
+  const nf = (n: number) => n.toLocaleString("en-US");
+
+  const tarjetas = [
+    { valor: "por_vencer", titulo: "Total por vencer (15 días)", monto: soles(res?.por_vencer ?? 0) },
+    { valor: "vencida", titulo: "Total vencido (90 días)", monto: soles(res?.vencida ?? 0) },
+    { valor: "morosa", titulo: "Total moroso (más de 90 días)", monto: soles(res?.morosa ?? 0) },
+    { valor: "pv_v_clientes", titulo: "Clientes con cuotas vencidas o morosas", monto: nf(Number(res?.clientes_atraso ?? 0)) },
+  ];
 
   return (
     <AppShell titulo="Cobranza" descripcion="Cuotas, pagos y saldos por cobrar">
+      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {tarjetas.map((t) => {
+          const destino = t.valor === "pv_v_clientes" ? "vencida" : t.valor;
+          return (
+            <button
+              key={t.valor}
+              type="button"
+              onClick={() => setFiltroEstado(t.valor === "pv_v_clientes" ? "todas" : destino)}
+              className={cn(
+                "rounded-lg border border-border bg-card p-4 text-left transition-colors hover:bg-muted",
+                filtroEstado === t.valor && "ring-2 ring-primary",
+              )}
+            >
+              <p className="text-xs text-muted-foreground">{t.titulo}</p>
+              <p className="num mt-1 text-lg font-semibold">{t.monto}</p>
+            </button>
+          );
+        })}
+      </div>
       <Card>
         <CardHeader className="gap-3">
           <CardTitle className="text-base">Cuotas</CardTitle>
-          <BarraFiltros
-            onLimpiar={() => { setBusqueda(""); setEstados([]); setPlazos([]); setEncargados([]); setManzanas([]); setRango(RANGO_VACIO); setRecibido([]); }}
-            mostrando={filtradas.length}
-            total={cuotas.data?.length ?? 0}
-          >
-            <Buscador placeholder="Cliente o DNI" valor={busqueda} onCambio={setBusqueda} />
-            <FiltroMulti label="Vencimiento" opciones={[{ valor: "vencida", etiqueta: "Vencidas" }, { valor: "por_vencer", etiqueta: "Por vencer" }, { valor: "pagada", etiqueta: "Sin saldo" }]} valor={plazos} onCambio={setPlazos} />
-            <FiltroMulti label="Estado" opciones={[{ valor: "pendiente", etiqueta: "Pendiente" }, { valor: "parcial", etiqueta: "Parcial" }, { valor: "pagada", etiqueta: "Pagada" }]} valor={estados} onCambio={setEstados} />
-            <FiltroMulti label="Encargado" opciones={(vendedores.data ?? []).filter((x) => x.tipo === "encargado").map((x) => ({ valor: x.id, etiqueta: nombreVendedor(x) }))} valor={encargados} onCambio={setEncargados} />
-            <FiltroMulti label="Manzana" opciones={letras.map((l) => ({ valor: l, etiqueta: `Mz ${l}` }))} valor={manzanas} onCambio={setManzanas} />
-            <FiltroRango label="Fecha de vencimiento" tipo="date" valor={rango} onCambio={setRango} />
-            <FiltroMulti label="Recibido por" opciones={[{ valor: "vendedor", etiqueta: "Vendedor" }, { valor: "inmobiliaria", etiqueta: "Inmobiliaria" }]} valor={recibido} onCambio={setRecibido} />
-          </BarraFiltros>
+          <div className="space-y-2 rounded-lg border border-border bg-card p-4">
+            <div className="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <Buscador placeholder="Cliente o DNI" valor={busqueda} onCambio={setBusqueda} />
+              <div className="space-y-1">
+                <Label>Estado</Label>
+                <Select value={filtroEstado} onValueChange={setFiltroEstado}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {ESTADO_FILTRO.map((e) => <SelectItem key={e.valor} value={e.valor}>{e.etiqueta}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <FiltroMulti label="Encargado" opciones={(vendedores.data ?? []).filter((x) => x.tipo === "encargado").map((x) => ({ valor: x.id, etiqueta: nombreVendedor(x) }))} valor={encargados} onCambio={setEncargados} />
+              <FiltroMulti label="Manzana" opciones={(letrasQ.data ?? []).map((l) => ({ valor: l, etiqueta: `Mz ${l}` }))} valor={manzanas} onCambio={setManzanas} />
+              <FiltroRango label="Fecha de vencimiento" tipo="date" valor={rango} onCambio={setRango} />
+              <FiltroMulti label="Recibido por" opciones={[{ valor: "vendedor", etiqueta: "Vendedor" }, { valor: "inmobiliaria", etiqueta: "Inmobiliaria" }]} valor={recibido} onCambio={setRecibido} />
+              <div className="flex items-end">
+                <Button variant="outline" onClick={limpiar}>Limpiar filtros</Button>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Mostrando <span className="num">{nf(desde)}–{nf(hasta)}</span> de <span className="num">{nf(total)}</span>
+            </p>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -182,71 +239,74 @@ function CobranzaPage() {
             <TableBody>
               {cuotas.isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground">
-                    Cargando…
-                  </TableCell>
+                  <TableCell colSpan={9} className="text-center text-muted-foreground">Cargando…</TableCell>
                 </TableRow>
-              ) : filtradas.length === 0 ? (
+              ) : cuotas.isError ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground">
-                    No hay cuotas con estos filtros.
-                  </TableCell>
+                  <TableCell colSpan={9} className="text-center text-destructive">No se pudieron cargar las cuotas.</TableCell>
+                </TableRow>
+              ) : filas.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center text-muted-foreground">No hay cuotas con estos filtros.</TableCell>
                 </TableRow>
               ) : (
-                ordenadas.map((c) => (
-                  <TableRow key={c.id}>
-                    <TableCell>{c.lote}</TableCell>
-                    <TableCell>
-                      {c.cliente}
-                      <span className="block text-xs text-muted-foreground">{c.documento}</span>
-                    </TableCell>
-                    <TableCell className="num">{c.numero === 0 ? "Inicial" : c.numero}</TableCell>
-                    <TableCell>{fecha(c.fecha_vencimiento)}</TableCell>
-                    <TableCell className="num text-right">{soles(c.monto_vigente)}</TableCell>
-                    <TableCell className="num text-right">
-                      {soles(c.monto_pagado)}
-                      {c.pagado_vendedor > 0.005 ? (
-                        <span className="block text-xs text-muted-foreground">
-                          Recibido por vendedor: {soles(c.pagado_vendedor)}
-                        </span>
-                      ) : null}
-                    </TableCell>
-                    <TableCell className="num text-right">{soles(Math.max(c.saldo, 0))}</TableCell>
-                    <TableCell>
-                      <Badge variant={c.estado === "pagada" ? "secondary" : "outline"}>
-                        {ETIQUETA_CUOTA[c.estado] ?? c.estado}
-                      </Badge>{" "}
-                      {c.vencida ? <Badge variant="destructive">Vencida</Badge> : null}
-                    </TableCell>
-                    <TableCell className="space-x-1 text-right">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() =>
-                          navigate({ to: "/ventas", search: { venta: c.venta_id } })
-                        }
-                      >
-                        Ficha
-                      </Button>
-                      {puedeCobrar(perfil) && c.saldo > 0.005 ? (
-                        <Button
-                          size="sm"
-                          onClick={() => setPagoVenta({ ventaId: c.venta_id, cuotaId: c.id })}
-                        >
-                          Registrar pago
+                filas.map((c) => {
+                  const est = ESTILO_ESTADO[c.estado] ?? { etiqueta: c.estado, clase: "" };
+                  const saldo = Number(c.saldo);
+                  const pagado = Number(c.monto_pagado);
+                  return (
+                    <TableRow key={c.id}>
+                      <TableCell>Mz {c.manzana} · Lote {c.lote_numero}</TableCell>
+                      <TableCell>
+                        {c.cliente || "—"}
+                        <span className="block text-xs text-muted-foreground">{c.documento ?? ""}</span>
+                      </TableCell>
+                      <TableCell className="num">{c.numero === 0 ? "Inicial" : c.numero}</TableCell>
+                      <TableCell>{fecha(c.fecha_vencimiento)}</TableCell>
+                      <TableCell className="num text-right">{soles(c.monto_vigente)}</TableCell>
+                      <TableCell className="num text-right">
+                        {soles(pagado)}
+                        {Number(c.pagado_vendedor) > 0.005 ? (
+                          <span className="block text-xs text-muted-foreground">Recibido por vendedor: {soles(c.pagado_vendedor)}</span>
+                        ) : null}
+                      </TableCell>
+                      <TableCell className="num text-right">{soles(Math.max(saldo, 0))}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={est.clase}>{est.etiqueta}</Badge>
+                        {saldo > 0.005 && pagado > 0.005 ? (
+                          <span className="ml-1 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">parcial</span>
+                        ) : null}
+                      </TableCell>
+                      <TableCell className="space-x-1 text-right">
+                        <Button size="sm" variant="ghost" onClick={() => navigate({ to: "/ventas", search: { venta: c.venta_id } })}>
+                          Ficha
                         </Button>
-                      ) : null}
-                    </TableCell>
-                  </TableRow>
-                ))
+                        {puedeCobrar(perfil) && saldo > 0.005 ? (
+                          <Button size="sm" onClick={() => setPagoVenta({ ventaId: c.venta_id, cuotaId: c.id })}>
+                            Registrar pago
+                          </Button>
+                        ) : null}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>
-          <p className="mt-3 text-xs text-muted-foreground">
-            Saldo por cobrar con estos filtros: <span className="num">{soles(totalSaldo)}</span> · Ingresos de la
-            inmobiliaria: <span className="num">{soles(totalInmobiliaria)}</span> · Recibido por vendedores:{" "}
-            <span className="num">{soles(totalVendedor)}</span>
-          </p>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">
+              Saldo por cobrar con estos filtros: <span className="num">{soles(tot?.saldo ?? 0)}</span> · Ingresos de la
+              inmobiliaria: <span className="num">{soles(tot?.inmobiliaria ?? 0)}</span> · Recibido por vendedores:{" "}
+              <span className="num">{soles(tot?.vendedor ?? 0)}</span>
+            </p>
+            <div className="flex items-center gap-1">
+              <Button size="icon" variant="outline" aria-label="Primera página" disabled={pagina <= 1} onClick={() => setPagina(1)}><ChevronsLeft className="h-4 w-4" /></Button>
+              <Button size="icon" variant="outline" aria-label="Página anterior" disabled={pagina <= 1} onClick={() => setPagina((p) => p - 1)}><ChevronLeft className="h-4 w-4" /></Button>
+              <span className="px-2 text-sm">Página <span className="num">{nf(pagina)}</span> de <span className="num">{nf(paginas)}</span></span>
+              <Button size="icon" variant="outline" aria-label="Página siguiente" disabled={pagina >= paginas} onClick={() => setPagina((p) => p + 1)}><ChevronRight className="h-4 w-4" /></Button>
+              <Button size="icon" variant="outline" aria-label="Última página" disabled={pagina >= paginas} onClick={() => setPagina(paginas)}><ChevronsRight className="h-4 w-4" /></Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
