@@ -2250,6 +2250,7 @@ export type Database = {
         Row: {
           en_desistimiento: boolean | null
           estado: string | null
+          estado_detalle: string | null
           lote_id: string | null
           saldo_pendiente: number | null
         }
