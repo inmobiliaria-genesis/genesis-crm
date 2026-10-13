@@ -1,3 +1,4 @@
+import { useEstadoDetalleLotes, EtiquetaSaldoVenta, useColores } from "@/lib/plano";
 import { todas } from "@/lib/todas";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -163,6 +164,8 @@ function VentasPage() {
   const [buscar, setBuscar] = useState("");
   const vendedores = useVendedores();
   const { data: perfilSesion } = usePerfil();
+  const detalleLotes = useEstadoDetalleLotes();
+  const colores = useColores();
 
   useEffect(() => {
     if (busqueda.nuevoLote) setAlta(true);
@@ -185,6 +188,14 @@ function VentasPage() {
   const estadoVenta = (v: NonNullable<typeof ventas.data>[number]) =>
     v.anulado ? "anulada" : v.desistida ? "desistida"
       : v.desistimientos?.some((d) => !d.anulado && d.estado === "en_proceso") ? "en_desistimiento" : "activa";
+  const saldoVenta = (v: NonNullable<typeof ventas.data>[number]) => {
+    if (v.anulado || v.desistida) return undefined;
+    const e = detalleLotes.data?.get(v.lote_id);
+    return e === "cancelado" ? "cancelada" : e === "vendido" ? "con_saldo" : undefined;
+  };
+  const SALDO = ["con_saldo", "cancelada"];
+  const estadosBase = estados.filter((e) => !SALDO.includes(e));
+  const estadosSaldo = estados.filter((e) => SALDO.includes(e));
   const filtradas = useMemo(() => {
     return (ventas.data ?? []).filter((v) => {
       const p = v.titulares?.find((t) => t.es_principal && !t.anulado)?.cliente;
@@ -192,7 +203,8 @@ function VentasPage() {
       return (
         enLista(v.encargado_id, encargados) &&
         enLista(v.lote?.manzana?.id, manzanasSel) &&
-        enLista(estadoVenta(v), estados) &&
+        enLista(estadoVenta(v), estadosBase) &&
+        (estadosSaldo.length === 0 || estadosSaldo.includes(saldoVenta(v) ?? "")) &&
         enRango(v.fecha_venta, rangoFecha, "date") &&
         enLista(v.es_historica ? "si" : "no", historicas) &&
         enLista(v.origen, origenes) &&
@@ -253,6 +265,7 @@ function VentasPage() {
             <FiltroMulti label="Estado" opciones={[
               { valor: "activa", etiqueta: "Activa" }, { valor: "en_desistimiento", etiqueta: "En desistimiento" },
               { valor: "desistida", etiqueta: "Desistida" }, { valor: "anulada", etiqueta: "Anulada" },
+              { valor: "con_saldo", etiqueta: "Con saldo" }, { valor: "cancelada", etiqueta: "Cancelada" },
             ]} valor={estados} onCambio={setEstados} />
             <FiltroRango label="Fecha de venta" tipo="date" valor={rangoFecha} onCambio={setRangoFecha} />
             <FiltroMulti label="Histórica" opciones={[{ valor: "si", etiqueta: "Sí" }, { valor: "no", etiqueta: "No" }]} valor={historicas} onCambio={setHistoricas} />
@@ -309,6 +322,7 @@ function VentasPage() {
                       {!v.desistida && v.desistimientos?.some((d) => !d.anulado && d.estado === "en_proceso") ? (
                         <Badge variant="destructive">En desistimiento</Badge>
                       ) : null}{" "}
+                      <EtiquetaSaldoVenta estado={v.anulado || v.desistida ? undefined : detalleLotes.data?.get(v.lote_id)} colores={colores.data} />{" "}
                       <Button
                         size="sm"
                         variant="ghost"
@@ -1005,6 +1019,8 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
   const cuotas = cronograma.data ?? [];
   const total = cuotas.reduce((t, c) => t + Number(c.monto_vigente), 0);
   const saldoTotal = cuotas.reduce((t, c) => t + Math.max(Number(c.saldo), 0), 0);
+  const detalleFicha = useEstadoDetalleLotes();
+  const coloresFicha = useColores();
 
   type FilaPago = {
     key: string;
@@ -1245,7 +1261,8 @@ function FichaVenta({ ventaId, onCerrar }: { ventaId: string | null; onCerrar: (
               </Table>
               <p className="mt-2 text-xs text-muted-foreground">
                 Total del cronograma: <span className="num">{soles(total)}</span> · Saldo por
-                cobrar: <span className="num">{soles(saldoTotal)}</span>
+                cobrar: <span className="num">{soles(saldoTotal)}</span>{" "}
+                <EtiquetaSaldoVenta estado={v.anulado || v.desistida ? undefined : detalleFicha.data?.get(v.lote_id)} colores={coloresFicha.data} />
               </p>
             </div>
 

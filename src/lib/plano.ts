@@ -1,3 +1,5 @@
+import { createElement } from "react";
+import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -58,4 +60,24 @@ export function colorDe(
 ): string {
   if (!estado) return COLOR_RESPALDO;
   return colores?.find((c) => c.estado === estado)?.color ?? COLOR_RESPALDO;
+}
+
+/** Estado detallado de cada lote (disponible, apartado, vendido, cancelado), calculado en la base. */
+export function useEstadoDetalleLotes() {
+  return useQuery({
+    queryKey: ["lote-estado-detalle"],
+    queryFn: async () => {
+      const { todas } = await import("@/lib/todas");
+      const { data, error } = await todas(() => supabase.from("lote_estado").select("lote_id, estado_detalle"), "lote_id");
+      if (error) throw error;
+      return new Map((data ?? []).map((e) => [e.lote_id as string, e.estado_detalle as string]));
+    },
+  });
+}
+
+/** Etiqueta de saldo de una venta activa según el estado de su lote. */
+export function EtiquetaSaldoVenta({ estado, colores }: { estado: string | undefined; colores: { estado: string; color: string }[] | undefined }) {
+  if (estado !== "vendido" && estado !== "cancelado") return null;
+  const c = colorDe(estado, colores);
+  return createElement(Badge, { variant: "outline", style: { borderColor: c, color: c } }, estado === "cancelado" ? "Cancelada" : "Con saldo");
 }
