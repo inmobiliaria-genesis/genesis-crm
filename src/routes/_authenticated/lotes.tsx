@@ -1,3 +1,4 @@
+import { useColores, colorDe } from "@/lib/plano";
 import { todas } from "@/lib/todas";
 import { useNavigate, createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -150,7 +151,7 @@ function LotesAsesor() {
 type Orden = { col: ColId; dir: "asc" | "desc" } | null;
 type ColId = "manzana" | "lote" | "area" | "lista" | "venta" | "m2" | "fecha" | "estado";
 type FilaLote = Lote & {
-  estadoVenta: "libre" | "apartado" | "vendido";
+  estadoVenta: "libre" | "apartado" | "vendido" | "cancelado";
   etapaNombre: string;
   manzanaLetra: string;
   ventaId: string | null;
@@ -160,7 +161,7 @@ type FilaLote = Lote & {
 };
 
 const colNat = new Intl.Collator("es", { numeric: true, sensitivity: "base" });
-const ETIQUETA_ESTADO = { libre: "Libre", apartado: "Apartado", vendido: "Vendido" } as const;
+const ETIQUETA_ESTADO = { libre: "Libre", apartado: "Apartado", vendido: "Vendido", cancelado: "Cancelado" } as const;
 
 function compararDefecto(a: FilaLote, b: FilaLote) {
   return colNat.compare(a.etapaNombre, b.etapaNombre) || colNat.compare(a.manzanaLetra, b.manzanaLetra) || a.numero - b.numero;
@@ -196,6 +197,7 @@ function LotesPage() {
   const [verM2, setVerM2] = useState(true);
   const [orden, setOrden] = useState<Orden>(null);
   const [seleccion, setSeleccion] = useState<Set<string>>(new Set());
+  const colores = useColores();
 
   const proyectos = useQuery({
     queryKey: ["proyectos"],
@@ -254,7 +256,7 @@ function LotesPage() {
   const estados = useQuery({
     queryKey: ["lote-estados"],
     queryFn: async () => {
-      const { data, error } = await todas(() => supabase.from("lote_estado").select("lote_id, estado"), "lote_id");
+      const { data, error } = await todas(() => supabase.from("lote_estado").select("lote_id, estado, estado_detalle"), "lote_id");
       if (error) throw error;
       return data;
     },
@@ -274,12 +276,12 @@ function LotesPage() {
   });
 
   const filas = useMemo<FilaLote[]>(() => {
-    const est = new Map((estados.data ?? []).map((e) => [e.lote_id, e.estado]));
+    const est = new Map((estados.data ?? []).map((e) => [e.lote_id, e.estado_detalle ?? e.estado]));
     const ven = new Map((ventas.data ?? []).map((v) => [v.lote_id, v]));
     return (lotes.data ?? []).map((l) => {
       const v = ven.get(l.id);
       const e = est.get(l.id);
-      const estadoVenta: FilaLote["estadoVenta"] = v ? "vendido" : e === "apartado" ? "apartado" : "libre";
+      const estadoVenta: FilaLote["estadoVenta"] = e === "cancelado" ? "cancelado" : v || e === "vendido" ? "vendido" : e === "apartado" ? "apartado" : "libre";
       const area = l.area_m2 == null ? null : Number(l.area_m2);
       const base = v ? Number(v.precio_acordado) : l.precio_lista == null ? null : Number(l.precio_lista);
       const mz = mapaManzana.get(l.manzana_id);
@@ -326,7 +328,7 @@ function LotesPage() {
   }, [filas, filtroEstado, filtroDatos, rangoPrecio, rangoArea, busqueda, orden]);
 
   const resumen = useMemo(() => {
-    const r = { libre: 0, apartado: 0, vendido: 0, area: 0, valorLista: 0, valorVendido: 0, listaTodos: 0 };
+    const r = { libre: 0, apartado: 0, vendido: 0, cancelado: 0, area: 0, valorLista: 0, valorVendido: 0, listaTodos: 0 };
     for (const l of filtrados) {
       r[l.estadoVenta]++;
       r.area += Number(l.area_m2 ?? 0);
@@ -447,17 +449,18 @@ function LotesPage() {
             </SelectContent>
           </Select>
         </div>
-        <FiltroMulti label="Estado de venta" opciones={[{ valor: "libre", etiqueta: "Libre" }, { valor: "apartado", etiqueta: "Apartado" }, { valor: "vendido", etiqueta: "Vendido" }]} valor={filtroEstado} onCambio={setFiltroEstado} />
+        <FiltroMulti label="Estado de venta" opciones={[{ valor: "libre", etiqueta: "Libre" }, { valor: "apartado", etiqueta: "Apartado" }, { valor: "vendido", etiqueta: "Vendido" }, { valor: "cancelado", etiqueta: "Cancelado" }]} valor={filtroEstado} onCambio={setFiltroEstado} />
         <FiltroMulti label="Datos" opciones={[{ valor: "completo", etiqueta: "Completos" }, { valor: "pendiente", etiqueta: "Pendientes" }]} valor={filtroDatos} onCambio={setFiltroDatos} />
         <FiltroRango label="Precio de lista (S/)" valor={rangoPrecio} onCambio={setRangoPrecio} />
         <FiltroRango label="Área (m²)" valor={rangoArea} onCambio={setRangoArea} />
       </BarraFiltros>
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="mb-4 grid gap-3 sm:grid-cols-4 lg:grid-cols-7">
         {[
           ["Libres", String(resumen.libre)],
           ["Apartados", String(resumen.apartado)],
-          ["Vendidos", String(resumen.vendido)],
+          ["Vendidos (con saldo)", String(resumen.vendido)],
+          ["Cancelados", String(resumen.cancelado)],
           ["Área total", `${numero(resumen.area)} m²`],
           ["Valor de lista (libres)", soles(resumen.valorLista)],
           ["Valor vendido", soles(resumen.valorVendido)],
@@ -546,7 +549,11 @@ function LotesPage() {
                   ) : null}
                   <TableCell className="num">{l.fechaVenta ? fecha(l.fechaVenta) : "–"}</TableCell>
                   <TableCell>
-                    <Badge variant={l.estadoVenta === "libre" ? "outline" : "secondary"}>{ETIQUETA_ESTADO[l.estadoVenta]}</Badge>
+                    {l.estadoVenta === "vendido" || l.estadoVenta === "cancelado" ? (
+                      <Badge variant="outline" style={{ borderColor: colorDe(l.estadoVenta, colores.data), color: colorDe(l.estadoVenta, colores.data) }}>{ETIQUETA_ESTADO[l.estadoVenta]}</Badge>
+                    ) : (
+                      <Badge variant={l.estadoVenta === "libre" ? "outline" : "secondary"}>{ETIQUETA_ESTADO[l.estadoVenta]}</Badge>
+                    )}
                   </TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     {editable ? <EditarLote lote={l} onListo={refrescar} /> : null}
