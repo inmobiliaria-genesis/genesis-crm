@@ -1,0 +1,1 @@
+ALTER VIEW public.lote_estado SET (security_invoker = true);
