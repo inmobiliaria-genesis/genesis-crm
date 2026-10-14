@@ -61,9 +61,10 @@ export function etiquetaEstadoLote(
 ): string {
   if (estado === "disponible") return "Libre";
   if (estado === "apartado") return "Separado";
-  if (estado === "vendido") {
+  if (estado === "vendido" || estado === "cancelado") {
     if (enDesistimiento) return "En desistimiento";
-    return Number(saldoPendiente ?? 0) > 0.005 ? "Pagando" : "Cancelado";
+    if (estado === "cancelado") return "Cancelado";
+    return saldoPendiente != null && Number(saldoPendiente) <= 0.005 ? "Cancelado" : "Vendido";
   }
   return estado ?? "—";
 }
